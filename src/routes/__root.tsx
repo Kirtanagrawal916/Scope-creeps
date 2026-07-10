@@ -11,6 +11,7 @@ import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
+import { ThemeProvider } from "@/components/theme-toggle";
 
 function NotFoundComponent() {
   return (
@@ -95,9 +96,21 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:title", content: "ScopeGuard — AI change management for freelancers" },
-      { name: "twitter:description", content: "ScopeGuard analyzes client emails against your contract, flags scope creep, estimates cost and timeline impact, and drafts a professional reply — before you send." },
-      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/c54378a7-e82e-464d-bcd5-b6d6cb297996/id-preview-f1a37433--9bd9f55a-3493-46db-844d-4df58eb422a5.lovable.app-1783505175750.png" },
-      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/c54378a7-e82e-464d-bcd5-b6d6cb297996/id-preview-f1a37433--9bd9f55a-3493-46db-844d-4df58eb422a5.lovable.app-1783505175750.png" },
+      {
+        name: "twitter:description",
+        content:
+          "ScopeGuard analyzes client emails against your contract, flags scope creep, estimates cost and timeline impact, and drafts a professional reply — before you send.",
+      },
+      {
+        property: "og:image",
+        content:
+          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/c54378a7-e82e-464d-bcd5-b6d6cb297996/id-preview-f1a37433--9bd9f55a-3493-46db-844d-4df58eb422a5.lovable.app-1783505175750.png",
+      },
+      {
+        name: "twitter:image",
+        content:
+          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/c54378a7-e82e-464d-bcd5-b6d6cb297996/id-preview-f1a37433--9bd9f55a-3493-46db-844d-4df58eb422a5.lovable.app-1783505175750.png",
+      },
     ],
     links: [
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
@@ -135,7 +148,12 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <Outlet />
+      <ThemeProvider>
+        <div className="theme-root relative min-h-screen overflow-x-hidden bg-background text-foreground transition-colors duration-700">
+          <div className="site-atmosphere" aria-hidden="true" />
+          <Outlet />
+        </div>
+      </ThemeProvider>
     </QueryClientProvider>
   );
 }

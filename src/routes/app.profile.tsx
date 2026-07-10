@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Mail, MapPin, Briefcase } from "lucide-react";
+import { Mail, MapPin, FolderKanban } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -42,7 +42,7 @@ function ProfilePage() {
               <MapPin className="h-3.5 w-3.5" /> Brooklyn, NY
             </div>
             <div className="flex items-center gap-2 text-[13px] text-muted-foreground">
-              <Briefcase className="h-3.5 w-3.5" /> Pro plan · 5 seats
+              <FolderKanban className="h-3.5 w-3.5" /> 12 active projects
             </div>
           </div>
         </div>

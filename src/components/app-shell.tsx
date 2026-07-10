@@ -20,6 +20,7 @@ import { Button } from "./ui/button";
 import { Avatar, AvatarFallback } from "./ui/avatar";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "./ui/sheet";
 import { cn } from "@/lib/utils";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 interface NavItem {
   to: string;
@@ -110,6 +111,7 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
       </nav>
 
       <div className="border-t border-sidebar-border p-3">
+        <ThemeToggle className="mb-3 w-full justify-center bg-background/45" compact />
         <div className="flex items-center gap-2.5 rounded-lg p-1.5 hover:bg-sidebar-accent">
           <Avatar className="h-7 w-7">
             <AvatarFallback className="bg-primary/20 text-[11px] font-medium text-primary">
@@ -118,7 +120,7 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
           </Avatar>
           <div className="min-w-0 flex-1 overflow-hidden">
             <div className="truncate text-[13px] font-medium text-foreground">Alex Laurent</div>
-            <div className="truncate text-[11px] text-muted-foreground">Pro plan</div>
+            <div className="truncate text-[11px] text-muted-foreground">Workspace</div>
           </div>
           <ChevronsUpDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
         </div>
@@ -145,8 +147,8 @@ export function AppShell({
   }, [pathname]);
 
   return (
-    <div className="flex min-h-screen w-full bg-background">
-      <aside className="sticky top-0 hidden h-screen w-[248px] shrink-0 flex-col border-r border-sidebar-border bg-sidebar lg:flex">
+    <div className="relative flex min-h-screen w-full bg-background/80">
+      <aside className="sticky top-0 hidden h-screen w-[248px] shrink-0 flex-col border-r border-sidebar-border bg-sidebar/90 backdrop-blur-2xl lg:flex">
         <SidebarContent />
       </aside>
 
@@ -155,11 +157,19 @@ export function AppShell({
           <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
             <Sheet open={open} onOpenChange={setOpen}>
               <SheetTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 lg:hidden" aria-label="Open menu">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 shrink-0 lg:hidden"
+                  aria-label="Open menu"
+                >
                   <Menu className="h-4 w-4" />
                 </Button>
               </SheetTrigger>
-              <SheetContent side="left" className="flex w-[280px] flex-col border-r border-sidebar-border bg-sidebar p-0">
+              <SheetContent
+                side="left"
+                className="flex w-[280px] flex-col border-r border-sidebar-border bg-sidebar p-0"
+              >
                 <SheetTitle className="sr-only">Navigation</SheetTitle>
                 <SidebarContent onNavigate={() => setOpen(false)} />
               </SheetContent>
@@ -178,6 +188,7 @@ export function AppShell({
             </div>
           </div>
           <div className="flex shrink-0 items-center gap-2">
+            <ThemeToggle className="hidden lg:flex" compact />
             <div className="hidden sm:block">{action}</div>
             <Button size="sm" className="gap-1.5" asChild>
               <Link to="/app/projects/new">

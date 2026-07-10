@@ -2,6 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 import { Check } from "lucide-react";
 import { Logo } from "@/components/logo";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -20,13 +21,23 @@ function RegisterPage() {
     "Unlimited contracts on trial",
   ];
   return (
-    <div className="relative min-h-screen bg-background">
+    <div className="relative min-h-screen overflow-hidden bg-background">
       <div className="absolute inset-0 bg-radial-glow opacity-60" />
+      <div className="absolute inset-0 bg-grid opacity-30 [mask-image:radial-gradient(ellipse_at_center,black,transparent_70%)]" />
       <div className="relative mx-auto grid min-h-screen max-w-5xl grid-cols-1 gap-10 px-6 py-12 md:grid-cols-2 md:items-center">
-        <div className="hidden md:block">
+        <div className="absolute left-6 right-6 top-6 flex items-center justify-between md:hidden">
           <Link to="/">
             <Logo />
           </Link>
+          <ThemeToggle compact />
+        </div>
+        <div className="hidden md:block">
+          <div className="flex items-center justify-between">
+            <Link to="/">
+              <Logo />
+            </Link>
+            <ThemeToggle compact />
+          </div>
           <h1 className="mt-10 font-display text-4xl font-semibold tracking-tight">
             Join 2,400+ studios protecting their scope.
           </h1>
@@ -51,7 +62,7 @@ function RegisterPage() {
           transition={{ duration: 0.4 }}
           className="panel p-8"
         >
-          <Link to="/" className="md:hidden">
+          <Link to="/" className="mt-10 md:hidden">
             <Logo />
           </Link>
           <h2 className="mt-2 font-display text-2xl font-semibold tracking-tight">
@@ -86,7 +97,9 @@ function RegisterPage() {
               <Label className="text-[12px]">Workspace name</Label>
               <Input defaultValue="Laurent Studio" />
             </div>
-            <Button type="submit" className="w-full">Create workspace</Button>
+            <Button type="submit" className="w-full">
+              Create workspace
+            </Button>
           </form>
           <p className="mt-4 text-center text-[11px] text-muted-foreground">
             By continuing you agree to our Terms & Privacy Policy.
