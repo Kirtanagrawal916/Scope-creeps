@@ -24,8 +24,9 @@ export const Route = createFileRoute("/app/analysis/$id")({
   loader: ({ params }) => {
     const analysis = findAnalysis(params.id);
     if (!analysis) throw notFound();
-    const project = findProject(analysis.projectId)!;
-    const email = findEmail(analysis.emailId)!;
+    const project = findProject(analysis.projectId);
+    const email = findEmail(analysis.emailId);
+    if (!project || !email) throw notFound();
     return { analysis, project, email };
   },
   head: () => ({ meta: [{ title: "AI Analysis — ScopeGuard" }] }),

@@ -1,4 +1,4 @@
-import { Link, useRouterState } from "@tanstack/react-router";
+import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 import {
   LayoutDashboard,
@@ -10,6 +10,7 @@ import {
   Settings,
   Search,
   Plus,
+  LogOut,
   ChevronsUpDown,
   Menu,
   type LucideIcon,
@@ -75,6 +76,14 @@ function NavLink({ item, onNavigate }: { item: NavItem; onNavigate?: () => void 
 }
 
 function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
+  const nav = useNavigate();
+
+  function handleLogout() {
+    localStorage.removeItem("scopeguard_user_id");
+    onNavigate?.();
+    nav({ to: "/login" });
+  }
+
   return (
     <>
       <div className="flex items-center justify-between px-4 pt-4 pb-2">
@@ -124,6 +133,15 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
           </div>
           <ChevronsUpDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
         </div>
+        <Button
+          type="button"
+          variant="ghost"
+          className="mt-2 w-full justify-start gap-2 text-muted-foreground"
+          onClick={handleLogout}
+        >
+          <LogOut className="h-4 w-4" />
+          Logout
+        </Button>
       </div>
     </>
   );

@@ -17,36 +17,19 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-
-type User = {
-  id: string;
-  email: string;
-  password: string;
-};
-
-const fakeUsers: User[] = [
-  {
-    id: "user_1",
-    email: "alex@studio.com",
-    password: "password123",
-  },
-  {
-    id: "user_2",
-    email: "sam@agency.com",
-    password: "hello123",
-  },
-];
+import { checkLogin } from "@/lib/auth";
 
 const loginUser = createServerFn({ method: "POST" })
   .validator((data: { email: string; password: string }) => data)
   .handler(async ({ data }) => {
-    const foundUser = fakeUsers.find((user) => user.email === data.email);
-    const isCorrectUser = foundUser?.password === data.password;
+    const result = checkLogin(data.email, data.password);
 
     return {
-      success: isCorrectUser,
-      userId: isCorrectUser ? foundUser.id : null,
-      message: isCorrectUser ? "Login successful" : "Invalid email or password",
+      success: result.success,
+      userId: result.userId,
+      message: result.success
+        ? "Login successful"
+        : "Invalid email or password",
     };
   });
 

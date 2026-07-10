@@ -273,7 +273,8 @@ function Dashboard() {
           <Section title="Latest AI analyses">
             <div className="panel divide-y divide-border overflow-hidden">
               {analyses.map((a) => {
-                const p = projects.find((pr) => pr.id === a.projectId)!;
+                const p = projects.find((pr) => pr.id === a.projectId);
+                if (!p) return null;
                 return (
                   <Link
                     key={a.id}
