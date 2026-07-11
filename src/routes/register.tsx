@@ -1,4 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createServerFn } from "@tanstack/react-start";
 import { motion } from "framer-motion";
 import { Check } from "lucide-react";
 import { Logo } from "@/components/logo";
@@ -6,7 +7,24 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { registerNewUser } from "@/lib/auth";
 import type { FormEvent } from "react";
+import { useState } from "react";
+
+const registerUser = createServerFn({ method: "POST" })
+  .validator(
+    (data: {
+      firstName?: string;
+      lastName?: string;
+      email: string;
+      password: string;
+      workspaceName?: string;
+    }) => data,
+  )
+  .handler(async ({ data }) => {
+    const result = await registerNewUser(data);
+    return result;
+  });
 
 export const Route = createFileRoute("/register")({
   component: RegisterPage,
@@ -15,11 +33,41 @@ export const Route = createFileRoute("/register")({
 
 function RegisterPage() {
   const nav = useNavigate();
+  const [message, setMessage] = useState("");
+  
   const perks = [
     "14 days free, no credit card",
     "Analyze up to 200 emails per month",
     "Unlimited contracts on trial",
   ];
+
+  async function handleRegister(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setMessage("");
+
+    const form = new FormData(event.currentTarget);
+    const firstName = String(form.get("firstName") ?? "");
+    const lastName = String(form.get("lastName") ?? "");
+    const email = String(form.get("email") ?? "");
+    const password = String(form.get("password") ?? "");
+    const workspaceName = String(form.get("workspaceName") ?? "");
+
+    try {
+      const response = await registerUser({
+        data: { firstName, lastName, email, password, workspaceName },
+      });
+
+      if (response.success && response.userId) {
+        localStorage.setItem("scopeguard_user_id", response.userId);
+        nav({ to: "/app" });
+      } else {
+        setMessage(response.message || "Registration failed");
+      }
+    } catch (err: any) {
+      setMessage(err.message || "An error occurred during registration");
+    }
+  }
+
   return (
     <div className="relative min-h-screen overflow-hidden bg-background">
       <div className="absolute inset-0 bg-radial-glow opacity-60" />
@@ -68,35 +116,34 @@ function RegisterPage() {
           <h2 className="mt-2 font-display text-2xl font-semibold tracking-tight">
             Create your account
           </h2>
-          <form
-            className="mt-6 space-y-4"
-            onSubmit={(e: FormEvent) => {
-              e.preventDefault();
-              nav({ to: "/app" });
-            }}
-          >
+          <form className="mt-6 space-y-4" onSubmit={handleRegister}>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label className="text-[12px]">First name</Label>
-                <Input defaultValue="Alex" />
+                <Label htmlFor="firstName" className="text-[12px]">First name</Label>
+                <Input id="firstName" name="firstName" defaultValue="Alex" />
               </div>
               <div className="space-y-1.5">
-                <Label className="text-[12px]">Last name</Label>
-                <Input defaultValue="Laurent" />
+                <Label htmlFor="lastName" className="text-[12px]">Last name</Label>
+                <Input id="lastName" name="lastName" defaultValue="Laurent" />
               </div>
             </div>
             <div className="space-y-1.5">
-              <Label className="text-[12px]">Work email</Label>
-              <Input type="email" defaultValue="alex@studio.com" />
+              <Label htmlFor="email" className="text-[12px]">Work email</Label>
+              <Input id="email" name="email" type="email" defaultValue="alex@studio.com" />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-[12px]">Password</Label>
-              <Input type="password" defaultValue="••••••••••" />
+              <Label htmlFor="password" className="text-[12px]">Password</Label>
+              <Input id="password" name="password" type="password" defaultValue="password123" />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-[12px]">Workspace name</Label>
-              <Input defaultValue="Laurent Studio" />
+              <Label htmlFor="workspaceName" className="text-[12px]">Workspace name</Label>
+              <Input id="workspaceName" name="workspaceName" defaultValue="Laurent Studio" />
             </div>
+            {message ? (
+              <p className="text-center text-[13px] text-destructive">
+                {message}
+              </p>
+            ) : null}
             <Button type="submit" className="w-full">
               Create workspace
             </Button>

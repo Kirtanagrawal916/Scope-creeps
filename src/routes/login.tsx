@@ -22,7 +22,7 @@ import { checkLogin } from "@/lib/auth";
 const loginUser = createServerFn({ method: "POST" })
   .validator((data: { email: string; password: string }) => data)
   .handler(async ({ data }) => {
-    const result = checkLogin(data.email, data.password);
+    const result = await checkLogin(data.email, data.password);
 
     return {
       success: result.success,
