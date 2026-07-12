@@ -19,6 +19,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { checkLogin } from "@/lib/auth";
 
+const AUTH_TOKEN_KEY = "scopeguard_token";
+
 const loginUser = createServerFn({ method: "POST" })
   .validator((data: { email: string; password: string }) => data)
   .handler(async ({ data }) => {
@@ -27,6 +29,7 @@ const loginUser = createServerFn({ method: "POST" })
     return {
       success: result.success,
       userId: result.userId,
+      token: result.token,
       message: result.success
         ? "Login successful"
         : "Invalid email or password",
@@ -69,8 +72,9 @@ function LoginPage() {
     const response = await loginUser({ data: { email, password } });
     setMessage(response.message);
 
-    if (response.success && response.userId) {
-      localStorage.setItem("scopeguard_user_id", response.userId);
+    if (response.success && response.token) {
+      localStorage.setItem(AUTH_TOKEN_KEY, response.token);
+      localStorage.removeItem("scopeguard_user_id");
       nav({ to: "/app" });
     }
   }

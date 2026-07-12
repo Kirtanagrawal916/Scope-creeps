@@ -11,6 +11,8 @@ import { registerNewUser } from "@/lib/auth";
 import type { FormEvent } from "react";
 import { useState } from "react";
 
+const AUTH_TOKEN_KEY = "scopeguard_token";
+
 const registerUser = createServerFn({ method: "POST" })
   .validator(
     (data: {
@@ -57,8 +59,9 @@ function RegisterPage() {
         data: { firstName, lastName, email, password, workspaceName },
       });
 
-      if (response.success && response.userId) {
-        localStorage.setItem("scopeguard_user_id", response.userId);
+      if (response.success && response.token) {
+        localStorage.setItem(AUTH_TOKEN_KEY, response.token);
+        localStorage.removeItem("scopeguard_user_id");
         nav({ to: "/app" });
       } else {
         setMessage(response.message || "Registration failed");

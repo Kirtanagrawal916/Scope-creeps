@@ -79,6 +79,7 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   const nav = useNavigate();
 
   function handleLogout() {
+    localStorage.removeItem("scopeguard_token");
     localStorage.removeItem("scopeguard_user_id");
     onNavigate?.();
     nav({ to: "/login" });
