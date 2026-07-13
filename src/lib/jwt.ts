@@ -2,6 +2,10 @@ import { createHmac, timingSafeEqual } from "crypto";
 
 export const AUTH_TOKEN_KEY = "scopeguard_token";
 
+if (process.env.NODE_ENV === "production" && !process.env.JWT_SECRET) {
+  throw new Error("JWT_SECRET environment variable is required in production!");
+}
+
 const JWT_SECRET = process.env.JWT_SECRET ?? "scopeguard-dev-secret-change-in-production";
 const TOKEN_EXPIRY_SECONDS = 7 * 24 * 60 * 60;
 

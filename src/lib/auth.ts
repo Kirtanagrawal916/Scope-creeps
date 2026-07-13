@@ -8,6 +8,15 @@ import { verifyToken, signToken } from "./jwt";
 const COOKIE_NAME = "session_token";
 
 export async function checkLogin(email: string, password: string) {
+  if (typeof email !== "string" || typeof password !== "string") {
+    return {
+      success: false,
+      userId: null,
+      token: null,
+      email: null,
+    };
+  }
+
   await connectToDatabase();
 
   const foundUser = await User.findOne({ email: email.toLowerCase() });
@@ -48,6 +57,16 @@ export async function registerNewUser(data: {
   password: string;
   workspaceName?: string;
 }) {
+  if (!data || typeof data.email !== "string" || typeof data.password !== "string") {
+    return {
+      success: false,
+      message: "Invalid registration parameters",
+      userId: null,
+      token: null,
+      email: null,
+    };
+  }
+
   await connectToDatabase();
 
   const existingUser = await User.findOne({ email: data.email.toLowerCase() });
