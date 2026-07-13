@@ -1,4 +1,6 @@
-import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
+import { Link, useNavigate, useRouterState, useRouteContext } from "@tanstack/react-router";
+import { createServerFn } from "@tanstack/react-start";
+import { deleteSessionCookie } from "@/lib/auth";
 import { motion } from "framer-motion";
 import {
   LayoutDashboard,
@@ -75,10 +77,29 @@ function NavLink({ item, onNavigate }: { item: NavItem; onNavigate?: () => void 
   );
 }
 
+const logoutAction = createServerFn({ method: "POST" }).handler(async () => {
+  deleteSessionCookie();
+  return { success: true };
+});
+
 function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   const nav = useNavigate();
+  const { user } = useRouteContext({ from: "/app" }) as {
+    user: {
+      id: string;
+      email: string;
+      firstName?: string;
+      lastName?: string;
+      workspaceName?: string;
+    } | null;
+  };
 
-  function handleLogout() {
+  async function handleLogout() {
+    try {
+      await logoutAction();
+    } catch (err) {
+      console.error("Server logout failed:", err);
+    }
     localStorage.removeItem("scopeguard_token");
     localStorage.removeItem("scopeguard_user_id");
     onNavigate?.();
@@ -125,12 +146,18 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
         <div className="flex items-center gap-2.5 rounded-lg p-1.5 hover:bg-sidebar-accent">
           <Avatar className="h-7 w-7">
             <AvatarFallback className="bg-primary/20 text-[11px] font-medium text-primary">
-              AL
+              {user?.firstName
+                ? `${user.firstName[0]}${user.lastName ? user.lastName[0] : ""}`.toUpperCase()
+                : "U"}
             </AvatarFallback>
           </Avatar>
           <div className="min-w-0 flex-1 overflow-hidden">
-            <div className="truncate text-[13px] font-medium text-foreground">Alex Laurent</div>
-            <div className="truncate text-[11px] text-muted-foreground">Workspace</div>
+            <div className="truncate text-[13px] font-medium text-foreground">
+              {user?.firstName ? `${user.firstName} ${user.lastName ?? ""}`.trim() : "User"}
+            </div>
+            <div className="truncate text-[11px] text-muted-foreground">
+              {user?.workspaceName || "Workspace"}
+            </div>
           </div>
           <ChevronsUpDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
         </div>

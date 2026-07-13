@@ -103,9 +103,7 @@ function ProjectDetail() {
               <div className="text-[12px] font-medium uppercase tracking-wider text-muted-foreground">
                 Contract summary
               </div>
-              <p className="mt-3 text-[14px] leading-relaxed text-foreground">
-                {project.contract}
-              </p>
+              <p className="mt-3 text-[14px] leading-relaxed text-foreground">{project.contract}</p>
             </div>
             <div className="panel p-6">
               <div className="text-[12px] font-medium uppercase tracking-wider text-muted-foreground">
@@ -113,7 +111,10 @@ function ProjectDetail() {
               </div>
               <div className="mt-3 space-y-2">
                 {["SOW-v3.pdf", "Timeline.xlsx", "Brand-guidelines.pdf"].map((f) => (
-                  <div key={f} className="flex items-center justify-between rounded-lg border border-border bg-background/40 px-3 py-2 text-[13px]">
+                  <div
+                    key={f}
+                    className="flex items-center justify-between rounded-lg border border-border bg-background/40 px-3 py-2 text-[13px]"
+                  >
                     <div className="flex items-center gap-2">
                       <FileText className="h-3.5 w-3.5 text-muted-foreground" />
                       {f}

@@ -256,11 +256,41 @@ export const kpis = {
 };
 
 export const activity = [
-  { id: 1, type: "analysis", text: "Scope creep detected on Atlas Commerce", meta: "$22.4k impact", time: "2h ago" },
-  { id: 2, type: "email", text: "New client email from Dr. Marcus Wen", meta: "Helix AI Onboarding", time: "5h ago" },
-  { id: 3, type: "reply", text: "Change order reply sent to Priya Shah", meta: "Atlas Commerce", time: "yesterday" },
-  { id: 4, type: "project", text: "Vanta Ops Dashboard marked as completed", meta: "$41k final", time: "3d ago" },
-  { id: 5, type: "analysis", text: "Voice input flagged as out of scope", meta: "Helix AI Onboarding", time: "5h ago" },
+  {
+    id: 1,
+    type: "analysis",
+    text: "Scope creep detected on Atlas Commerce",
+    meta: "$22.4k impact",
+    time: "2h ago",
+  },
+  {
+    id: 2,
+    type: "email",
+    text: "New client email from Dr. Marcus Wen",
+    meta: "Helix AI Onboarding",
+    time: "5h ago",
+  },
+  {
+    id: 3,
+    type: "reply",
+    text: "Change order reply sent to Priya Shah",
+    meta: "Atlas Commerce",
+    time: "yesterday",
+  },
+  {
+    id: 4,
+    type: "project",
+    text: "Vanta Ops Dashboard marked as completed",
+    meta: "$41k final",
+    time: "3d ago",
+  },
+  {
+    id: 5,
+    type: "analysis",
+    text: "Voice input flagged as out of scope",
+    meta: "Helix AI Onboarding",
+    time: "5h ago",
+  },
 ];
 
 export const revenueChart = [

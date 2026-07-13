@@ -4,17 +4,20 @@ import type { ProjectStatus, RiskLevel } from "@/lib/mock-data";
 const statusMap: Record<ProjectStatus, { label: string; className: string; dot: string }> = {
   on_track: {
     label: "On track",
-    className: "text-[color:var(--success)] bg-[color-mix(in_oklab,var(--success)_12%,transparent)]",
+    className:
+      "text-[color:var(--success)] bg-[color-mix(in_oklab,var(--success)_12%,transparent)]",
     dot: "bg-[color:var(--success)]",
   },
   at_risk: {
     label: "At risk",
-    className: "text-[color:var(--warning)] bg-[color-mix(in_oklab,var(--warning)_14%,transparent)]",
+    className:
+      "text-[color:var(--warning)] bg-[color-mix(in_oklab,var(--warning)_14%,transparent)]",
     dot: "bg-[color:var(--warning)]",
   },
   scope_creep: {
     label: "Scope creep",
-    className: "text-[color:var(--destructive)] bg-[color-mix(in_oklab,var(--destructive)_14%,transparent)]",
+    className:
+      "text-[color:var(--destructive)] bg-[color-mix(in_oklab,var(--destructive)_14%,transparent)]",
     dot: "bg-[color:var(--destructive)]",
   },
   completed: {

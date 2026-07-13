@@ -25,7 +25,9 @@ function InboxPage() {
         <Button variant="outline" size="sm">
           <Filter className="mr-1.5 h-3.5 w-3.5" /> Risk
         </Button>
-        <Button variant="outline" size="sm">Project</Button>
+        <Button variant="outline" size="sm">
+          Project
+        </Button>
       </div>
       <div className="panel divide-y divide-border overflow-hidden">
         {emails.map((e) => {
@@ -51,14 +53,10 @@ function InboxPage() {
                       · {project?.name}
                     </span>
                   </div>
-                  <span className="shrink-0 text-[11px] text-muted-foreground">
-                    {e.receivedAt}
-                  </span>
+                  <span className="shrink-0 text-[11px] text-muted-foreground">{e.receivedAt}</span>
                 </div>
                 <div className="mt-0.5 truncate text-[13px] text-foreground">{e.subject}</div>
-                <div className="mt-0.5 truncate text-[12px] text-muted-foreground">
-                  {e.preview}
-                </div>
+                <div className="mt-0.5 truncate text-[12px] text-muted-foreground">{e.preview}</div>
               </div>
               <div className="flex flex-col items-end gap-1">
                 <RiskChip level={e.risk} />
@@ -74,7 +72,9 @@ function InboxPage() {
         <div className="flex items-center justify-center gap-2 px-5 py-8 text-[13px] text-muted-foreground">
           <Mail className="h-3.5 w-3.5" />
           Connect Gmail to auto-import new client threads.
-          <Button variant="outline" size="sm">Connect Gmail</Button>
+          <Button variant="outline" size="sm">
+            Connect Gmail
+          </Button>
         </div>
       </div>
     </AppShell>

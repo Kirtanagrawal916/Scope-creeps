@@ -52,6 +52,7 @@
     "embla-carousel-react": "^8.6.0",
     "framer-motion": "^12.42.2",
     "input-otp": "^1.4.2",
+    "jose": "^6.2.3",
     "lucide-react": "^0.575.0",
     "mongodb": "^7.5.0",
     "mongoose": "^9.7.4",

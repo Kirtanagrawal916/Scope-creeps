@@ -7,6 +7,7 @@ export interface IUser extends Document {
   email: string;
   password: string;
   workspaceName?: string;
+  defaultRate?: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -16,15 +17,15 @@ import { hashPassword } from "../lib/bcrypt";
 // 2. Define the Mongoose Schema
 const UserSchema = new Schema<IUser>(
   {
-    firstName: { 
-      type: String, 
+    firstName: {
+      type: String,
       required: false,
-      trim: true 
+      trim: true,
     },
-    lastName: { 
-      type: String, 
+    lastName: {
+      type: String,
       required: false,
-      trim: true 
+      trim: true,
     },
     email: {
       type: String,
@@ -32,22 +33,26 @@ const UserSchema = new Schema<IUser>(
       unique: true,
       lowercase: true,
       trim: true,
-      match: [/^\S+@\S+\.\S+$/, "Please use a valid email address"]
+      match: [/^\S+@\S+\.\S+$/, "Please use a valid email address"],
     },
-    password: { 
-      type: String, 
-      required: [true, "Password is required"] 
+    password: {
+      type: String,
+      required: [true, "Password is required"],
     },
-    workspaceName: { 
-      type: String, 
+    workspaceName: {
+      type: String,
       required: false,
-      trim: true 
+      trim: true,
+    },
+    defaultRate: {
+      type: Number,
+      required: false,
     },
   },
   {
     // Automatically manage createdAt and updatedAt fields
     timestamps: true,
-  }
+  },
 );
 
 // Pre-save hook to automatically hash password before storing

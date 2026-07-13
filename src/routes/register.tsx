@@ -7,7 +7,8 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { registerNewUser } from "@/lib/auth";
+import { registerNewUser, setSessionCookie } from "@/lib/auth";
+import { signToken } from "@/lib/jwt";
 import type { FormEvent } from "react";
 import { useState } from "react";
 
@@ -25,6 +26,12 @@ const registerUser = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     const result = await registerNewUser(data);
+
+    if (result.success && result.userId && result.email) {
+      const token = await signToken({ userId: result.userId, email: result.email });
+      setSessionCookie(token);
+    }
+
     return result;
   });
 
@@ -36,7 +43,7 @@ export const Route = createFileRoute("/register")({
 function RegisterPage() {
   const nav = useNavigate();
   const [message, setMessage] = useState("");
-  
+
   const perks = [
     "14 days free, no credit card",
     "Analyze up to 200 emails per month",
@@ -66,8 +73,9 @@ function RegisterPage() {
       } else {
         setMessage(response.message || "Registration failed");
       }
-    } catch (err: any) {
-      setMessage(err.message || "An error occurred during registration");
+    } catch (err) {
+      const error = err as Error;
+      setMessage(error.message || "An error occurred during registration");
     }
   }
 
@@ -122,31 +130,37 @@ function RegisterPage() {
           <form className="mt-6 space-y-4" onSubmit={handleRegister}>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label htmlFor="firstName" className="text-[12px]">First name</Label>
+                <Label htmlFor="firstName" className="text-[12px]">
+                  First name
+                </Label>
                 <Input id="firstName" name="firstName" defaultValue="Alex" />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="lastName" className="text-[12px]">Last name</Label>
+                <Label htmlFor="lastName" className="text-[12px]">
+                  Last name
+                </Label>
                 <Input id="lastName" name="lastName" defaultValue="Laurent" />
               </div>
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="email" className="text-[12px]">Work email</Label>
+              <Label htmlFor="email" className="text-[12px]">
+                Work email
+              </Label>
               <Input id="email" name="email" type="email" defaultValue="alex@studio.com" />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="password" className="text-[12px]">Password</Label>
+              <Label htmlFor="password" className="text-[12px]">
+                Password
+              </Label>
               <Input id="password" name="password" type="password" defaultValue="password123" />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="workspaceName" className="text-[12px]">Workspace name</Label>
+              <Label htmlFor="workspaceName" className="text-[12px]">
+                Workspace name
+              </Label>
               <Input id="workspaceName" name="workspaceName" defaultValue="Laurent Studio" />
             </div>
-            {message ? (
-              <p className="text-center text-[13px] text-destructive">
-                {message}
-              </p>
-            ) : null}
+            {message ? <p className="text-center text-[13px] text-destructive">{message}</p> : null}
             <Button type="submit" className="w-full">
               Create workspace
             </Button>

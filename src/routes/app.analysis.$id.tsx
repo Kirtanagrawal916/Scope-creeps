@@ -55,9 +55,7 @@ function ConfidenceRing({ value }: { value: number }) {
       </svg>
       <div className="text-center">
         <div className="font-display text-xl font-semibold tabular-nums">{value}%</div>
-        <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
-          Confidence
-        </div>
+        <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Confidence</div>
       </div>
     </div>
   );
@@ -217,9 +215,7 @@ function AnalysisPage() {
             <div className="text-[12px] font-medium uppercase tracking-wider text-muted-foreground">
               AI reasoning
             </div>
-            <p className="mt-3 text-[14px] leading-relaxed text-foreground">
-              {analysis.reasoning}
-            </p>
+            <p className="mt-3 text-[14px] leading-relaxed text-foreground">{analysis.reasoning}</p>
           </motion.div>
 
           <motion.div
@@ -305,11 +301,7 @@ function AnalysisPage() {
           </div>
 
           <div className="mt-4 flex flex-wrap items-center gap-2">
-            <Button
-              className="flex-1 min-w-32"
-              onClick={() => setSent(true)}
-              disabled={sent}
-            >
+            <Button className="flex-1 min-w-32" onClick={() => setSent(true)} disabled={sent}>
               {sent ? (
                 <>
                   <Check className="mr-1.5 h-3.5 w-3.5" /> Sent

@@ -14,7 +14,7 @@ function useCountUp(target: number, duration = 1.2) {
       controls.stop();
       unsub();
     };
-  }, [target]);
+  }, [target, duration, mv, rounded]);
   return display;
 }
 

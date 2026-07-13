@@ -17,7 +17,8 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { checkLogin } from "@/lib/auth";
+import { checkLogin, setSessionCookie } from "@/lib/auth";
+import { signToken } from "@/lib/jwt";
 
 const AUTH_TOKEN_KEY = "scopeguard_token";
 
@@ -26,13 +27,16 @@ const loginUser = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const result = await checkLogin(data.email, data.password);
 
+    if (result.success && result.userId && result.email) {
+      const token = await signToken({ userId: result.userId, email: result.email });
+      setSessionCookie(token);
+    }
+
     return {
       success: result.success,
       userId: result.userId,
       token: result.token,
-      message: result.success
-        ? "Login successful"
-        : "Invalid email or password",
+      message: result.success ? "Login successful" : "Invalid email or password",
     };
   });
 

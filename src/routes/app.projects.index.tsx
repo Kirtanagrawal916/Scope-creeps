@@ -23,8 +23,12 @@ function ProjectsPage() {
           <Filter className="mr-1.5 h-3.5 w-3.5" />
           Status
         </Button>
-        <Button variant="outline" size="sm">Client</Button>
-        <Button variant="outline" size="sm">Risk</Button>
+        <Button variant="outline" size="sm">
+          Client
+        </Button>
+        <Button variant="outline" size="sm">
+          Risk
+        </Button>
       </div>
 
       <div className="panel overflow-hidden">
@@ -56,11 +60,12 @@ function ProjectsPage() {
               </div>
               <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-[12px] md:contents">
                 <div className="text-[13px] tabular-nums">
-                  <span className="text-muted-foreground md:hidden">Budget: </span>
-                  ${p.budget.toLocaleString()}
+                  <span className="text-muted-foreground md:hidden">Budget: </span>$
+                  {p.budget.toLocaleString()}
                 </div>
                 <div className="text-[13px] tabular-nums text-muted-foreground">
-                  {p.hoursUsed}h <span className="text-muted-foreground/60">/ {p.hoursAllocated}h</span>
+                  {p.hoursUsed}h{" "}
+                  <span className="text-muted-foreground/60">/ {p.hoursAllocated}h</span>
                 </div>
                 <div>
                   <RiskChip level={p.risk} />

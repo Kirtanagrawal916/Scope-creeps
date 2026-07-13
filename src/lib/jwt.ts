@@ -18,27 +18,46 @@ function base64UrlDecode(value: string): string {
   return Buffer.from(padded.replace(/-/g, "+").replace(/_/g, "/"), "base64").toString();
 }
 
-export async function signToken(userId: string): Promise<string> {
+export interface JWTPayload {
+  userId: string;
+  email?: string;
+}
+
+/**
+ * Signs a JWT token supporting both string userId and structured payload.
+ */
+export async function signToken(payload: string | JWTPayload): Promise<string> {
+  const userId = typeof payload === "string" ? payload : payload.userId;
+  const email = typeof payload === "string" ? undefined : payload.email;
+
   const header = base64UrlEncode(JSON.stringify({ alg: "HS256", typ: "JWT" }));
   const issuedAt = Math.floor(Date.now() / 1000);
-  const payload = base64UrlEncode(
-    JSON.stringify({
-      sub: userId,
-      iat: issuedAt,
-      exp: issuedAt + TOKEN_EXPIRY_SECONDS,
-    }),
-  );
+
+  const payloadObj: Record<string, unknown> = {
+    sub: userId,
+    iat: issuedAt,
+    exp: issuedAt + TOKEN_EXPIRY_SECONDS,
+  };
+
+  if (email) {
+    payloadObj.email = email;
+  }
+
+  const payloadStr = base64UrlEncode(JSON.stringify(payloadObj));
   const signature = createHmac("sha256", JWT_SECRET)
-    .update(`${header}.${payload}`)
+    .update(`${header}.${payloadStr}`)
     .digest("base64")
     .replace(/\+/g, "-")
     .replace(/\//g, "_")
     .replace(/=+$/g, "");
 
-  return `${header}.${payload}.${signature}`;
+  return `${header}.${payloadStr}.${signature}`;
 }
 
-export async function verifyToken(token: string): Promise<{ userId: string } | null> {
+/**
+ * Verifies a JWT token and returns payload details or null if invalid.
+ */
+export async function verifyToken(token: string): Promise<JWTPayload | null> {
   const parts = token.split(".");
   if (parts.length !== 3) {
     return null;
@@ -65,14 +84,22 @@ export async function verifyToken(token: string): Promise<{ userId: string } | n
     return null;
   }
 
-  const decoded = JSON.parse(base64UrlDecode(payload)) as {
-    sub?: string;
-    exp?: number;
-  };
+  try {
+    const decoded = JSON.parse(base64UrlDecode(payload)) as {
+      sub?: string;
+      email?: string;
+      exp?: number;
+    };
 
-  if (!decoded.sub || !decoded.exp || decoded.exp < Math.floor(Date.now() / 1000)) {
+    if (!decoded.sub || !decoded.exp || decoded.exp < Math.floor(Date.now() / 1000)) {
+      return null;
+    }
+
+    return {
+      userId: decoded.sub,
+      email: decoded.email,
+    };
+  } catch {
     return null;
   }
-
-  return { userId: decoded.sub };
 }

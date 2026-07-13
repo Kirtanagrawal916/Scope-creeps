@@ -74,12 +74,7 @@ function ForgotPasswordPage() {
               <Label htmlFor="email" className="text-[12px]">
                 Work email
               </Label>
-              <Input
-                id="email"
-                name="email"
-                type="email"
-                placeholder="alex@studio.com"
-              />
+              <Input id="email" name="email" type="email" placeholder="alex@studio.com" />
             </div>
             <Button type="submit" className="w-full" disabled={isLoading}>
               {isLoading ? "Sending..." : "Send reset link"}

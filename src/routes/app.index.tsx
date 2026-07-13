@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useRouteContext } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 import {
   ShieldCheck,
@@ -22,14 +22,7 @@ import {
 import { AppShell, Section } from "@/components/app-shell";
 import { StatCard } from "@/components/stat-card";
 import { StatusPill } from "@/components/status-pill";
-import {
-  kpis,
-  projects,
-  emails,
-  activity,
-  revenueChart,
-  analyses,
-} from "@/lib/mock-data";
+import { kpis, projects, emails, activity, revenueChart, analyses } from "@/lib/mock-data";
 import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/app/")({
@@ -38,8 +31,22 @@ export const Route = createFileRoute("/app/")({
 });
 
 function Dashboard() {
+  const { user } = useRouteContext({ from: "/app" }) as {
+    user: {
+      id: string;
+      email: string;
+      firstName?: string;
+      lastName?: string;
+      workspaceName?: string;
+    } | null;
+  };
+  const greetingName = user?.firstName || "Alex";
+
   return (
-    <AppShell title="Good afternoon, Alex" subtitle="Here's what's happened across your workspace today.">
+    <AppShell
+      title={`Good afternoon, ${greetingName}`}
+      subtitle="Here's what's happened across your workspace today."
+    >
       <div className="space-y-8">
         <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
           <StatCard
@@ -83,11 +90,11 @@ function Dashboard() {
           >
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-[12px] font-medium text-muted-foreground">Revenue overview</div>
+                <div className="text-[12px] font-medium text-muted-foreground">
+                  Revenue overview
+                </div>
                 <div className="mt-1 flex items-baseline gap-2">
-                  <span className="font-display text-2xl font-semibold tabular-nums">
-                    $205,000
-                  </span>
+                  <span className="font-display text-2xl font-semibold tabular-nums">$205,000</span>
                   <span className="text-[12px] text-[color:var(--success)]">
                     +$43k protected in Jan
                   </span>
@@ -168,7 +175,10 @@ function Dashboard() {
           >
             <div className="flex items-center justify-between">
               <div className="text-[12px] font-medium text-muted-foreground">Activity</div>
-              <Link to="/app/notifications" className="text-[12px] text-muted-foreground hover:text-foreground">
+              <Link
+                to="/app/notifications"
+                className="text-[12px] text-muted-foreground hover:text-foreground"
+              >
                 View all
               </Link>
             </div>
@@ -178,8 +188,12 @@ function Dashboard() {
                   <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-accent">
                     {a.type === "analysis" && <Sparkles className="h-3.5 w-3.5 text-primary" />}
                     {a.type === "email" && <Mail className="h-3.5 w-3.5 text-muted-foreground" />}
-                    {a.type === "reply" && <ArrowUpRight className="h-3.5 w-3.5 text-[color:var(--success)]" />}
-                    {a.type === "project" && <FileText className="h-3.5 w-3.5 text-muted-foreground" />}
+                    {a.type === "reply" && (
+                      <ArrowUpRight className="h-3.5 w-3.5 text-[color:var(--success)]" />
+                    )}
+                    {a.type === "project" && (
+                      <FileText className="h-3.5 w-3.5 text-muted-foreground" />
+                    )}
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="text-[13px] leading-snug text-foreground">{a.text}</div>
@@ -220,7 +234,9 @@ function Dashboard() {
                 </div>
                 <div className="hidden w-40 md:block">
                   <div className="mb-1 flex items-center justify-between text-[11px] text-muted-foreground">
-                    <span>{p.hoursUsed}h / {p.hoursAllocated}h</span>
+                    <span>
+                      {p.hoursUsed}h / {p.hoursAllocated}h
+                    </span>
                     <span>{p.progress}%</span>
                   </div>
                   <div className="h-1 overflow-hidden rounded-full bg-accent">
@@ -261,9 +277,7 @@ function Dashboard() {
                         {e.preview}
                       </div>
                     </div>
-                    {e.unread && (
-                      <span className="mt-1 h-1.5 w-1.5 rounded-full bg-primary" />
-                    )}
+                    {e.unread && <span className="mt-1 h-1.5 w-1.5 rounded-full bg-primary" />}
                   </div>
                 </Link>
               ))}
