@@ -1,26 +1,24 @@
 /**
  * auth.server.ts — SERVER-ONLY authentication module.
  *
- * This file is the single place that imports from @tanstack/react-start/server.
- * Route/component files must NEVER import helper functions (setSessionCookie, etc.)
- * from here directly; they should only import createServerFn exports, which the
- * TanStack Start bundler replaces with safe RPC stubs on the client.
+ * This file is purely server-only and contains the Mongoose, JWT, Google OAuth,
+ * and session cookie setting logic.
  */
 
-import { getCookie, setCookie, deleteCookie } from "@tanstack/react-start/server";
-import { createServerFn } from "@tanstack/react-start";
 import { connectToDatabase } from "./db";
 import { User, type IUser } from "../models/User";
 import { verifyToken, signToken } from "./jwt";
-import { checkLogin, registerNewUser } from "./auth";
+import { comparePassword } from "./bcrypt";
 
 const COOKIE_NAME = "session_token";
 
 // ---------------------------------------------------------------------------
-// Cookie helpers — server-only, never import these in client-visible files
+// Cookie helpers — dynamically import @tanstack/react-start/server to break
+// all static dependency chains to client bundles.
 // ---------------------------------------------------------------------------
 
-export function setSessionCookie(token: string) {
+export async function setSessionCookie(token: string) {
+  const { setCookie } = await import("@tanstack/react-start/server");
   setCookie(COOKIE_NAME, token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
@@ -30,7 +28,8 @@ export function setSessionCookie(token: string) {
   });
 }
 
-export function deleteSessionCookie() {
+export async function deleteSessionCookie() {
+  const { deleteCookie } = await import("@tanstack/react-start/server");
   deleteCookie(COOKIE_NAME);
 }
 
@@ -39,6 +38,7 @@ export function deleteSessionCookie() {
  * returns the hydrated Mongoose user document (without the password field).
  */
 export async function getSessionUser(): Promise<IUser | null> {
+  const { getCookie } = await import("@tanstack/react-start/server");
   const token = getCookie(COOKIE_NAME);
   if (!token) {
     return null;
@@ -52,7 +52,7 @@ export async function getSessionUser(): Promise<IUser | null> {
   // Sliding session: extend expiry by another 7 days on every valid request
   try {
     const refreshed = await signToken({ userId: payload.userId, email: payload.email || "" });
-    setSessionCookie(refreshed);
+    await setSessionCookie(refreshed);
   } catch (err) {
     console.error("Failed to refresh session token:", err);
   }
@@ -63,114 +63,199 @@ export async function getSessionUser(): Promise<IUser | null> {
 }
 
 // ---------------------------------------------------------------------------
-// createServerFn exports — safe to import from any route/component because
-// the TanStack bundler replaces the handler body with an HTTP RPC stub on
-// the client. The server-only code never reaches the browser bundle.
+// Server-only authentication helpers
 // ---------------------------------------------------------------------------
 
-/** Log in with email + password. Sets the session cookie server-side. */
-export const loginUser = createServerFn({ method: "POST" })
-  .validator((data: { email: string; password: string }) => data)
-  .handler(async ({ data }) => {
-    const result = await checkLogin(data.email, data.password);
-
-    if (result.success && result.token) {
-      setSessionCookie(result.token);
-    }
-
+export async function checkLogin(email: string, password: string) {
+  if (typeof email !== "string" || typeof password !== "string") {
     return {
-      success: result.success,
-      userId: result.userId,
-      token: result.token,
-      message: result.success ? "Login successful" : "Invalid email or password",
+      success: false,
+      userId: null,
+      token: null,
+      email: null,
     };
-  });
+  }
 
-/** Register a new user. Sets the session cookie server-side. */
-export const registerUser = createServerFn({ method: "POST" })
-  .validator(
-    (data: {
-      firstName?: string;
-      lastName?: string;
-      email: string;
-      password: string;
-      workspaceName?: string;
-    }) => data,
-  )
-  .handler(async ({ data }) => {
-    const result = await registerNewUser(data);
+  await connectToDatabase();
 
-    if (result.success && result.token) {
-      setSessionCookie(result.token);
-    }
-
-    return result;
-  });
-
-/** Update workspace-level settings for the current session user. */
-export const updateWorkspaceSettings = createServerFn({ method: "POST" })
-  .validator((data: { workspaceName: string; defaultRate?: number }) => data)
-  .handler(async ({ data }) => {
-    const user = await getSessionUser();
-    if (!user) {
-      throw new Error("Unauthorized");
-    }
-
-    if (!data.workspaceName || data.workspaceName.trim() === "") {
-      throw new Error("Workspace name is required.");
-    }
-
-    await connectToDatabase();
-    user.workspaceName = data.workspaceName.trim();
-    if (typeof data.defaultRate === "number") {
-      user.defaultRate = data.defaultRate;
-    }
-    await user.save();
-
+  const foundUser = await User.findOne({ email: email.toLowerCase() });
+  if (!foundUser) {
     return {
-      success: true,
-      message: "Workspace settings updated successfully.",
-      user: {
-        id: String(user._id),
-        workspaceName: user.workspaceName,
-        defaultRate: user.defaultRate,
-      },
+      success: false,
+      userId: null,
+      token: null,
+      email: null,
     };
-  });
+  }
 
-/** Update first/last name for the current session user. */
-export const updateProfile = createServerFn({ method: "POST" })
-  .validator((data: { firstName?: string; lastName?: string }) => data)
-  .handler(async ({ data }) => {
-    const user = await getSessionUser();
-    if (!user) {
-      throw new Error("Unauthorized");
-    }
-
-    await connectToDatabase();
-    if (typeof data.firstName === "string") {
-      user.firstName = data.firstName.trim();
-    }
-    if (typeof data.lastName === "string") {
-      user.lastName = data.lastName.trim();
-    }
-    await user.save();
-
+  const isCorrectUser = await comparePassword(password, foundUser.password);
+  if (!isCorrectUser) {
     return {
-      success: true,
-      message: "Profile updated successfully.",
-      user: {
-        id: String(user._id),
-        firstName: user.firstName,
-        lastName: user.lastName,
-        email: user.email,
-        workspaceName: user.workspaceName,
-      },
+      success: false,
+      userId: null,
+      token: null,
+      email: null,
     };
+  }
+
+  const userId = foundUser._id.toString();
+  const token = await signToken({ userId, email: foundUser.email });
+
+  return {
+    success: true,
+    userId,
+    token,
+    email: foundUser.email,
+  };
+}
+
+export async function registerNewUser(data: {
+  firstName?: string;
+  lastName?: string;
+  email: string;
+  password: string;
+  workspaceName?: string;
+}) {
+  if (!data || typeof data.email !== "string" || typeof data.password !== "string") {
+    return {
+      success: false,
+      message: "Invalid registration parameters",
+      userId: null,
+      token: null,
+      email: null,
+    };
+  }
+
+  await connectToDatabase();
+
+  const existingUser = await User.findOne({ email: data.email.toLowerCase() });
+  if (existingUser) {
+    return {
+      success: false,
+      message: "User already exists",
+      userId: null,
+      token: null,
+      email: null,
+    };
+  }
+
+  const newUser = new User({
+    firstName: data.firstName,
+    lastName: data.lastName,
+    email: data.email,
+    password: data.password, // hashed in pre-save hook
+    workspaceName: data.workspaceName,
   });
 
-/** Build the Google OAuth redirect URL and set a CSRF state cookie. */
-export const getGoogleAuthUrl = createServerFn({ method: "GET" }).handler(async () => {
+  await newUser.save();
+
+  const userId = newUser._id.toString();
+  const token = await signToken({ userId, email: newUser.email });
+
+  return {
+    success: true,
+    userId,
+    token,
+    email: newUser.email,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Server function implementations (called by createServerFn stubs)
+// ---------------------------------------------------------------------------
+
+export async function loginUserImpl(data: { email: string; password: string }) {
+  const result = await checkLogin(data.email, data.password);
+
+  if (result.success && result.token) {
+    await setSessionCookie(result.token);
+  }
+
+  return {
+    success: result.success,
+    userId: result.userId,
+    token: result.token,
+    message: result.success ? "Login successful" : "Invalid email or password",
+  };
+}
+
+export async function registerUserImpl(data: {
+  firstName?: string;
+  lastName?: string;
+  email: string;
+  password: string;
+  workspaceName?: string;
+}) {
+  const result = await registerNewUser(data);
+
+  if (result.success && result.token) {
+    await setSessionCookie(result.token);
+  }
+
+  return result;
+}
+
+export async function updateWorkspaceSettingsImpl(data: {
+  workspaceName: string;
+  defaultRate?: number;
+}) {
+  const user = await getSessionUser();
+  if (!user) {
+    throw new Error("Unauthorized");
+  }
+
+  if (!data.workspaceName || data.workspaceName.trim() === "") {
+    throw new Error("Workspace name is required.");
+  }
+
+  await connectToDatabase();
+  user.workspaceName = data.workspaceName.trim();
+  if (typeof data.defaultRate === "number") {
+    user.defaultRate = data.defaultRate;
+  }
+  await user.save();
+
+  return {
+    success: true,
+    message: "Workspace settings updated successfully.",
+    user: {
+      id: String(user._id),
+      workspaceName: user.workspaceName,
+      defaultRate: user.defaultRate,
+    },
+  };
+}
+
+export async function updateProfileImpl(data: { firstName?: string; lastName?: string }) {
+  const user = await getSessionUser();
+  if (!user) {
+    throw new Error("Unauthorized");
+  }
+
+  await connectToDatabase();
+  if (typeof data.firstName === "string") {
+    user.firstName = data.firstName.trim();
+  }
+  if (typeof data.lastName === "string") {
+    user.lastName = data.lastName.trim();
+  }
+  await user.save();
+
+  return {
+    success: true,
+    message: "Profile updated successfully.",
+    user: {
+      id: String(user._id),
+      firstName: user.firstName,
+      lastName: user.lastName,
+      email: user.email,
+      workspaceName: user.workspaceName,
+    },
+  };
+}
+
+export async function getGoogleAuthUrlImpl() {
+  const { setCookie } = await import("@tanstack/react-start/server");
   const clientId = process.env.GOOGLE_CLIENT_ID;
   const callbackUrl = process.env.CALLBACK_URL;
 
@@ -201,125 +286,119 @@ export const getGoogleAuthUrl = createServerFn({ method: "GET" }).handler(async 
   });
 
   return { url: `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}` };
-});
+}
 
-/** Deletes the session cookie. Called by the logout button. */
-export const logoutAction = createServerFn({ method: "POST" }).handler(async () => {
-  deleteSessionCookie();
+export async function logoutActionImpl() {
+  await deleteSessionCookie();
   return { success: true };
-});
+}
 
-/**
- * Handles the Google OAuth callback: validates CSRF state, exchanges the
- * authorization code for tokens, upserts the user, and sets the session cookie.
- */
-export const handleGoogleCallback = createServerFn({ method: "POST" })
-  .validator((data: { code: string; state: string }) => data)
-  .handler(async ({ data }) => {
-    // Verify CSRF state
-    const savedState = getCookie("oauth_state");
-    deleteCookie("oauth_state");
+export async function handleGoogleCallbackImpl(data: { code: string; state: string }) {
+  const { getCookie, deleteCookie } = await import("@tanstack/react-start/server");
+  // Verify CSRF state
+  const savedState = getCookie("oauth_state");
+  deleteCookie("oauth_state");
 
-    if (!savedState || savedState !== data.state) {
-      throw new Error("CSRF state validation failed.");
+  if (!savedState || savedState !== data.state) {
+    throw new Error("CSRF state validation failed.");
+  }
+
+  const clientId = process.env.GOOGLE_CLIENT_ID;
+  const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+  const callbackUrl = process.env.CALLBACK_URL;
+
+  if (!clientId || !clientSecret || !callbackUrl) {
+    throw new Error("Google OAuth configuration is missing on the server.");
+  }
+
+  // Exchange authorization code for tokens
+  const tokenResponse = await fetch("https://oauth2.googleapis.com/token", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      code: data.code,
+      client_id: clientId,
+      client_secret: clientSecret,
+      redirect_uri: callbackUrl,
+      grant_type: "authorization_code",
+    }),
+  });
+
+  if (!tokenResponse.ok) {
+    const errText = await tokenResponse.text();
+    console.error("Google token exchange failed:", errText);
+    throw new Error("Failed to exchange authorization code with Google.");
+  }
+
+  const tokens = (await tokenResponse.json()) as { access_token: string };
+
+  // Fetch user info
+  const userResponse = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
+    headers: { Authorization: `Bearer ${tokens.access_token}` },
+  });
+
+  if (!userResponse.ok) {
+    throw new Error("Failed to fetch user profile information from Google.");
+  }
+
+  const googleUser = (await userResponse.json()) as {
+    sub: string;
+    email: string;
+    given_name?: string;
+    family_name?: string;
+    picture?: string;
+  };
+
+  if (!googleUser.email) {
+    throw new Error("Google account does not expose a valid email address.");
+  }
+
+  await connectToDatabase();
+
+  // Find or create user
+  let user = await User.findOne({ email: googleUser.email.toLowerCase() });
+
+  if (user) {
+    // Link Google fields if not already populated
+    let updated = false;
+    if (!user.googleId) {
+      user.googleId = googleUser.sub;
+      updated = true;
     }
-
-    const clientId = process.env.GOOGLE_CLIENT_ID;
-    const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
-    const callbackUrl = process.env.CALLBACK_URL;
-
-    if (!clientId || !clientSecret || !callbackUrl) {
-      throw new Error("Google OAuth configuration is missing on the server.");
+    if (!user.avatar && googleUser.picture) {
+      user.avatar = googleUser.picture;
+      updated = true;
     }
-
-    // Exchange authorization code for tokens
-    const tokenResponse = await fetch("https://oauth2.googleapis.com/token", {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({
-        code: data.code,
-        client_id: clientId,
-        client_secret: clientSecret,
-        redirect_uri: callbackUrl,
-        grant_type: "authorization_code",
-      }),
-    });
-
-    if (!tokenResponse.ok) {
-      const errText = await tokenResponse.text();
-      console.error("Google token exchange failed:", errText);
-      throw new Error("Failed to exchange authorization code with Google.");
+    if (user.provider !== "google") {
+      user.provider = "google";
+      updated = true;
     }
-
-    const tokens = (await tokenResponse.json()) as { access_token: string };
-
-    // Fetch user info
-    const userResponse = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
-      headers: { Authorization: `Bearer ${tokens.access_token}` },
-    });
-
-    if (!userResponse.ok) {
-      throw new Error("Failed to fetch user profile information from Google.");
-    }
-
-    const googleUser = (await userResponse.json()) as {
-      sub: string;
-      email: string;
-      given_name?: string;
-      family_name?: string;
-      picture?: string;
-    };
-
-    if (!googleUser.email) {
-      throw new Error("Google account does not expose a valid email address.");
-    }
-
-    await connectToDatabase();
-
-    // Find or create user
-    let user = await User.findOne({ email: googleUser.email.toLowerCase() });
-
-    if (user) {
-      // Link Google fields if not already populated
-      let updated = false;
-      if (!user.googleId) {
-        user.googleId = googleUser.sub;
-        updated = true;
-      }
-      if (!user.avatar && googleUser.picture) {
-        user.avatar = googleUser.picture;
-        updated = true;
-      }
-      if (user.provider !== "google") {
-        user.provider = "google";
-        updated = true;
-      }
-      if (updated) {
-        await user.save();
-      }
-    } else {
-      const randomPassword =
-        Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-      user = new User({
-        firstName: googleUser.given_name || "Google",
-        lastName: googleUser.family_name || "User",
-        email: googleUser.email,
-        password: randomPassword,
-        googleId: googleUser.sub,
-        avatar: googleUser.picture,
-        provider: "google",
-        workspaceName: `${googleUser.given_name || "Google"}'s Workspace`,
-      });
+    if (updated) {
       await user.save();
     }
-
-    // Generate JWT and set session cookie
-    const sessionToken = await signToken({
-      userId: String(user._id),
-      email: user.email,
+  } else {
+    const randomPassword =
+      Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+    user = new User({
+      firstName: googleUser.given_name || "Google",
+      lastName: googleUser.family_name || "User",
+      email: googleUser.email,
+      password: randomPassword,
+      googleId: googleUser.sub,
+      avatar: googleUser.picture,
+      provider: "google",
+      workspaceName: `${googleUser.given_name || "Google"}'s Workspace`,
     });
+    await user.save();
+  }
 
-    setSessionCookie(sessionToken);
-
-    return { success: true };
+  // Generate JWT and set session cookie
+  const sessionToken = await signToken({
+    userId: String(user._id),
+    email: user.email,
   });
+
+  await setSessionCookie(sessionToken);
+
+  return { success: true };
+}

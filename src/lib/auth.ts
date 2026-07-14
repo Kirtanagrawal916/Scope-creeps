@@ -1,105 +1,76 @@
 /**
- * auth.ts — Client-safe authentication helpers.
+ * auth.ts — Client-safe authentication handlers.
  *
- * This file must NEVER import from @tanstack/react-start/server.
- * All session/cookie logic lives in auth.server.ts.
+ * This file is client-visible and contains only createServerFn stubs.
+ * It contains ZERO top-level static imports of server-only modules
+ * (such as @tanstack/react-start/server, mongoose, or mongodb).
+ *
+ * The actual implementations are dynamically imported from auth.server.ts
+ * inside the handler functions. The TanStack Start compiler strips handler
+ * bodies from the client bundle, preventing any server-side dependencies from leaking.
  */
 
-import { connectToDatabase } from "./db";
-import { User } from "../models/User";
-import { comparePassword } from "./bcrypt";
-import { signToken } from "./jwt";
+import { createServerFn } from "@tanstack/react-start";
 
-export async function checkLogin(email: string, password: string) {
-  if (typeof email !== "string" || typeof password !== "string") {
-    return {
-      success: false,
-      userId: null,
-      token: null,
-      email: null,
-    };
-  }
-
-  await connectToDatabase();
-
-  const foundUser = await User.findOne({ email: email.toLowerCase() });
-  if (!foundUser) {
-    return {
-      success: false,
-      userId: null,
-      token: null,
-      email: null,
-    };
-  }
-
-  const isCorrectUser = await comparePassword(password, foundUser.password);
-  if (!isCorrectUser) {
-    return {
-      success: false,
-      userId: null,
-      token: null,
-      email: null,
-    };
-  }
-
-  const userId = foundUser._id.toString();
-  const token = await signToken({ userId, email: foundUser.email });
-
-  return {
-    success: true,
-    userId,
-    token,
-    email: foundUser.email,
-  };
-}
-
-export async function registerNewUser(data: {
-  firstName?: string;
-  lastName?: string;
-  email: string;
-  password: string;
-  workspaceName?: string;
-}) {
-  if (!data || typeof data.email !== "string" || typeof data.password !== "string") {
-    return {
-      success: false,
-      message: "Invalid registration parameters",
-      userId: null,
-      token: null,
-      email: null,
-    };
-  }
-
-  await connectToDatabase();
-
-  const existingUser = await User.findOne({ email: data.email.toLowerCase() });
-  if (existingUser) {
-    return {
-      success: false,
-      message: "User already exists",
-      userId: null,
-      token: null,
-      email: null,
-    };
-  }
-
-  const newUser = new User({
-    firstName: data.firstName,
-    lastName: data.lastName,
-    email: data.email,
-    password: data.password, // hashed in pre-save hook
-    workspaceName: data.workspaceName,
+/** Log in with email + password. */
+export const loginUser = createServerFn({ method: "POST" })
+  .validator((data: { email: string; password: string }) => data)
+  .handler(async ({ data }) => {
+    const { loginUserImpl } = await import("./auth.server");
+    return loginUserImpl(data);
   });
 
-  await newUser.save();
+/** Register a new user. */
+export const registerUser = createServerFn({ method: "POST" })
+  .validator(
+    (data: {
+      firstName?: string;
+      lastName?: string;
+      email: string;
+      password: string;
+      workspaceName?: string;
+    }) => data,
+  )
+  .handler(async ({ data }) => {
+    const { registerUserImpl } = await import("./auth.server");
+    return registerUserImpl(data);
+  });
 
-  const userId = newUser._id.toString();
-  const token = await signToken({ userId, email: newUser.email });
+/** Update workspace-level settings for the current session user. */
+export const updateWorkspaceSettings = createServerFn({ method: "POST" })
+  .validator((data: { workspaceName: string; defaultRate?: number }) => data)
+  .handler(async ({ data }) => {
+    const { updateWorkspaceSettingsImpl } = await import("./auth.server");
+    return updateWorkspaceSettingsImpl(data);
+  });
 
-  return {
-    success: true,
-    userId,
-    token,
-    email: newUser.email,
-  };
-}
+/** Update first/last name for the current session user. */
+export const updateProfile = createServerFn({ method: "POST" })
+  .validator((data: { firstName?: string; lastName?: string }) => data)
+  .handler(async ({ data }) => {
+    const { updateProfileImpl } = await import("./auth.server");
+    return updateProfileImpl(data);
+  });
+
+/** Build the Google OAuth redirect URL and set a CSRF state cookie. */
+export const getGoogleAuthUrl = createServerFn({ method: "GET" }).handler(async () => {
+  const { getGoogleAuthUrlImpl } = await import("./auth.server");
+  return getGoogleAuthUrlImpl();
+});
+
+/** Deletes the session cookie. Called by the logout button. */
+export const logoutAction = createServerFn({ method: "POST" }).handler(async () => {
+  const { logoutActionImpl } = await import("./auth.server");
+  return logoutActionImpl();
+});
+
+/**
+ * Handles the Google OAuth callback: validates CSRF state, exchanges the
+ * authorization code for tokens, upserts the user, and sets the session cookie.
+ */
+export const handleGoogleCallback = createServerFn({ method: "POST" })
+  .validator((data: { code: string; state: string }) => data)
+  .handler(async ({ data }) => {
+    const { handleGoogleCallbackImpl } = await import("./auth.server");
+    return handleGoogleCallbackImpl(data);
+  });

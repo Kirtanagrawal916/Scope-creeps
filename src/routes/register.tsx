@@ -6,7 +6,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { registerUser } from "@/lib/auth.server";
+import { registerUser } from "@/lib/auth";
 import type { FormEvent } from "react";
 import { useState } from "react";
 

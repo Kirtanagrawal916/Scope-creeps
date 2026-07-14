@@ -1,5 +1,5 @@
 import { Link, useNavigate, useRouterState, useRouteContext } from "@tanstack/react-router";
-import { logoutAction } from "@/lib/auth.server";
+import { logoutAction } from "@/lib/auth";
 import { motion } from "framer-motion";
 import {
   LayoutDashboard,

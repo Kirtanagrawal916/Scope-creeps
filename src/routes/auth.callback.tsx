@@ -1,5 +1,5 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
-import { handleGoogleCallback } from "@/lib/auth.server";
+import { handleGoogleCallback } from "@/lib/auth";
 
 export const Route = createFileRoute("/auth/callback")({
   validateSearch: (

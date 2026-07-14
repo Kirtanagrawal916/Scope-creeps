@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { updateProfile } from "@/lib/auth.server";
+import { updateProfile } from "@/lib/auth";
 import { type FormEvent, useState } from "react";
 
 export const Route = createFileRoute("/app/profile")({

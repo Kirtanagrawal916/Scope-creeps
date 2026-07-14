@@ -16,7 +16,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { loginUser, getGoogleAuthUrl } from "@/lib/auth.server";
+import { loginUser, getGoogleAuthUrl } from "@/lib/auth";
 
 const AUTH_TOKEN_KEY = "scopeguard_token";
 
