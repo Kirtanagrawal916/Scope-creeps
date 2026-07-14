@@ -1,127 +1,5 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
-import { getCookie, deleteCookie } from "@tanstack/react-start/server";
-import { createServerFn } from "@tanstack/react-start";
-import { connectToDatabase } from "@/lib/db";
-import { User } from "@/models/User";
-import { setSessionCookie } from "@/lib/auth";
-import { signToken } from "@/lib/jwt";
-
-const handleGoogleCallback = createServerFn({ method: "POST" })
-  .validator((data: { code: string; state: string }) => data)
-  .handler(async ({ data }) => {
-    // Verify CSRF state
-    const savedState = getCookie("oauth_state");
-    deleteCookie("oauth_state");
-
-    if (!savedState || savedState !== data.state) {
-      throw new Error("CSRF state validation failed.");
-    }
-
-    const clientId = process.env.GOOGLE_CLIENT_ID;
-    const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
-    const callbackUrl = process.env.CALLBACK_URL;
-
-    if (!clientId || !clientSecret || !callbackUrl) {
-      throw new Error("Google OAuth configuration is missing on the server.");
-    }
-
-    // Exchange authorization code for tokens
-    const tokenResponse = await fetch("https://oauth2.googleapis.com/token", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
-      body: new URLSearchParams({
-        code: data.code,
-        client_id: clientId,
-        client_secret: clientSecret,
-        redirect_uri: callbackUrl,
-        grant_type: "authorization_code",
-      }),
-    });
-
-    if (!tokenResponse.ok) {
-      const errText = await tokenResponse.text();
-      console.error("Google token exchange failed:", errText);
-      throw new Error("Failed to exchange authorization code with Google.");
-    }
-
-    const tokens = (await tokenResponse.json()) as { access_token: string };
-
-    // Fetch user info using access token
-    const userResponse = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
-      headers: {
-        Authorization: `Bearer ${tokens.access_token}`,
-      },
-    });
-
-    if (!userResponse.ok) {
-      throw new Error("Failed to fetch user profile information from Google.");
-    }
-
-    const googleUser = (await userResponse.json()) as {
-      sub: string;
-      email: string;
-      given_name?: string;
-      family_name?: string;
-      picture?: string;
-    };
-
-    if (!googleUser.email) {
-      throw new Error("Google account does not expose a valid email address.");
-    }
-
-    await connectToDatabase();
-
-    // Find or create user
-    let user = await User.findOne({ email: googleUser.email.toLowerCase() });
-
-    if (user) {
-      // User exists. Link account and set Google fields if not already populated
-      let updated = false;
-      if (!user.googleId) {
-        user.googleId = googleUser.sub;
-        updated = true;
-      }
-      if (!user.avatar && googleUser.picture) {
-        user.avatar = googleUser.picture;
-        updated = true;
-      }
-      if (user.provider !== "google") {
-        user.provider = "google";
-        updated = true;
-      }
-      if (updated) {
-        await user.save();
-      }
-    } else {
-      // User does not exist. Create new user
-      const randomPassword =
-        Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-      user = new User({
-        firstName: googleUser.given_name || "Google",
-        lastName: googleUser.family_name || "User",
-        email: googleUser.email,
-        password: randomPassword,
-        googleId: googleUser.sub,
-        avatar: googleUser.picture,
-        provider: "google",
-        workspaceName: `${googleUser.given_name || "Google"}'s Workspace`,
-      });
-      await user.save();
-    }
-
-    // Generate standard JWT session token
-    const sessionToken = await signToken({
-      userId: String(user._id),
-      email: user.email,
-    });
-
-    // Set cookie session
-    setSessionCookie(sessionToken);
-
-    return { success: true };
-  });
+import { handleGoogleCallback } from "@/lib/auth.server";
 
 export const Route = createFileRoute("/auth/callback")({
   validateSearch: (
@@ -159,6 +37,9 @@ export const Route = createFileRoute("/auth/callback")({
         to: "/app",
       });
     } catch (err) {
+      if (err && typeof err === "object" && "isRedirect" in err) {
+        throw err;
+      }
       const errorMsg = err instanceof Error ? err.message : "Authentication failed";
       throw redirect({
         to: "/login",

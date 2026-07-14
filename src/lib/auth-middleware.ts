@@ -1,5 +1,5 @@
 import { createMiddleware } from "@tanstack/react-start";
-import { getSessionUser } from "./auth";
+import { getSessionUser } from "./auth.server";
 
 /**
  * Resolves the authenticated user from the session cookie and attaches it to the request context.

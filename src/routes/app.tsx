@@ -1,6 +1,5 @@
 import { createFileRoute, isRedirect, Outlet, redirect } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
-import { getSessionUser } from "@/lib/auth";
 
 const AUTH_TOKEN_KEY = "scopeguard_token";
 
@@ -17,6 +16,7 @@ const verifySession = createServerFn({ method: "POST" })
   });
 
 const checkAuth = createServerFn({ method: "GET" }).handler(async () => {
+  const { getSessionUser } = await import("@/lib/auth.server");
   const user = await getSessionUser();
   if (!user) {
     return { authenticated: false, user: null };

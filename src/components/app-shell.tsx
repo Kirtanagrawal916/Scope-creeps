@@ -1,6 +1,5 @@
 import { Link, useNavigate, useRouterState, useRouteContext } from "@tanstack/react-router";
-import { createServerFn } from "@tanstack/react-start";
-import { deleteSessionCookie } from "@/lib/auth";
+import { logoutAction } from "@/lib/auth.server";
 import { motion } from "framer-motion";
 import {
   LayoutDashboard,
@@ -76,11 +75,6 @@ function NavLink({ item, onNavigate }: { item: NavItem; onNavigate?: () => void 
     </Link>
   );
 }
-
-const logoutAction = createServerFn({ method: "POST" }).handler(async () => {
-  deleteSessionCookie();
-  return { success: true };
-});
 
 function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   const nav = useNavigate();

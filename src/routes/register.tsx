@@ -1,5 +1,4 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { createServerFn } from "@tanstack/react-start";
 import { motion } from "framer-motion";
 import { Check } from "lucide-react";
 import { Logo } from "@/components/logo";
@@ -7,33 +6,11 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { registerNewUser, setSessionCookie } from "@/lib/auth";
-import { signToken } from "@/lib/jwt";
+import { registerUser } from "@/lib/auth.server";
 import type { FormEvent } from "react";
 import { useState } from "react";
 
 const AUTH_TOKEN_KEY = "scopeguard_token";
-
-const registerUser = createServerFn({ method: "POST" })
-  .validator(
-    (data: {
-      firstName?: string;
-      lastName?: string;
-      email: string;
-      password: string;
-      workspaceName?: string;
-    }) => data,
-  )
-  .handler(async ({ data }) => {
-    const result = await registerNewUser(data);
-
-    if (result.success && result.userId && result.email) {
-      const token = await signToken({ userId: result.userId, email: result.email });
-      setSessionCookie(token);
-    }
-
-    return result;
-  });
 
 export const Route = createFileRoute("/register")({
   component: RegisterPage,

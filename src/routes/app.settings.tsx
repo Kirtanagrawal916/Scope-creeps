@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
-import { updateWorkspaceSettings } from "@/lib/auth";
+import { updateWorkspaceSettings } from "@/lib/auth.server";
 import { type FormEvent, useState } from "react";
 
 export const Route = createFileRoute("/app/settings")({
