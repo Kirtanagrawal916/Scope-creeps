@@ -8,6 +8,9 @@ export interface IUser extends Document {
   password: string;
   workspaceName?: string;
   defaultRate?: number;
+  googleId?: string;
+  avatar?: string;
+  provider?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -47,6 +50,19 @@ const UserSchema = new Schema<IUser>(
     defaultRate: {
       type: Number,
       required: false,
+    },
+    googleId: {
+      type: String,
+      required: false,
+    },
+    avatar: {
+      type: String,
+      required: false,
+    },
+    provider: {
+      type: String,
+      required: false,
+      default: "local",
     },
   },
   {

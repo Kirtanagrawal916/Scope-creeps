@@ -17,7 +17,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { checkLogin, setSessionCookie } from "@/lib/auth";
+import { checkLogin, setSessionCookie, getGoogleAuthUrl } from "@/lib/auth";
 import { signToken } from "@/lib/jwt";
 
 const AUTH_TOKEN_KEY = "scopeguard_token";
@@ -58,13 +58,38 @@ const featureCards: Array<{
 ];
 
 export const Route = createFileRoute("/login")({
+  validateSearch: (search: Record<string, unknown>): { error?: string } => {
+    return {
+      error: typeof search.error === "string" ? search.error : undefined,
+    };
+  },
   component: LoginPage,
   head: () => ({ meta: [{ title: "Log in - ScopeGuard" }] }),
 });
 
 function LoginPage() {
+  const { error } = Route.useSearch();
   const nav = useNavigate();
-  const [message, setMessage] = useState("");
+  const [message, setMessage] = useState(error || "");
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+
+  async function handleGoogleLogin() {
+    setIsGoogleLoading(true);
+    setMessage("");
+    try {
+      const response = await getGoogleAuthUrl();
+      if (response && response.url) {
+        window.location.href = response.url;
+      } else {
+        setMessage("Google login failed to initialize.");
+        setIsGoogleLoading(false);
+      }
+    } catch (err) {
+      console.error("Google authentication error:", err);
+      setMessage("Google login is currently unavailable.");
+      setIsGoogleLoading(false);
+    }
+  }
 
   async function handleLogin(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -278,10 +303,11 @@ function LoginPage() {
               <Button
                 variant="outline"
                 className="h-10 rounded-lg bg-background/40 transition-all duration-300 hover:-translate-y-0.5"
-                onClick={() => nav({ to: "/app" })}
+                onClick={handleGoogleLogin}
+                disabled={isGoogleLoading}
               >
                 <Mail className="h-4 w-4" />
-                Google
+                {isGoogleLoading ? "Connecting..." : "Google"}
               </Button>
               <Button
                 variant="outline"

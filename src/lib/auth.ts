@@ -207,3 +207,36 @@ export const updateProfile = createServerFn({ method: "POST" })
       },
     };
   });
+
+export const getGoogleAuthUrl = createServerFn({ method: "GET" }).handler(async () => {
+  const clientId = process.env.GOOGLE_CLIENT_ID;
+  const callbackUrl = process.env.CALLBACK_URL;
+
+  if (!clientId || !callbackUrl) {
+    throw new Error(
+      "Google OAuth configuration is missing. Please define GOOGLE_CLIENT_ID and CALLBACK_URL in .env",
+    );
+  }
+
+  const state = Math.random().toString(36).substring(2, 15);
+
+  setCookie("oauth_state", state, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/",
+    maxAge: 60 * 10, // 10 minutes
+  });
+
+  const params = new URLSearchParams({
+    client_id: clientId,
+    redirect_uri: callbackUrl,
+    response_type: "code",
+    scope: "openid email profile",
+    state: state,
+    access_type: "offline",
+    prompt: "select_account",
+  });
+
+  return { url: `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}` };
+});
