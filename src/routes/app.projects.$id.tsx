@@ -15,13 +15,26 @@ import { AppShell } from "@/components/app-shell";
 import { StatusPill, RiskChip } from "@/components/status-pill";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { findProject, emailsForProject, analysisForEmail } from "@/lib/mock-data";
+import { getProject } from "@/lib/projects.server";
+import { listEmailsForProject } from "@/lib/emails.server";
+import { listAnalysesForProject } from "@/lib/analyses.server";
 
 export const Route = createFileRoute("/app/projects/$id")({
-  loader: ({ params }) => {
-    const project = findProject(params.id);
-    if (!project) throw notFound();
-    return { project };
+  loader: async ({ params }) => {
+    try {
+      // All three calls include owner verification internally — IDOR prevented
+      const [project, projectEmails, projectAnalyses] = await Promise.all([
+        getProject({ data: { id: params.id } }),
+        listEmailsForProject({ data: { projectId: params.id } }),
+        listAnalysesForProject({ data: { projectId: params.id } }),
+      ]);
+      return { project, projectEmails, projectAnalyses };
+    } catch (err) {
+      if (err && typeof err === "object" && ("isRedirect" in err || "isNotFound" in err)) {
+        throw err;
+      }
+      throw notFound();
+    }
   },
   head: ({ loaderData }) => ({
     meta: [{ title: `${loaderData?.project.name ?? "Project"} — ScopeGuard` }],
@@ -30,8 +43,10 @@ export const Route = createFileRoute("/app/projects/$id")({
 });
 
 function ProjectDetail() {
-  const { project } = Route.useLoaderData();
-  const projectEmails = emailsForProject(project.id);
+  const { project, projectEmails, projectAnalyses } = Route.useLoaderData();
+
+  // Map emailId → analysis for the emails tab
+  const analysisByEmailId = new Map(projectAnalyses.map((a) => [a.emailId, a]));
 
   return (
     <AppShell>
@@ -103,7 +118,15 @@ function ProjectDetail() {
               <div className="text-[12px] font-medium uppercase tracking-wider text-muted-foreground">
                 Contract summary
               </div>
-              <p className="mt-3 text-[14px] leading-relaxed text-foreground">{project.contract}</p>
+              {project.contract ? (
+                <p className="mt-3 text-[14px] leading-relaxed text-foreground">
+                  {project.contract}
+                </p>
+              ) : (
+                <p className="mt-3 text-[13px] text-muted-foreground italic">
+                  No contract text added yet.
+                </p>
+              )}
             </div>
             <div className="panel p-6">
               <div className="text-[12px] font-medium uppercase tracking-wider text-muted-foreground">
@@ -134,28 +157,36 @@ function ProjectDetail() {
                 <Check className="h-3.5 w-3.5" />
                 In scope
               </div>
-              <ul className="mt-3 space-y-2 text-[13px]">
-                {project.scopeItems.map((s: string) => (
-                  <li key={s} className="flex items-start gap-2">
-                    <div className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-[color:var(--success)]" />
-                    <span className="text-foreground">{s}</span>
-                  </li>
-                ))}
-              </ul>
+              {project.scopeItems.length === 0 ? (
+                <p className="mt-3 text-[13px] text-muted-foreground italic">None defined yet.</p>
+              ) : (
+                <ul className="mt-3 space-y-2 text-[13px]">
+                  {project.scopeItems.map((s: string) => (
+                    <li key={s} className="flex items-start gap-2">
+                      <div className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-[color:var(--success)]" />
+                      <span className="text-foreground">{s}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
             <div className="panel p-6">
               <div className="flex items-center gap-2 text-[12px] font-medium uppercase tracking-wider text-[color:var(--destructive)]">
                 <X className="h-3.5 w-3.5" />
                 Explicitly out of scope
               </div>
-              <ul className="mt-3 space-y-2 text-[13px]">
-                {project.outOfScope.map((s: string) => (
-                  <li key={s} className="flex items-start gap-2">
-                    <div className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-[color:var(--destructive)]" />
-                    <span className="text-muted-foreground">{s}</span>
-                  </li>
-                ))}
-              </ul>
+              {project.outOfScope.length === 0 ? (
+                <p className="mt-3 text-[13px] text-muted-foreground italic">None defined yet.</p>
+              ) : (
+                <ul className="mt-3 space-y-2 text-[13px]">
+                  {project.outOfScope.map((s: string) => (
+                    <li key={s} className="flex items-start gap-2">
+                      <div className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-[color:var(--destructive)]" />
+                      <span className="text-muted-foreground">{s}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
           </div>
         </TabsContent>
@@ -164,23 +195,31 @@ function ProjectDetail() {
           <div className="panel p-8">
             <div className="mx-auto max-w-2xl space-y-6 font-serif text-[14px] leading-relaxed text-foreground">
               <h3 className="font-display text-xl font-semibold">Statement of Work</h3>
-              <p>{project.contract}</p>
-              <div>
-                <h4 className="font-semibold">§3 Scope</h4>
-                <ul className="mt-2 list-disc space-y-1 pl-5">
-                  {project.scopeItems.map((s: string) => (
-                    <li key={s}>{s}</li>
-                  ))}
-                </ul>
-              </div>
-              <div>
-                <h4 className="font-semibold">§4 Exclusions</h4>
-                <ul className="mt-2 list-disc space-y-1 pl-5 text-muted-foreground">
-                  {project.outOfScope.map((s: string) => (
-                    <li key={s}>{s}</li>
-                  ))}
-                </ul>
-              </div>
+              {project.contract ? (
+                <p>{project.contract}</p>
+              ) : (
+                <p className="text-muted-foreground italic">No contract text added yet.</p>
+              )}
+              {project.scopeItems.length > 0 && (
+                <div>
+                  <h4 className="font-semibold">§3 Scope</h4>
+                  <ul className="mt-2 list-disc space-y-1 pl-5">
+                    {project.scopeItems.map((s: string) => (
+                      <li key={s}>{s}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {project.outOfScope.length > 0 && (
+                <div>
+                  <h4 className="font-semibold">§4 Exclusions</h4>
+                  <ul className="mt-2 list-disc space-y-1 pl-5 text-muted-foreground">
+                    {project.outOfScope.map((s: string) => (
+                      <li key={s}>{s}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
           </div>
         </TabsContent>
@@ -193,7 +232,7 @@ function ProjectDetail() {
               </div>
             )}
             {projectEmails.map((e) => {
-              const analysis = analysisForEmail(e.id);
+              const analysis = analysisByEmailId.get(e.id);
               return (
                 <div key={e.id} className="p-5">
                   <div className="flex items-start gap-3">
@@ -241,9 +280,12 @@ function ProjectDetail() {
             <div className="space-y-5">
               {[
                 { t: "Analysis flagged as out of scope", m: "2h ago" },
-                { t: "New email from Priya Shah", m: "2h ago" },
+                { t: "New email from client", m: "2h ago" },
                 { t: "Hours logged: 4h", m: "1d ago" },
-                { t: "Project created", m: "3w ago" },
+                {
+                  t: "Project created",
+                  m: project.createdAt ? new Date(project.createdAt).toLocaleDateString() : "—",
+                },
               ].map((a) => (
                 <div key={a.t} className="flex gap-3">
                   <div className="mt-1 h-2 w-2 rounded-full bg-muted-foreground" />

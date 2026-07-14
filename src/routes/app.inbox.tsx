@@ -1,17 +1,34 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { Search, Filter, Mail } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { RiskChip } from "@/components/status-pill";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { emails, findProject, analysisForEmail } from "@/lib/mock-data";
+import { listAllUserEmails } from "@/lib/emails.server";
+import { listAllUserAnalyses } from "@/lib/analyses.server";
 
 export const Route = createFileRoute("/app/inbox")({
+  loader: async () => {
+    try {
+      // Fetch in parallel — both calls enforce owner filter internally
+      const [emails, analyses] = await Promise.all([listAllUserEmails(), listAllUserAnalyses()]);
+      // Build a map from emailId → analysisId for quick O(1) lookups
+      const analysisIdByEmailId = new Map(analyses.map((a) => [a.emailId, a.id]));
+      return { emails, analysisIdByEmailId: Object.fromEntries(analysisIdByEmailId) };
+    } catch (err) {
+      if (err && typeof err === "object" && ("isRedirect" in err || "isNotFound" in err)) {
+        throw err;
+      }
+      throw notFound();
+    }
+  },
   component: InboxPage,
   head: () => ({ meta: [{ title: "Email monitoring — ScopeGuard" }] }),
 });
 
 function InboxPage() {
+  const { emails, analysisIdByEmailId } = Route.useLoaderData();
+
   return (
     <AppShell
       title="Email monitoring"
@@ -29,13 +46,23 @@ function InboxPage() {
           Project
         </Button>
       </div>
+
       <div className="panel divide-y divide-border overflow-hidden">
+        {emails.length === 0 && (
+          <div className="flex flex-col items-center justify-center gap-3 px-8 py-20 text-center">
+            <Mail className="h-10 w-10 text-muted-foreground/40" />
+            <div className="text-[14px] font-medium">No emails yet</div>
+            <p className="max-w-xs text-[13px] text-muted-foreground">
+              Connect Gmail or add an email thread to a project to start monitoring scope.
+            </p>
+          </div>
+        )}
         {emails.map((e) => {
-          const project = findProject(e.projectId);
-          const analysis = analysisForEmail(e.id);
-          const href = analysis
-            ? { to: "/app/analysis/$id" as const, params: { id: analysis.id } }
+          const analysisId = analysisIdByEmailId[e.id];
+          const href = analysisId
+            ? { to: "/app/analysis/$id" as const, params: { id: analysisId } }
             : { to: "/app/projects/$id" as const, params: { id: e.projectId } };
+
           return (
             <Link
               key={e.id}
@@ -49,9 +76,11 @@ function InboxPage() {
                 <div className="flex items-baseline justify-between gap-2">
                   <div className="min-w-0">
                     <span className="text-[13px] font-medium">{e.from}</span>
-                    <span className="ml-2 text-[11px] text-muted-foreground">
-                      · {project?.name}
-                    </span>
+                    {e.projectName && (
+                      <span className="ml-2 text-[11px] text-muted-foreground">
+                        · {e.projectName}
+                      </span>
+                    )}
                   </div>
                   <span className="shrink-0 text-[11px] text-muted-foreground">{e.receivedAt}</span>
                 </div>
@@ -60,7 +89,7 @@ function InboxPage() {
               </div>
               <div className="flex flex-col items-end gap-1">
                 <RiskChip level={e.risk} />
-                {analysis ? (
+                {e.analyzed ? (
                   <span className="text-[10px] text-primary">Analyzed</span>
                 ) : (
                   <span className="text-[10px] text-muted-foreground">Queued</span>
@@ -69,6 +98,7 @@ function InboxPage() {
             </Link>
           );
         })}
+
         <div className="flex items-center justify-center gap-2 px-5 py-8 text-[13px] text-muted-foreground">
           <Mail className="h-3.5 w-3.5" />
           Connect Gmail to auto-import new client threads.
