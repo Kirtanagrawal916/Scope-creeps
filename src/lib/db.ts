@@ -1,13 +1,15 @@
 import mongoose from "mongoose";
 import dns from "dns";
+import { logger } from "./logger";
 
 const MONGODB_URI = process.env.MONGODB_URI;
 
-if (MONGODB_URI?.startsWith("mongodb+srv://")) {
+if (process.env.MONGODB_OVERRIDE_DNS === "true" && MONGODB_URI?.startsWith("mongodb+srv://")) {
   try {
+    logger.log("Applying Google/Cloudflare public DNS override for MongoDB Atlas resolution...");
     dns.setServers(["8.8.8.8", "1.1.1.1"]);
   } catch (err) {
-    console.warn("Failed to set public DNS servers for MongoDB Atlas resolution:", err);
+    logger.warn("Failed to set public DNS servers for MongoDB Atlas resolution:", err);
   }
 }
 
@@ -40,9 +42,9 @@ export async function connectToDatabase(): Promise<typeof mongoose> {
       bufferCommands: false,
     };
 
-    console.log("Connecting to MongoDB...");
+    logger.log("Connecting to MongoDB...");
     cached.promise = mongoose.connect(MONGODB_URI!, opts).then((mongooseInstance) => {
-      console.log("Successfully connected to MongoDB");
+      logger.log("Successfully connected to MongoDB");
       return mongooseInstance;
     });
   }

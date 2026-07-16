@@ -73,18 +73,25 @@ function LoginPage() {
 
   async function handleLogin(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    setMessage("");
 
     const form = new FormData(event.currentTarget);
     const email = String(form.get("email"));
     const password = String(form.get("password"));
 
-    const response = await loginUser({ data: { email, password } });
-    setMessage(response.message);
+    try {
+      const response = await loginUser({ data: { email, password } });
+      setMessage(response.message);
 
-    if (response.success && response.token) {
-      localStorage.setItem(AUTH_TOKEN_KEY, response.token);
-      localStorage.removeItem("scopeguard_user_id");
-      nav({ to: "/app" });
+      if (response.success && response.token) {
+        localStorage.setItem(AUTH_TOKEN_KEY, response.token);
+        localStorage.removeItem("scopeguard_user_id");
+        nav({ to: "/app" });
+      }
+    } catch (err) {
+      console.error("Login request error:", err);
+      const error = err as Error;
+      setMessage(error.message || "An error occurred during login. Check server logs.");
     }
   }
 

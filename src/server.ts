@@ -2,6 +2,7 @@ import "./lib/error-capture";
 
 import { consumeLastCapturedError } from "./lib/error-capture";
 import { renderErrorPage } from "./lib/error-page";
+import { validateStartup } from "./lib/startup-validation";
 
 type ServerEntry = {
   fetch: (request: Request, env: unknown, ctx: unknown) => Promise<Response> | Response;
@@ -46,6 +47,11 @@ function isH3SwallowedErrorBody(body: string): boolean {
 
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
+    // Asynchronously run startup checks once without blocking request pipeline
+    validateStartup().catch((err) =>
+      console.error("Startup validation check encountered an error:", err),
+    );
+
     try {
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);

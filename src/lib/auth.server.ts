@@ -9,6 +9,7 @@ import { connectToDatabase } from "./db";
 import { User, type IUser } from "../models/User";
 import { verifyToken, signToken } from "./jwt";
 import { comparePassword } from "./bcrypt";
+import { logger } from "./logger";
 
 const COOKIE_NAME = "session_token";
 
@@ -19,9 +20,13 @@ const COOKIE_NAME = "session_token";
 
 export async function setSessionCookie(token: string) {
   const { setCookie } = await import("@tanstack/react-start/server");
+  const secureFlag = process.env.NODE_ENV === "production";
+  logger.log(
+    `[AUTH SERVER] setSessionCookie: Setting cookie "${COOKIE_NAME}". Options: sameSite=lax, secure=${secureFlag}, path=/, maxAge=7d`,
+  );
   setCookie(COOKIE_NAME, token, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    secure: secureFlag,
     sameSite: "lax",
     path: "/",
     maxAge: 60 * 60 * 24 * 7, // 7 days
@@ -41,24 +46,49 @@ export async function getSessionUser(): Promise<IUser | null> {
   const { getCookie } = await import("@tanstack/react-start/server");
   const token = getCookie(COOKIE_NAME);
   if (!token) {
+    logger.log("[AUTH SERVER] getSessionUser: No session token cookie found.");
     return null;
   }
 
+  logger.log("[AUTH SERVER] getSessionUser: Found session token cookie. Verifying...");
   const payload = await verifyToken(token);
   if (!payload) {
+    logger.warn("[AUTH SERVER] getSessionUser: Session token verification failed or expired.");
     return null;
   }
+
+  logger.log(
+    "[AUTH SERVER] getSessionUser: Session token verified successfully. User ID:",
+    payload.userId,
+  );
 
   // Sliding session: extend expiry by another 7 days on every valid request
   try {
     const refreshed = await signToken({ userId: payload.userId, email: payload.email || "" });
     await setSessionCookie(refreshed);
+    logger.log("[AUTH SERVER] getSessionUser: Refreshed session token cookie (sliding session).");
   } catch (err) {
-    console.error("Failed to refresh session token:", err);
+    logger.error("[AUTH SERVER] getSessionUser: Failed to refresh session token:", err);
   }
 
-  await connectToDatabase();
+  logger.log("[AUTH SERVER] getSessionUser: Connecting to database...");
+  try {
+    await connectToDatabase();
+    logger.log("[AUTH SERVER] getSessionUser: Database connected. Fetching user document...");
+  } catch (dbErr) {
+    logger.error(
+      "[AUTH SERVER] getSessionUser: Database connection failed during user hydration:",
+      dbErr,
+    );
+    throw dbErr;
+  }
+
   const user = await User.findById(payload.userId).select("-password");
+  if (!user) {
+    logger.warn("[AUTH SERVER] getSessionUser: User not found in DB for ID:", payload.userId);
+  } else {
+    logger.log("[AUTH SERVER] getSessionUser: Successfully hydrated user details for:", user.email);
+  }
   return user;
 }
 
@@ -67,7 +97,9 @@ export async function getSessionUser(): Promise<IUser | null> {
 // ---------------------------------------------------------------------------
 
 export async function checkLogin(email: string, password: string) {
+  logger.log(`[AUTH SERVER] checkLogin: Received checkLogin for email: ${email}`);
   if (typeof email !== "string" || typeof password !== "string") {
+    logger.error("[AUTH SERVER] checkLogin: Invalid credentials format.");
     return {
       success: false,
       userId: null,
@@ -76,10 +108,22 @@ export async function checkLogin(email: string, password: string) {
     };
   }
 
-  await connectToDatabase();
+  logger.log("[AUTH SERVER] checkLogin: Connecting to database...");
+  try {
+    await connectToDatabase();
+    logger.log("[AUTH SERVER] checkLogin: Database connected successfully.");
+  } catch (dbErr) {
+    logger.error("[AUTH SERVER] checkLogin: Database connection failed!", dbErr);
+    throw dbErr;
+  }
 
-  const foundUser = await User.findOne({ email: email.toLowerCase() });
+  const normalizedEmail = email.toLowerCase();
+  logger.log(`[AUTH SERVER] checkLogin: Searching User document in DB for: ${normalizedEmail}`);
+  const foundUser = await User.findOne({ email: normalizedEmail });
   if (!foundUser) {
+    logger.warn(
+      `[AUTH SERVER] checkLogin: User not found in database for email: ${normalizedEmail}`,
+    );
     return {
       success: false,
       userId: null,
@@ -88,8 +132,10 @@ export async function checkLogin(email: string, password: string) {
     };
   }
 
+  logger.log("[AUTH SERVER] checkLogin: User found. Comparing password hash...");
   const isCorrectUser = await comparePassword(password, foundUser.password);
   if (!isCorrectUser) {
+    logger.warn("[AUTH SERVER] checkLogin: Password comparison failed.");
     return {
       success: false,
       userId: null,
@@ -98,8 +144,10 @@ export async function checkLogin(email: string, password: string) {
     };
   }
 
+  logger.log("[AUTH SERVER] checkLogin: Password matched. Signing JWT token...");
   const userId = foundUser._id.toString();
   const token = await signToken({ userId, email: foundUser.email });
+  logger.log("[AUTH SERVER] checkLogin: JWT token signed successfully.");
 
   return {
     success: true,
@@ -116,7 +164,9 @@ export async function registerNewUser(data: {
   password: string;
   workspaceName?: string;
 }) {
+  logger.log(`[AUTH SERVER] registerNewUser: Starting registration for email: ${data?.email}`);
   if (!data || typeof data.email !== "string" || typeof data.password !== "string") {
+    logger.error("[AUTH SERVER] registerNewUser: Invalid registration parameters received.");
     return {
       success: false,
       message: "Invalid registration parameters",
@@ -126,10 +176,22 @@ export async function registerNewUser(data: {
     };
   }
 
-  await connectToDatabase();
+  logger.log("[AUTH SERVER] registerNewUser: Connecting to database...");
+  try {
+    await connectToDatabase();
+    logger.log("[AUTH SERVER] registerNewUser: Database connected successfully.");
+  } catch (dbErr) {
+    logger.error("[AUTH SERVER] registerNewUser: Database connection failed!", dbErr);
+    throw dbErr;
+  }
 
-  const existingUser = await User.findOne({ email: data.email.toLowerCase() });
+  const normalizedEmail = data.email.toLowerCase();
+  logger.log(
+    `[AUTH SERVER] registerNewUser: Checking if user already exists for: ${normalizedEmail}`,
+  );
+  const existingUser = await User.findOne({ email: normalizedEmail });
   if (existingUser) {
+    logger.warn(`[AUTH SERVER] registerNewUser: User already exists for: ${normalizedEmail}`);
     return {
       success: false,
       message: "User already exists",
@@ -139,6 +201,7 @@ export async function registerNewUser(data: {
     };
   }
 
+  logger.log("[AUTH SERVER] registerNewUser: Creating new user document...");
   const newUser = new User({
     firstName: data.firstName,
     lastName: data.lastName,
@@ -147,10 +210,17 @@ export async function registerNewUser(data: {
     workspaceName: data.workspaceName,
   });
 
-  await newUser.save();
+  try {
+    await newUser.save();
+    logger.log("[AUTH SERVER] registerNewUser: User saved successfully in database.");
+  } catch (saveErr) {
+    logger.error("[AUTH SERVER] registerNewUser: Failed to save user in database:", saveErr);
+    throw saveErr;
+  }
 
   const userId = newUser._id.toString();
   const token = await signToken({ userId, email: newUser.email });
+  logger.log("[AUTH SERVER] registerNewUser: JWT token signed successfully for new user.");
 
   return {
     success: true,
@@ -165,18 +235,30 @@ export async function registerNewUser(data: {
 // ---------------------------------------------------------------------------
 
 export async function loginUserImpl(data: { email: string; password: string }) {
-  const result = await checkLogin(data.email, data.password);
+  logger.log(`[AUTH SERVER] loginUserImpl: Processing login call for: ${data?.email}`);
+  try {
+    const result = await checkLogin(data.email, data.password);
 
-  if (result.success && result.token) {
-    await setSessionCookie(result.token);
+    if (result.success && result.token) {
+      logger.log(
+        `[AUTH SERVER] loginUserImpl: Login succeeded for ${data.email}. Setting session cookie...`,
+      );
+      await setSessionCookie(result.token);
+      logger.log("[AUTH SERVER] loginUserImpl: Session cookie set completed.");
+    } else {
+      logger.warn(`[AUTH SERVER] loginUserImpl: Login failed for ${data.email}.`);
+    }
+
+    return {
+      success: result.success,
+      userId: result.userId,
+      token: result.token,
+      message: result.success ? "Login successful" : "Invalid email or password",
+    };
+  } catch (err) {
+    logger.error("[AUTH SERVER] loginUserImpl: Catastrophic error during login process:", err);
+    throw err;
   }
-
-  return {
-    success: result.success,
-    userId: result.userId,
-    token: result.token,
-    message: result.success ? "Login successful" : "Invalid email or password",
-  };
 }
 
 export async function registerUserImpl(data: {
@@ -186,13 +268,28 @@ export async function registerUserImpl(data: {
   password: string;
   workspaceName?: string;
 }) {
-  const result = await registerNewUser(data);
+  logger.log(`[AUTH SERVER] registerUserImpl: Processing registration call for: ${data?.email}`);
+  try {
+    const result = await registerNewUser(data);
 
-  if (result.success && result.token) {
-    await setSessionCookie(result.token);
+    if (result.success && result.token) {
+      logger.log(
+        `[AUTH SERVER] registerUserImpl: Registration succeeded for ${data.email}. Setting session cookie...`,
+      );
+      await setSessionCookie(result.token);
+      logger.log("[AUTH SERVER] registerUserImpl: Session cookie set completed.");
+    } else {
+      logger.warn(`[AUTH SERVER] registerUserImpl: Registration failed for ${data.email}.`);
+    }
+
+    return result;
+  } catch (err) {
+    logger.error(
+      "[AUTH SERVER] registerUserImpl: Catastrophic error during registration process:",
+      err,
+    );
+    throw err;
   }
-
-  return result;
 }
 
 export async function updateWorkspaceSettingsImpl(data: {
@@ -326,7 +423,7 @@ export async function handleGoogleCallbackImpl(data: { code: string; state: stri
 
   if (!tokenResponse.ok) {
     const errText = await tokenResponse.text();
-    console.error("Google token exchange failed:", errText);
+    logger.error("Google token exchange failed:", errText);
     throw new Error("Failed to exchange authorization code with Google.");
   }
 
