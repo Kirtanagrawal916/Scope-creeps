@@ -1,6 +1,44 @@
 import mongoose from "mongoose";
 import dns from "dns";
+import fs from "fs";
+import path from "path";
 import { logger } from "./logger";
+
+// Manual environment loader helper
+function loadEnvFile() {
+  if (process.env.MONGODB_URI) {
+    return;
+  }
+  const envPath = path.resolve(process.cwd(), ".env");
+  if (fs.existsSync(envPath)) {
+    try {
+      const content = fs.readFileSync(envPath, "utf-8");
+      const lines = content.split(/\r?\n/);
+      for (const line of lines) {
+        if (line.trim().startsWith("#") || !line.includes("=")) {
+          continue;
+        }
+        const index = line.indexOf("=");
+        const key = line.substring(0, index).trim();
+        let val = line.substring(index + 1).trim();
+        if (
+          (val.startsWith('"') && val.endsWith('"')) ||
+          (val.startsWith("'") && val.endsWith("'"))
+        ) {
+          val = val.substring(1, val.length - 1);
+        }
+        if (key && !process.env[key]) {
+          process.env[key] = val;
+        }
+      }
+    } catch (e) {
+      logger.warn("Failed to load .env file manually:", e);
+    }
+  }
+}
+
+// Load env file on module evaluation
+loadEnvFile();
 
 const MONGODB_URI = process.env.MONGODB_URI;
 
@@ -11,10 +49,6 @@ if (process.env.MONGODB_OVERRIDE_DNS === "true" && MONGODB_URI?.startsWith("mong
   } catch (err) {
     logger.warn("Failed to set public DNS servers for MongoDB Atlas resolution:", err);
   }
-}
-
-if (!MONGODB_URI) {
-  throw new Error("Please define the MONGODB_URI environment variable inside .env");
 }
 
 interface MongooseCache {
@@ -33,6 +67,11 @@ if (!globalThis.mongooseCache) {
 const cached = globalThis.mongooseCache;
 
 export async function connectToDatabase(): Promise<typeof mongoose> {
+  const uri = process.env.MONGODB_URI;
+  if (!uri) {
+    throw new Error("Please define the MONGODB_URI environment variable inside .env");
+  }
+
   if (cached.conn) {
     return cached.conn;
   }
@@ -43,7 +82,7 @@ export async function connectToDatabase(): Promise<typeof mongoose> {
     };
 
     logger.log("Connecting to MongoDB...");
-    cached.promise = mongoose.connect(MONGODB_URI!, opts).then((mongooseInstance) => {
+    cached.promise = mongoose.connect(uri, opts).then((mongooseInstance) => {
       logger.log("Successfully connected to MongoDB");
       return mongooseInstance;
     });

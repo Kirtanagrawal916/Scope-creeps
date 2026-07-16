@@ -1,3 +1,5 @@
+import fs from "fs";
+import path from "path";
 import { connectToDatabase } from "./db";
 
 let isStartupValidated = false;
@@ -15,6 +17,20 @@ export async function validateStartup() {
   console.log("\n+--------------------------------------------------------------+");
   console.log("| 🛡️  ScopeGuard Onboarding & Startup Diagnostics              |");
   console.log("+--------------------------------------------------------------+");
+
+  const envPath = path.resolve(process.cwd(), ".env");
+  if (!fs.existsSync(envPath)) {
+    console.error("| ❌ [Error] Environment configuration (.env) file is missing! |");
+    console.error("|                                                              |");
+    console.error("| 👉 To configure your environment, please follow these steps: |");
+    console.error("| 1. Copy the .env.example template to .env:                   |");
+    console.error("|    cp .env.example .env                                      |");
+    console.error("| 2. Open .env and set MONGODB_URI with your database details. |");
+    console.error("| 3. Set JWT_SECRET to a random string.                        |");
+    console.error("| 4. Re-run `npm run dev` to start the server.                 |");
+    console.log("+--------------------------------------------------------------+\n");
+    return;
+  }
 
   let healthy = true;
   const isProduction = process.env.NODE_ENV === "production";
