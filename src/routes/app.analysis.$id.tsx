@@ -77,15 +77,29 @@ function AnalysisPage() {
       {/* Header */}
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="font-display text-3xl font-semibold tracking-tight">{email.subject}</h1>
+          <h1 className="font-display text-3xl font-semibold tracking-tight">
+            {email ? email.subject : "Manual Scope Scan"}
+          </h1>
           <div className="mt-1.5 flex flex-wrap items-center gap-2 text-[13px] text-muted-foreground">
-            <div className="flex items-center gap-1.5">
-              <div className="flex h-5 w-5 items-center justify-center rounded-full bg-accent text-[9px] font-medium">
-                {email.fromInitials}
-              </div>
-              {email.from}
-            </div>
-            <span>·</span>
+            {email ? (
+              <>
+                <div className="flex items-center gap-1.5">
+                  <div className="flex h-5 w-5 items-center justify-center rounded-full bg-accent text-[9px] font-medium">
+                    {email.fromInitials}
+                  </div>
+                  {email.from}
+                </div>
+                <span>·</span>
+              </>
+            ) : (
+              <>
+                <div className="flex items-center gap-1.5 text-primary">
+                  <Sparkles className="h-3.5 w-3.5" />
+                  <span>Manual Requirements Scan</span>
+                </div>
+                <span>·</span>
+              </>
+            )}
             <span>{project.client}</span>
             <span>·</span>
             <StatusPill status={project.status} />
@@ -142,14 +156,33 @@ function AnalysisPage() {
 
       {/* Main grid */}
       <div className="mt-6 grid gap-4 lg:grid-cols-2">
-        {/* Original email */}
+        {/* Original email or manual request info */}
         <div className="panel p-6">
           <div className="text-[12px] font-medium uppercase tracking-wider text-muted-foreground">
-            Original email
+            {email ? "Client email thread" : "Scope request context"}
           </div>
-          <p className="mt-4 whitespace-pre-line text-[13px] leading-relaxed text-foreground">
-            {email.body}
-          </p>
+          {email ? (
+            <p className="mt-4 whitespace-pre-line text-[13px] leading-relaxed text-foreground">
+              {email.body}
+            </p>
+          ) : (
+            <div className="mt-4 space-y-4 text-[13px]">
+              <div>
+                <div className="text-[11px] font-semibold text-muted-foreground uppercase">
+                  Baseline contract scope
+                </div>
+                <p className="mt-1 leading-relaxed text-muted-foreground">
+                  {analysis.originalRequirement}
+                </p>
+              </div>
+              <div className="border-t border-border/40 pt-3">
+                <div className="text-[11px] font-semibold text-foreground uppercase">
+                  New/Changed requirement ask
+                </div>
+                <p className="mt-1 leading-relaxed font-medium">{analysis.changedRequirement}</p>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* AI reasoning */}

@@ -18,6 +18,7 @@ export interface IProject extends Document {
   contract: string;
   scopeItems: string[];
   outOfScope: string[];
+  archived: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -53,6 +54,7 @@ const ProjectSchema = new Schema<IProject>(
     contract: { type: String, default: "" },
     scopeItems: [{ type: String }],
     outOfScope: [{ type: String }],
+    archived: { type: Boolean, default: false, index: true },
   },
   { timestamps: true },
 );
@@ -60,7 +62,7 @@ const ProjectSchema = new Schema<IProject>(
 // Compound indexes for high-performance, ownership-scoped queries.
 // All DB lookups MUST include { owner: userId } to prevent IDOR.
 ProjectSchema.index({ owner: 1, _id: 1 });
-ProjectSchema.index({ owner: 1, updatedAt: -1 });
+ProjectSchema.index({ owner: 1, archived: 1, updatedAt: -1 });
 
 export const Project =
   mongoose.models.Project || mongoose.model<IProject>("Project", ProjectSchema);

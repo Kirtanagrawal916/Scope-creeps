@@ -5,9 +5,13 @@ export type AnalysisVerdict = "in_scope" | "out_of_scope" | "mixed";
 export interface IAnalysis extends Document {
   owner: Types.ObjectId;
   projectId: Types.ObjectId;
-  emailId: Types.ObjectId;
+  emailId?: Types.ObjectId;
+  originalRequirement: string;
+  changedRequirement: string;
+  aiExplanation: string;
   verdict: AnalysisVerdict;
   confidence: number;
+  riskLevel: "low" | "medium" | "high";
   additionalHours: number;
   timelineImpactDays: number;
   suggestedCost: number;
@@ -36,15 +40,23 @@ const AnalysisSchema = new Schema<IAnalysis>(
     emailId: {
       type: Schema.Types.ObjectId,
       ref: "EmailThread",
-      required: true,
+      required: false,
       index: true,
     },
+    originalRequirement: { type: String, required: true, default: "" },
+    changedRequirement: { type: String, required: true, default: "" },
+    aiExplanation: { type: String, required: true, default: "" },
     verdict: {
       type: String,
       enum: ["in_scope", "out_of_scope", "mixed"],
       required: true,
     },
     confidence: { type: Number, required: true, min: 0, max: 100 },
+    riskLevel: {
+      type: String,
+      enum: ["low", "medium", "high"],
+      default: "low",
+    },
     additionalHours: { type: Number, default: 0, min: 0 },
     timelineImpactDays: { type: Number, default: 0, min: 0 },
     suggestedCost: { type: Number, default: 0, min: 0 },
@@ -58,8 +70,8 @@ const AnalysisSchema = new Schema<IAnalysis>(
 
 AnalysisSchema.index({ owner: 1, _id: 1 });
 AnalysisSchema.index({ owner: 1, projectId: 1 });
-// One analysis per email thread per owner — enforced at application layer too
-AnalysisSchema.index({ owner: 1, emailId: 1 }, { unique: true });
+// One analysis per email thread per owner — enforced at application layer too, sparse for manual analyses
+AnalysisSchema.index({ owner: 1, emailId: 1 }, { unique: true, sparse: true });
 
 export const Analysis =
   mongoose.models.Analysis || mongoose.model<IAnalysis>("Analysis", AnalysisSchema);

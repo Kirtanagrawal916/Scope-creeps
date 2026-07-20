@@ -19,6 +19,8 @@ import type { ProjectStatus, RiskLevel } from "../models/Project";
 // Serialized type — safe for client consumption
 // ---------------------------------------------------------------------------
 
+import { z } from "zod";
+
 export type SerializedProject = {
   id: string;
   owner: string;
@@ -35,6 +37,7 @@ export type SerializedProject = {
   contract: string;
   scopeItems: string[];
   outOfScope: string[];
+  archived: boolean;
   /** Human-readable relative date, e.g. "2h ago" */
   updatedAt: string;
   createdAt: string;
@@ -58,6 +61,7 @@ function serialize(doc: any): SerializedProject {
     contract: doc.contract ?? "",
     scopeItems: doc.scopeItems ?? [],
     outOfScope: doc.outOfScope ?? [],
+    archived: doc.archived ?? false,
     updatedAt: formatRelativeDate(doc.updatedAt),
     createdAt: new Date(doc.createdAt).toISOString(),
   };
@@ -72,69 +76,113 @@ function toInitials(clientName: string): string {
 }
 
 // ---------------------------------------------------------------------------
+// Zod Validation Schemas
+// ---------------------------------------------------------------------------
+
+const listProjectsSchema = z
+  .object({
+    archived: z.boolean().optional(),
+  })
+  .optional();
+
+const getProjectSchema = z.object({
+  id: z.string().min(1, "Project ID is required"),
+});
+
+const createProjectSchema = z.object({
+  name: z.string().min(1, "Project name is required"),
+  client: z.string().min(1, "Client name is required"),
+  budget: z.number().min(0, "Budget must be a positive number"),
+  hourlyRate: z.number().min(0, "Hourly rate must be a positive number"),
+  hoursAllocated: z.number().min(0, "Hours allocated must be a positive number").optional(),
+  contract: z.string().optional(),
+});
+
+const updateProjectSchema = z.object({
+  id: z.string().min(1, "Project ID is required"),
+  name: z.string().min(1).optional(),
+  client: z.string().min(1).optional(),
+  budget: z.number().min(0).optional(),
+  hourlyRate: z.number().min(0).optional(),
+  hoursAllocated: z.number().min(0).optional(),
+  hoursUsed: z.number().min(0).optional(),
+  progress: z.number().min(0).max(100).optional(),
+  status: z.enum(["on_track", "at_risk", "scope_creep", "completed"]).optional(),
+  risk: z.enum(["low", "medium", "high"]).optional(),
+  contract: z.string().optional(),
+  scopeItems: z.array(z.string()).optional(),
+  outOfScope: z.array(z.string()).optional(),
+  archived: z.boolean().optional(),
+});
+
+const deleteProjectSchema = z.object({
+  id: z.string().min(1, "Project ID is required"),
+});
+
+// ---------------------------------------------------------------------------
 // Server Functions
 // ---------------------------------------------------------------------------
 
 /**
  * Returns all projects owned by the current session user,
  * sorted by most-recently updated first.
+ * Filter by archived status if specified (defaults to false).
  */
-export const listProjects = createServerFn({ method: "GET" }).handler(async () => {
-  const user = await requireSession();
-  await connectToDatabase();
-  // ✅ Owner filter — only returns the calling user's projects
-  const projects = await Project.find({ owner: user._id }).sort({ updatedAt: -1 }).lean();
+export const listProjects = createServerFn({ method: "GET" })
+  .validator((data: unknown) => listProjectsSchema.parse(data))
+  .handler(async ({ data }) => {
+    const user = await requireSession();
+    await connectToDatabase();
 
-  return projects.map(serialize);
-});
+    const showArchived = data?.archived ?? false;
+    let projects = await Project.find({ owner: user._id, archived: showArchived })
+      .sort({ updatedAt: -1 })
+      .lean();
+
+    // If the user is new and has no projects, auto-seed sample data scoped to them (only if requesting active)
+    if (projects.length === 0 && !showArchived) {
+      const { seedUserData } = await import("./seed.server");
+      await seedUserData(user._id);
+      projects = await Project.find({ owner: user._id, archived: false })
+        .sort({ updatedAt: -1 })
+        .lean();
+    }
+
+    return projects.map(serialize);
+  });
 
 /**
  * Returns a single project.
  * Throws 404 if the project does not exist OR does not belong to the session user.
- * (404 rather than 403 avoids leaking existence to other users.)
  */
 export const getProject = createServerFn({ method: "GET" })
-  .validator((data: { id: string }) => data)
+  .validator((data: unknown) => getProjectSchema.parse(data))
   .handler(async ({ data }) => {
     const user = await requireSession();
     await connectToDatabase();
-    // ✅ Ownership-aware query — IDOR prevented
+
     const project = await Project.findOne({ _id: data.id, owner: user._id }).lean();
     if (!project) throw new AppError(404, "Project not found.");
     return serialize(project);
   });
 
 /**
- * Creates a new project. The owner field is always set from the session —
- * it is never accepted as client input.
+ * Creates a new project. The owner field is always set from the session.
  */
 export const createProject = createServerFn({ method: "POST" })
-  .validator(
-    (data: {
-      name: string;
-      client: string;
-      budget: number;
-      hourlyRate: number;
-      hoursAllocated?: number;
-      contract?: string;
-    }) => data,
-  )
+  .validator((data: unknown) => createProjectSchema.parse(data))
   .handler(async ({ data }) => {
     const user = await requireSession();
-
-    if (!data.name?.trim()) throw new AppError(400, "Project name is required.");
-    if (!data.client?.trim()) throw new AppError(400, "Client name is required.");
 
     await connectToDatabase();
 
     const project = new Project({
-      // ✅ Owner always comes from session, never from client input
       owner: user._id,
       name: data.name.trim(),
       client: data.client.trim(),
       clientInitials: toInitials(data.client),
-      budget: data.budget ?? 0,
-      hourlyRate: data.hourlyRate ?? 0,
+      budget: data.budget,
+      hourlyRate: data.hourlyRate,
       hoursAllocated: data.hoursAllocated ?? 0,
       hoursUsed: 0,
       progress: 0,
@@ -143,6 +191,7 @@ export const createProject = createServerFn({ method: "POST" })
       contract: data.contract?.trim() ?? "",
       scopeItems: [],
       outOfScope: [],
+      archived: false,
     });
 
     await project.save();
@@ -151,30 +200,13 @@ export const createProject = createServerFn({ method: "POST" })
 
 /**
  * Updates project fields. Only the owner may update their own projects.
- * Partial updates — only fields provided will be changed.
  */
 export const updateProject = createServerFn({ method: "POST" })
-  .validator(
-    (data: {
-      id: string;
-      name?: string;
-      client?: string;
-      budget?: number;
-      hourlyRate?: number;
-      hoursAllocated?: number;
-      hoursUsed?: number;
-      progress?: number;
-      status?: ProjectStatus;
-      risk?: RiskLevel;
-      contract?: string;
-      scopeItems?: string[];
-      outOfScope?: string[];
-    }) => data,
-  )
+  .validator((data: unknown) => updateProjectSchema.parse(data))
   .handler(async ({ data }) => {
     const user = await requireSession();
     await connectToDatabase();
-    // ✅ Ownership-aware — findOne prevents updating another user's project
+
     const project = await Project.findOne({ _id: data.id, owner: user._id });
     if (!project) throw new AppError(404, "Project not found.");
 
@@ -193,21 +225,57 @@ export const updateProject = createServerFn({ method: "POST" })
     if (data.contract !== undefined) project.contract = data.contract.trim();
     if (data.scopeItems !== undefined) project.scopeItems = data.scopeItems;
     if (data.outOfScope !== undefined) project.outOfScope = data.outOfScope;
+    if (data.archived !== undefined) project.archived = data.archived;
 
     await project.save();
     return serialize(project.toObject());
   });
 
 /**
- * Permanently deletes a project. Only the owner may delete.
- * Returns 404 for both "not found" and "wrong owner" to avoid leaking existence.
+ * Archives a project.
  */
-export const deleteProject = createServerFn({ method: "POST" })
-  .validator((data: { id: string }) => data)
+export const archiveProject = createServerFn({ method: "POST" })
+  .validator((data: unknown) => deleteProjectSchema.parse(data))
   .handler(async ({ data }) => {
     const user = await requireSession();
     await connectToDatabase();
-    // ✅ findOneAndDelete with owner filter — atomic ownership check + delete
+
+    const project = await Project.findOneAndUpdate(
+      { _id: data.id, owner: user._id },
+      { archived: true },
+      { new: true },
+    );
+    if (!project) throw new AppError(404, "Project not found.");
+    return serialize(project.toObject());
+  });
+
+/**
+ * Restores an archived project.
+ */
+export const restoreProject = createServerFn({ method: "POST" })
+  .validator((data: unknown) => deleteProjectSchema.parse(data))
+  .handler(async ({ data }) => {
+    const user = await requireSession();
+    await connectToDatabase();
+
+    const project = await Project.findOneAndUpdate(
+      { _id: data.id, owner: user._id },
+      { archived: false },
+      { new: true },
+    );
+    if (!project) throw new AppError(404, "Project not found.");
+    return serialize(project.toObject());
+  });
+
+/**
+ * Permanently deletes a project. Only the owner may delete.
+ */
+export const deleteProject = createServerFn({ method: "POST" })
+  .validator((data: unknown) => deleteProjectSchema.parse(data))
+  .handler(async ({ data }) => {
+    const user = await requireSession();
+    await connectToDatabase();
+
     const deleted = await Project.findOneAndDelete({ _id: data.id, owner: user._id });
     if (!deleted) throw new AppError(404, "Project not found.");
     return { success: true };
