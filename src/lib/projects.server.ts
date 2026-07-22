@@ -83,14 +83,7 @@ export const listProjects = createServerFn({ method: "GET" }).handler(async () =
   const user = await requireSession();
   await connectToDatabase();
   // ✅ Owner filter — only returns the calling user's projects
-  let projects = await Project.find({ owner: user._id }).sort({ updatedAt: -1 }).lean();
-
-  // If the user is new and has no projects, auto-seed sample data scoped to them
-  if (projects.length === 0) {
-    const { seedUserData } = await import("./seed.server");
-    await seedUserData(user._id);
-    projects = await Project.find({ owner: user._id }).sort({ updatedAt: -1 }).lean();
-  }
+  const projects = await Project.find({ owner: user._id }).sort({ updatedAt: -1 }).lean();
 
   return projects.map(serialize);
 });

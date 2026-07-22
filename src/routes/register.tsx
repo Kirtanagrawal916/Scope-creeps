@@ -110,32 +110,32 @@ function RegisterPage() {
                 <Label htmlFor="firstName" className="text-[12px]">
                   First name
                 </Label>
-                <Input id="firstName" name="firstName" defaultValue="Alex" />
+                <Input id="firstName" name="firstName" placeholder="Jane" />
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="lastName" className="text-[12px]">
                   Last name
                 </Label>
-                <Input id="lastName" name="lastName" defaultValue="Laurent" />
+                <Input id="lastName" name="lastName" placeholder="Doe" />
               </div>
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="email" className="text-[12px]">
                 Work email
               </Label>
-              <Input id="email" name="email" type="email" defaultValue="alex@studio.com" />
+              <Input id="email" name="email" type="email" placeholder="you@studio.com" />
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="password" className="text-[12px]">
                 Password
               </Label>
-              <Input id="password" name="password" type="password" defaultValue="password123" />
+              <Input id="password" name="password" type="password" placeholder="••••••••" />
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="workspaceName" className="text-[12px]">
                 Workspace name
               </Label>
-              <Input id="workspaceName" name="workspaceName" defaultValue="Laurent Studio" />
+              <Input id="workspaceName" name="workspaceName" placeholder="Your Studio" />
             </div>
             {message ? <p className="text-center text-[13px] text-destructive">{message}</p> : null}
             <Button type="submit" className="w-full">

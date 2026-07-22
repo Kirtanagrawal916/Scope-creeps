@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import type { ProjectStatus, RiskLevel } from "@/lib/mock-data";
+import type { ProjectStatus, RiskLevel } from "@/models/Project";
 
 const statusMap: Record<ProjectStatus, { label: string; className: string; dot: string }> = {
   on_track: {

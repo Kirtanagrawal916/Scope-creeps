@@ -76,15 +76,12 @@ function Analytics() {
           },
         ]
       : [
-          { name: "In scope", value: 100, color: "var(--success)" },
+          { name: "In scope", value: 0, color: "var(--success)" },
           { name: "Minor scope creep", value: 0, color: "var(--warning)" },
           { name: "Major scope creep", value: 0, color: "var(--destructive)" },
         ];
 
-  // 2. Dynamic Revenue Chart (rolling last 6 months)
-  const baselineInvoiced = [24000, 28000, 32000, 30000, 36000, 48000];
-  const baselineProtected = [8200, 12400, 18900, 15200, 22100, 43000];
-
+  // 2. Revenue Chart (rolling last 6 months) — built entirely from the user's own data
   const dynamicRevenueChart = Array.from({ length: 6 }).map((_, idx) => {
     const d = new Date();
     d.setMonth(d.getMonth() - (5 - idx));
@@ -103,7 +100,7 @@ function Analytics() {
     // Sum user's suggested costs created in this specific month/year
     const userProtected = analyses
       .filter((a) => {
-        const aDate = new Date(a.createdAt);
+        const aDate = new Date(a.createdAtIso);
         return (
           aDate.getMonth() === rawMonth && aDate.getFullYear() === year && a.verdict !== "in_scope"
         );
@@ -112,13 +109,12 @@ function Analytics() {
 
     return {
       month: mName,
-      invoiced: baselineInvoiced[idx] + userInvoiced,
-      protected: baselineProtected[idx] + userProtected,
+      invoiced: userInvoiced,
+      protected: userProtected,
     };
   });
 
-  // 3. Dynamic Scope Trend (rolling last 8 weeks)
-  const baselineTrend = [2, 4, 3, 6, 5, 8, 7, 11];
+  // 3. Scope Trend (rolling last 8 weeks) — built entirely from the user's own data
   const dynamicScopeTrend = Array.from({ length: 8 }).map((_, idx) => {
     const weekStart = new Date();
     weekStart.setDate(weekStart.getDate() - (7 - idx) * 7);
@@ -126,13 +122,13 @@ function Analytics() {
     weekEnd.setDate(weekEnd.getDate() + 7);
 
     const userCreeps = analyses.filter((a) => {
-      const aDate = new Date(a.createdAt);
+      const aDate = new Date(a.createdAtIso);
       return aDate >= weekStart && aDate < weekEnd && a.verdict !== "in_scope";
     }).length;
 
     return {
       week: `W${idx + 1}`,
-      detected: baselineTrend[idx] + userCreeps,
+      detected: userCreeps,
     };
   });
 

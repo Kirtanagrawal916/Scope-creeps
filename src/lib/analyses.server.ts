@@ -36,6 +36,8 @@ export type SerializedAnalysis = {
   suggestedReply: string;
   /** Human-readable relative date, e.g. "2h ago" */
   createdAt: string;
+  /** ISO timestamp, for real date math (charts, sorting) on the client */
+  createdAtIso: string;
 };
 
 export type SerializedAnalysisDetails = {
@@ -73,6 +75,7 @@ function serialize(doc: any): SerializedAnalysis {
     reasoning: doc.reasoning ?? "",
     suggestedReply: doc.suggestedReply ?? "",
     createdAt: formatRelativeDate(doc.createdAt),
+    createdAtIso: new Date(doc.createdAt).toISOString(),
   };
 }
 
