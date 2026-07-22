@@ -14,6 +14,7 @@ import { requireSession } from "./authorize.server";
 import { AppError } from "./app-error";
 import { formatRelativeDate } from "./utils";
 import { z } from "zod";
+import mongoose from "mongoose";
 import type { AnalysisVerdict } from "../models/Analysis";
 import type { ProjectStatus, RiskLevel } from "../models/Project";
 
@@ -48,6 +49,9 @@ export type SerializedAnalysis = {
   missingRequirements: string[];
   priority: "low" | "medium" | "high";
   status: "active" | "pending" | "resolved";
+  pinned: boolean;
+  bookmarked: boolean;
+  archived: boolean;
 
   /** Human-readable relative date, e.g. "2h ago" */
   createdAt: string;
@@ -102,6 +106,9 @@ function serialize(doc: any): SerializedAnalysis {
     missingRequirements: doc.missingRequirements ?? [],
     priority: doc.priority ?? "medium",
     status: doc.status ?? "active",
+    pinned: doc.pinned ?? false,
+    bookmarked: doc.bookmarked ?? false,
+    archived: doc.archived ?? false,
 
     createdAt: formatRelativeDate(doc.createdAt),
     createdAtIso:
@@ -354,6 +361,9 @@ const updateAnalysisSchema = z.object({
     .optional(),
   riskLevel: z.enum(["low", "medium", "high"]).optional(),
   suggestedReply: z.string().optional(),
+  pinned: z.boolean().optional(),
+  bookmarked: z.boolean().optional(),
+  archived: z.boolean().optional(),
 });
 
 const deleteAnalysisSchema = z.object({
@@ -542,6 +552,9 @@ export const updateAnalysis = createServerFn({ method: "POST" })
     if (data.verdict !== undefined) analysis.verdict = data.verdict;
     if (data.riskLevel !== undefined) analysis.riskLevel = data.riskLevel;
     if (data.suggestedReply !== undefined) analysis.suggestedReply = data.suggestedReply;
+    if (data.pinned !== undefined) analysis.pinned = data.pinned;
+    if (data.bookmarked !== undefined) analysis.bookmarked = data.bookmarked;
+    if (data.archived !== undefined) analysis.archived = data.archived;
 
     await analysis.save();
     return serialize(analysis.toObject());
@@ -692,4 +705,283 @@ export const analyzeEmail = createServerFn({ method: "POST" })
     await email.save();
 
     return serialize(analysis.toObject());
+  });
+
+// ---------------------------------------------------------------------------
+// Query and Bulk Operations Schemas
+// ---------------------------------------------------------------------------
+
+const queryAnalysesSchema = z.object({
+  search: z.string().optional(),
+  projectId: z.string().optional(),
+  risk: z.enum(["low", "medium", "high", "all"]).optional(),
+  verdict: z
+    .enum([
+      "in_scope",
+      "possible_scope_creep",
+      "confirmed_scope_creep",
+      "out_of_scope",
+      "mixed",
+      "all",
+    ])
+    .optional(),
+  status: z.enum(["active", "pending", "resolved", "all"]).optional(),
+  priority: z.enum(["low", "medium", "high", "all"]).optional(),
+  dateStart: z.string().optional(),
+  dateEnd: z.string().optional(),
+  pinnedOnly: z.boolean().optional(),
+  bookmarkedOnly: z.boolean().optional(),
+  archivedOnly: z.boolean().optional(),
+  sortBy: z
+    .enum([
+      "newest",
+      "oldest",
+      "highest_risk",
+      "highest_confidence",
+      "highest_cost",
+      "highest_hours",
+    ])
+    .optional(),
+  page: z.number().min(1).default(1),
+  limit: z.number().min(1).max(100).default(10),
+});
+
+const bulkDeleteAnalysesSchema = z.object({
+  ids: z.array(z.string()).min(1, "At least one ID is required"),
+});
+
+const bulkChangeAnalysesStatusSchema = z.object({
+  ids: z.array(z.string()).min(1, "At least one ID is required"),
+  status: z.enum(["active", "pending", "resolved"]),
+});
+
+const bulkArchiveAnalysesSchema = z.object({
+  ids: z.array(z.string()).min(1, "At least one ID is required"),
+  archived: z.boolean(),
+});
+
+// ---------------------------------------------------------------------------
+// Query and Bulk Server Functions
+// ---------------------------------------------------------------------------
+
+/**
+ * Server-side paginated, sorted, and filtered query engine for analyses.
+ */
+export const queryAnalyses = createServerFn({ method: "POST" })
+  .validator((data: unknown) => queryAnalysesSchema.parse(data))
+  .handler(async ({ data }) => {
+    const user = await requireSession();
+    await connectToDatabase();
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const query: any = { owner: user._id };
+
+    // Pinned / Bookmarked / Archived Filters
+    if (data.pinnedOnly) {
+      query.pinned = true;
+    }
+    if (data.bookmarkedOnly) {
+      query.bookmarked = true;
+    }
+    if (data.archivedOnly !== undefined) {
+      query.archived = data.archivedOnly;
+    } else {
+      // By default, exclude archived analyses unless explicitly requested
+      query.archived = { $ne: true };
+    }
+
+    // Projects Filter
+    if (data.projectId) {
+      query.projectId = new mongoose.Types.ObjectId(data.projectId);
+    }
+
+    // Risk Filter
+    if (data.risk && data.risk !== "all") {
+      query.riskLevel = data.risk;
+    }
+
+    // Verdict Filter
+    if (data.verdict && data.verdict !== "all") {
+      query.verdict = data.verdict;
+    }
+
+    // Status Filter
+    if (data.status && data.status !== "all") {
+      query.status = data.status;
+    }
+
+    // Priority Filter
+    if (data.priority && data.priority !== "all") {
+      query.priority = data.priority;
+    }
+
+    // Date Range Filter
+    if (data.dateStart || data.dateEnd) {
+      query.createdAt = {};
+      if (data.dateStart) {
+        query.createdAt.$gte = new Date(data.dateStart);
+      }
+      if (data.dateEnd) {
+        const end = new Date(data.dateEnd);
+        end.setHours(23, 59, 59, 999);
+        query.createdAt.$lte = end;
+      }
+    }
+
+    // Global Search Filter
+    if (data.search) {
+      const searchRegex = new RegExp(data.search, "i");
+
+      // Step 1: Find projects matching project name search
+      const matchingProjects = await Project.find({
+        owner: user._id,
+        name: { $regex: searchRegex },
+      })
+        .select("_id")
+        .lean();
+      const projIds = matchingProjects.map((p) => p._id);
+
+      // Step 2: Combine regex matches on other fields and projectId matches
+      query.$or = [
+        { projectId: { $in: projIds } },
+        { changedRequirement: { $regex: searchRegex } },
+        { originalRequirement: { $regex: searchRegex } },
+        { aiSummary: { $regex: searchRegex } },
+        { explanation: { $regex: searchRegex } },
+        { verdict: { $regex: searchRegex } },
+        { riskLevel: { $regex: searchRegex } },
+        { status: { $regex: searchRegex } },
+      ];
+    }
+
+    // Sorting
+    const sortObj: Record<string, number> = { createdAt: -1 }; // default: newest
+    if (data.sortBy === "oldest") {
+      sortObj.createdAt = 1;
+    } else if (data.sortBy === "highest_risk") {
+      sortObj.additionalHours = -1;
+      sortObj.suggestedCost = -1;
+    } else if (data.sortBy === "highest_confidence") {
+      sortObj.confidence = -1;
+      sortObj.createdAt = -1; // delete default createdAt to avoid conflicts or let it be
+    } else if (data.sortBy === "highest_cost") {
+      sortObj.suggestedCost = -1;
+      sortObj.createdAt = -1;
+    } else if (data.sortBy === "highest_hours") {
+      sortObj.additionalHours = -1;
+      sortObj.createdAt = -1;
+    }
+
+    // Pagination
+    const page = data.page || 1;
+    const limit = data.limit || 10;
+    const skip = (page - 1) * limit;
+
+    // Execute query with populate using projection to optimize DB retrieval
+    const [docs, totalCount] = await Promise.all([
+      Analysis.find(query)
+        .sort(sortObj)
+        .skip(skip)
+        .limit(limit)
+        .populate("projectId", "name client")
+        .lean(),
+      Analysis.countDocuments(query),
+    ]);
+
+    const totalPages = Math.ceil(totalCount / limit);
+
+    // Format output including populated project fields
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const analyses = docs.map((doc: any) => {
+      const serialized = serialize(doc);
+      return {
+        ...serialized,
+        projectName: doc.projectId?.name || "Deleted Project",
+        clientName: doc.projectId?.client || "Deleted Client",
+      };
+    });
+
+    return {
+      analyses,
+      totalCount,
+      totalPages,
+      currentPage: page,
+    };
+  });
+
+/**
+ * Bulk deletes analyses. Mark associated emails as unanalyzed.
+ */
+export const bulkDeleteAnalyses = createServerFn({ method: "POST" })
+  .validator((data: unknown) => bulkDeleteAnalysesSchema.parse(data))
+  .handler(async ({ data }) => {
+    const user = await requireSession();
+    await connectToDatabase();
+
+    const ids = data.ids.map((id) => new mongoose.Types.ObjectId(id));
+
+    // Get analyses first to see if any have associated emailIds to toggle
+    const analysesToToggle = await Analysis.find({
+      _id: { $in: ids },
+      owner: user._id,
+      emailId: { $exists: true },
+    })
+      .select("emailId")
+      .lean();
+
+    const emailIds = analysesToToggle.map((a) => a.emailId).filter(Boolean);
+
+    // Perform bulk delete
+    const result = await Analysis.deleteMany({
+      _id: { $in: ids },
+      owner: user._id,
+    });
+
+    // Mark associated emails back as unanalyzed
+    if (emailIds.length > 0) {
+      await EmailThread.updateMany(
+        { _id: { $in: emailIds }, owner: user._id },
+        { $set: { analyzed: false, risk: "low" } },
+      );
+    }
+
+    return { deletedCount: result.deletedCount };
+  });
+
+/**
+ * Bulk updates the status of analyses.
+ */
+export const bulkChangeAnalysesStatus = createServerFn({ method: "POST" })
+  .validator((data: unknown) => bulkChangeAnalysesStatusSchema.parse(data))
+  .handler(async ({ data }) => {
+    const user = await requireSession();
+    await connectToDatabase();
+
+    const ids = data.ids.map((id) => new mongoose.Types.ObjectId(id));
+
+    const result = await Analysis.updateMany(
+      { _id: { $in: ids }, owner: user._id },
+      { $set: { status: data.status } },
+    );
+
+    return { modifiedCount: result.modifiedCount };
+  });
+
+/**
+ * Bulk archives or unarchives analyses.
+ */
+export const bulkArchiveAnalyses = createServerFn({ method: "POST" })
+  .validator((data: unknown) => bulkArchiveAnalysesSchema.parse(data))
+  .handler(async ({ data }) => {
+    const user = await requireSession();
+    await connectToDatabase();
+
+    const ids = data.ids.map((id) => new mongoose.Types.ObjectId(id));
+
+    const result = await Analysis.updateMany(
+      { _id: { $in: ids }, owner: user._id },
+      { $set: { archived: data.archived } },
+    );
+
+    return { modifiedCount: result.modifiedCount };
   });

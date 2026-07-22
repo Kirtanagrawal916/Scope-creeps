@@ -35,6 +35,7 @@ const primary: NavItem[] = [
   { to: "/app", label: "Dashboard", icon: LayoutDashboard },
   { to: "/app/projects", label: "Projects", icon: FolderKanban, badge: "5" },
   { to: "/app/inbox", label: "Email monitoring", icon: Mail, badge: "3" },
+  { to: "/app/history", label: "Analysis History", icon: Sparkles },
   { to: "/app/analytics", label: "Analytics", icon: BarChart3 },
 ];
 

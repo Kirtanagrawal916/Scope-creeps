@@ -1,4 +1,4 @@
-import { createFileRoute, Link, notFound } from "@tanstack/react-router";
+import { createFileRoute, Link, notFound, useNavigate } from "@tanstack/react-router";
 import {
   ArrowLeft,
   ShieldCheck,
@@ -9,12 +9,16 @@ import {
   Sparkles,
   Copy,
   CheckCheck,
+  Pin,
+  Bookmark,
+  Printer,
 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { RiskChip, StatusPill } from "@/components/status-pill";
 import { Button } from "@/components/ui/button";
-import { getAnalysisDetails } from "@/lib/analyses.server";
+import { getAnalysisDetails, updateAnalysis } from "@/lib/analyses.server";
 import { useState } from "react";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/app/analysis/$id")({
   loader: async ({ params }) => {
@@ -69,6 +73,10 @@ const verdictConfig = {
 function AnalysisPage() {
   const { analysis, project, email } = Route.useLoaderData();
   const [copied, setCopied] = useState(false);
+  const navigate = useNavigate({ from: Route.fullPath });
+  const [isPinning, setIsPinning] = useState(false);
+  const [isBookmarking, setIsBookmarking] = useState(false);
+
   const verdict = verdictConfig[analysis.verdict] || verdictConfig.possible_scope_creep;
   const VerdictIcon = verdict.icon;
 
@@ -78,9 +86,69 @@ function AnalysisPage() {
     setTimeout(() => setCopied(false), 2500);
   };
 
+  const handleTogglePin = async () => {
+    try {
+      setIsPinning(true);
+      await updateAnalysis({ data: { id: analysis.id, pinned: !analysis.pinned } });
+      toast.success(!analysis.pinned ? "Analysis pinned." : "Analysis unpinned.");
+      navigate({ search: (prev) => prev });
+    } catch (err) {
+      const error = err as Error;
+      toast.error(error.message || "Failed to update pin state.");
+    } finally {
+      setIsPinning(false);
+    }
+  };
+
+  const handleToggleBookmark = async () => {
+    try {
+      setIsBookmarking(true);
+      await updateAnalysis({ data: { id: analysis.id, bookmarked: !analysis.bookmarked } });
+      toast.success(!analysis.bookmarked ? "Analysis bookmarked." : "Analysis unbookmarked.");
+      navigate({ search: (prev) => prev });
+    } catch (err) {
+      const error = err as Error;
+      toast.error(error.message || "Failed to update bookmark state.");
+    } finally {
+      setIsBookmarking(false);
+    }
+  };
+
+  const handlePrint = () => {
+    window.print();
+  };
+
   return (
     <AppShell>
-      <Button variant="ghost" size="sm" className="mb-4" asChild>
+      <style
+        dangerouslySetInnerHTML={{
+          __html: `
+        @media print {
+          nav, aside, .no-print, button, header, .app-sidebar, [role="button"] {
+            display: none !important;
+          }
+          body {
+            background: white !important;
+            color: black !important;
+            font-size: 11pt;
+          }
+          main {
+            padding: 0 !important;
+            margin: 0 !important;
+            width: 100% !important;
+          }
+          .panel {
+            border: 1px solid #e2e8f0 !important;
+            background: transparent !important;
+            box-shadow: none !important;
+            page-break-inside: avoid;
+            margin-bottom: 1rem;
+          }
+        }
+      `,
+        }}
+      />
+      <Button variant="ghost" size="sm" className="mb-4 no-print" asChild>
         <Link to="/app/projects/$id" params={{ id: project.id }}>
           <ArrowLeft className="mr-1.5 h-3.5 w-3.5" /> {project.name}
         </Link>
@@ -121,15 +189,59 @@ function AnalysisPage() {
             <span>Analyzed {analysis.createdAt}</span>
           </div>
         </div>
-        <div className="flex items-center gap-2.5">
-          <div className="text-[11px] font-medium bg-accent px-2.5 py-1 rounded border border-border/40 capitalize">
+        <div className="flex items-center flex-wrap gap-2.5">
+          <div className="flex items-center gap-1.5 no-print">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={isPinning}
+              onClick={handleTogglePin}
+              className={
+                analysis.pinned
+                  ? "text-primary border-primary/30 bg-primary/5 hover:bg-primary/10 h-8 text-[12px]"
+                  : "text-muted-foreground h-8 text-[12px]"
+              }
+              title={analysis.pinned ? "Unpin this analysis" : "Pin this analysis"}
+            >
+              <Pin
+                className="mr-1.5 h-3.5 w-3.5"
+                fill={analysis.pinned ? "currentColor" : "none"}
+              />
+              {analysis.pinned ? "Pinned" : "Pin"}
+            </Button>
+
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={isBookmarking}
+              onClick={handleToggleBookmark}
+              className={
+                analysis.bookmarked
+                  ? "text-[color:var(--warning)] border-[color:var(--warning)]/30 bg-[color:var(--warning)]/5 hover:bg-[color:var(--warning)]/10 h-8 text-[12px]"
+                  : "text-muted-foreground h-8 text-[12px]"
+              }
+              title={analysis.bookmarked ? "Unbookmark this analysis" : "Bookmark this analysis"}
+            >
+              <Bookmark
+                className="mr-1.5 h-3.5 w-3.5"
+                fill={analysis.bookmarked ? "currentColor" : "none"}
+              />
+              {analysis.bookmarked ? "Bookmarked" : "Bookmark"}
+            </Button>
+
+            <Button variant="outline" size="sm" onClick={handlePrint} className="h-8 text-[12px]">
+              <Printer className="mr-1.5 h-3.5 w-3.5" /> PDF Export
+            </Button>
+          </div>
+
+          <div className="text-[11px] font-medium bg-accent px-2.5 py-1.5 rounded border border-border/40 capitalize shrink-0 h-8 flex items-center">
             Status: {analysis.status}
           </div>
-          <div className="text-[11px] font-medium bg-accent px-2.5 py-1 rounded border border-border/40 capitalize">
+          <div className="text-[11px] font-medium bg-accent px-2.5 py-1.5 rounded border border-border/40 capitalize shrink-0 h-8 flex items-center">
             Priority: {analysis.priority}
           </div>
           <div
-            className={`flex items-center gap-2 rounded-xl px-3 py-1.5 text-[13px] font-medium ${verdict.bg}`}
+            className={`flex items-center gap-2 rounded-xl px-3 py-1.5 text-[13px] font-medium shrink-0 h-8 ${verdict.bg}`}
           >
             <VerdictIcon className="h-4 w-4" />
             {verdict.label}

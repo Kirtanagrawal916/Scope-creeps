@@ -21,6 +21,7 @@ import { Route as AppSettingsRouteImport } from './routes/app.settings'
 import { Route as AppProfileRouteImport } from './routes/app.profile'
 import { Route as AppNotificationsRouteImport } from './routes/app.notifications'
 import { Route as AppInboxRouteImport } from './routes/app.inbox'
+import { Route as AppHistoryRouteImport } from './routes/app.history'
 import { Route as AppAnalyticsRouteImport } from './routes/app.analytics'
 import { Route as AppProjectsIndexRouteImport } from './routes/app.projects.index'
 import { Route as AppProjectsNewRouteImport } from './routes/app.projects.new'
@@ -87,6 +88,11 @@ const AppInboxRoute = AppInboxRouteImport.update({
   path: '/inbox',
   getParentRoute: () => AppRoute,
 } as any)
+const AppHistoryRoute = AppHistoryRouteImport.update({
+  id: '/history',
+  path: '/history',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppAnalyticsRoute = AppAnalyticsRouteImport.update({
   id: '/analytics',
   path: '/analytics',
@@ -121,6 +127,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
   '/app/analytics': typeof AppAnalyticsRoute
+  '/app/history': typeof AppHistoryRoute
   '/app/inbox': typeof AppInboxRoute
   '/app/notifications': typeof AppNotificationsRoute
   '/app/profile': typeof AppProfileRoute
@@ -139,6 +146,7 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
   '/app/analytics': typeof AppAnalyticsRoute
+  '/app/history': typeof AppHistoryRoute
   '/app/inbox': typeof AppInboxRoute
   '/app/notifications': typeof AppNotificationsRoute
   '/app/profile': typeof AppProfileRoute
@@ -159,6 +167,7 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
   '/app/analytics': typeof AppAnalyticsRoute
+  '/app/history': typeof AppHistoryRoute
   '/app/inbox': typeof AppInboxRoute
   '/app/notifications': typeof AppNotificationsRoute
   '/app/profile': typeof AppProfileRoute
@@ -180,6 +189,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/register'
     | '/app/analytics'
+    | '/app/history'
     | '/app/inbox'
     | '/app/notifications'
     | '/app/profile'
@@ -198,6 +208,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/register'
     | '/app/analytics'
+    | '/app/history'
     | '/app/inbox'
     | '/app/notifications'
     | '/app/profile'
@@ -217,6 +228,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/register'
     | '/app/analytics'
+    | '/app/history'
     | '/app/inbox'
     | '/app/notifications'
     | '/app/profile'
@@ -325,6 +337,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppInboxRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/history': {
+      id: '/app/history'
+      path: '/history'
+      fullPath: '/app/history'
+      preLoaderRoute: typeof AppHistoryRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/analytics': {
       id: '/app/analytics'
       path: '/analytics'
@@ -365,6 +384,7 @@ declare module '@tanstack/react-router' {
 
 interface AppRouteChildren {
   AppAnalyticsRoute: typeof AppAnalyticsRoute
+  AppHistoryRoute: typeof AppHistoryRoute
   AppInboxRoute: typeof AppInboxRoute
   AppNotificationsRoute: typeof AppNotificationsRoute
   AppProfileRoute: typeof AppProfileRoute
@@ -378,6 +398,7 @@ interface AppRouteChildren {
 
 const AppRouteChildren: AppRouteChildren = {
   AppAnalyticsRoute: AppAnalyticsRoute,
+  AppHistoryRoute: AppHistoryRoute,
   AppInboxRoute: AppInboxRoute,
   AppNotificationsRoute: AppNotificationsRoute,
   AppProfileRoute: AppProfileRoute,

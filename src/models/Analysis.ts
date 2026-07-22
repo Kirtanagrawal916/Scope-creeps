@@ -29,6 +29,9 @@ export interface IAnalysis extends Document {
   missingRequirements: string[];
   priority: "low" | "medium" | "high";
   status: "active" | "pending" | "resolved";
+  pinned: boolean;
+  bookmarked: boolean;
+  archived: boolean;
 
   createdAt: Date;
   updatedAt: Date;
@@ -97,6 +100,9 @@ const AnalysisSchema = new Schema<IAnalysis>(
       enum: ["active", "pending", "resolved"],
       default: "active",
     },
+    pinned: { type: Boolean, default: false, index: true },
+    bookmarked: { type: Boolean, default: false, index: true },
+    archived: { type: Boolean, default: false, index: true },
   },
   { timestamps: true },
 );
@@ -107,6 +113,12 @@ AnalysisSchema.index({ owner: 1, projectId: 1 });
 AnalysisSchema.index({ userId: 1, projectId: 1 });
 AnalysisSchema.index({ owner: 1, emailId: 1 }, { unique: true, sparse: true });
 AnalysisSchema.index({ userId: 1, emailId: 1 }, { unique: true, sparse: true });
+AnalysisSchema.index({ owner: 1, pinned: -1, createdAt: -1 });
+AnalysisSchema.index({ userId: 1, pinned: -1, createdAt: -1 });
+AnalysisSchema.index({ owner: 1, bookmarked: -1, createdAt: -1 });
+AnalysisSchema.index({ userId: 1, bookmarked: -1, createdAt: -1 });
+AnalysisSchema.index({ owner: 1, archived: 1, createdAt: -1 });
+AnalysisSchema.index({ userId: 1, archived: 1, createdAt: -1 });
 
 export const Analysis =
   mongoose.models.Analysis || mongoose.model<IAnalysis>("Analysis", AnalysisSchema);
