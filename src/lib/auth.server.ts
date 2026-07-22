@@ -497,5 +497,5 @@ export async function handleGoogleCallbackImpl(data: { code: string; state: stri
 
   await setSessionCookie(sessionToken);
 
-  return { success: true };
+  return { success: true, token: sessionToken };
 }

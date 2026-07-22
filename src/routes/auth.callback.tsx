@@ -1,5 +1,6 @@
-import { createFileRoute, redirect } from "@tanstack/react-router";
+import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { handleGoogleCallback } from "@/lib/auth";
+import { useEffect } from "react";
 
 export const Route = createFileRoute("/auth/callback")({
   validateSearch: (
@@ -32,10 +33,8 @@ export const Route = createFileRoute("/auth/callback")({
     }
 
     try {
-      await handleGoogleCallback({ data: { code, state } });
-      throw redirect({
-        to: "/app",
-      });
+      const response = await handleGoogleCallback({ data: { code, state } });
+      return { token: response.token };
     } catch (err) {
       if (err && typeof err === "object" && "isRedirect" in err) {
         throw err;
@@ -50,9 +49,21 @@ export const Route = createFileRoute("/auth/callback")({
     }
   },
   component: AuthCallbackPage,
+  head: () => ({ meta: [{ title: "Completing Login - ScopeGuard" }] }),
 });
 
 function AuthCallbackPage() {
+  const { token } = Route.useLoaderData();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (token) {
+      localStorage.setItem("scopeguard_token", token);
+      localStorage.removeItem("scopeguard_user_id");
+      navigate({ to: "/app" });
+    }
+  }, [token, navigate]);
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-background text-foreground">
       <div className="text-center space-y-4">

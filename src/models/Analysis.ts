@@ -32,6 +32,7 @@ export interface IAnalysis extends Document {
   pinned: boolean;
   bookmarked: boolean;
   archived: boolean;
+  aiModel?: string;
 
   createdAt: Date;
   updatedAt: Date;
@@ -103,6 +104,7 @@ const AnalysisSchema = new Schema<IAnalysis>(
     pinned: { type: Boolean, default: false, index: true },
     bookmarked: { type: Boolean, default: false, index: true },
     archived: { type: Boolean, default: false, index: true },
+    aiModel: { type: String, default: "mockup" },
   },
   { timestamps: true },
 );

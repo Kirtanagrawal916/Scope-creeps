@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { motion } from "framer-motion";
 import {
@@ -69,7 +69,24 @@ const getHealthDiagnostics = createServerFn({ method: "GET" }).handler(async () 
   };
 });
 
+const checkHealthAuth = createServerFn({ method: "GET" }).handler(async () => {
+  const { getSessionUser } = await import("@/lib/auth.server");
+  const user = await getSessionUser();
+  return { authenticated: user !== null };
+});
+
 export const Route = createFileRoute("/health")({
+  beforeLoad: async () => {
+    const auth = await checkHealthAuth();
+    if (!auth.authenticated) {
+      throw redirect({
+        to: "/login",
+        search: {
+          error: "You must be logged in to access diagnostics.",
+        },
+      });
+    }
+  },
   loader: async () => {
     try {
       return await getHealthDiagnostics();
