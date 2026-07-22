@@ -1,6 +1,15 @@
 import { createFileRoute, Link, useRouteContext } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 import {
+  ResponsiveContainer,
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+} from "recharts";
+import {
   ShieldCheck,
   Clock,
   Mail,
@@ -93,52 +102,9 @@ function Dashboard() {
 
   // Build a project name map for the analyses section
   const projectNameById = new Map(projects.map((p) => [p.id, p.name]));
-
-<<<<<<< HEAD
-  // Build a real activity feed from the user's own projects, emails, and analyses.
-  // Each list is already sorted most-recent-first by its server query, so we take
-  // the top items from each (using their own pre-formatted relative time strings)
-  // rather than re-parsing them into Date objects.
-  type ActivityItem = {
-    id: string;
-    type: "analysis" | "email" | "project";
-    text: string;
-    meta: string;
-    time: string;
-  };
-  const activity: ActivityItem[] = [
-    ...analyses.slice(0, 3).map((a) => ({
-      id: `analysis-${a.id}`,
-      type: "analysis" as const,
-      text:
-        a.verdict === "out_of_scope"
-          ? `Scope creep detected on ${projectNameById.get(a.projectId) ?? "a project"}`
-          : `Analysis completed on ${projectNameById.get(a.projectId) ?? "a project"}`,
-      meta: `₹${(a.suggestedCost / 1000).toFixed(1)}k impact`,
-      time: a.createdAt,
-    })),
-    ...emails.slice(0, 3).map((e) => ({
-      id: `email-${e.id}`,
-      type: "email" as const,
-      text: `New client email from ${e.from}`,
-      meta: projectNameById.get(e.projectId) ?? "Unknown project",
-      time: e.receivedAt,
-    })),
-    ...projects
-      .filter((p) => p.status === "completed")
-      .slice(0, 2)
-      .map((p) => ({
-        id: `project-${p.id}`,
-        type: "project" as const,
-        text: `${p.name} marked as completed`,
-        meta: `₹${(p.budget / 1000).toFixed(1)}k final`,
-        time: p.updatedAt,
-      })),
-  ].slice(0, 5);
-
   // Total invoiced across the user's own projects, for the revenue overview panel
   const totalInvoiced = projects.reduce((sum, p) => sum + p.budget, 0);
-=======
+
   // 1. Dynamic Chart: Protected vs Invoiced rolling 6 months (based purely on DB data)
   const dynamicRevenueChart = Array.from({ length: 6 }).map((_, idx) => {
     const d = new Date();
@@ -158,7 +124,7 @@ function Dashboard() {
     // Sum user's suggested costs created in this specific month/year
     const protectedAmt = analyses
       .filter((a) => {
-        const aDate = new Date(a.createdAt);
+        const aDate = new Date(a.createdAtIso);
         return (
           aDate.getMonth() === rawMonth && aDate.getFullYear() === year && a.verdict !== "in_scope"
         );
@@ -184,7 +150,7 @@ function Dashboard() {
         p.status === "completed"
           ? `${p.name} marked as completed`
           : `New project created: ${p.name}`,
-      meta: `$${p.budget.toLocaleString()} budget`,
+      meta: `₹${p.budget.toLocaleString("en-IN")} budget`,
       time: p.updatedAt,
       rawDate: new Date(p.createdAt),
     })),
@@ -197,9 +163,12 @@ function Dashboard() {
           a.verdict === "in_scope"
             ? `Scope check cleared: ${pName}`
             : `Scope creep detected: ${pName}`,
-        meta: a.verdict === "in_scope" ? "In scope" : `$${a.suggestedCost.toLocaleString()} impact`,
+        meta:
+          a.verdict === "in_scope"
+            ? "In scope"
+            : `₹${a.suggestedCost.toLocaleString("en-IN")} impact`,
         time: a.createdAt,
-        rawDate: new Date(a.createdAt),
+        rawDate: new Date(a.createdAtIso),
       };
     }),
   ]
@@ -239,8 +208,8 @@ function Dashboard() {
       aVal = a.confidence;
       bVal = b.confidence;
     } else {
-      const aTime = new Date(a.createdAt).getTime();
-      const bTime = new Date(b.createdAt).getTime();
+      const aTime = new Date(a.createdAtIso).getTime();
+      const bTime = new Date(b.createdAtIso).getTime();
       return sortOrder === "asc" ? aTime - bTime : bTime - aTime;
     }
 
@@ -253,7 +222,6 @@ function Dashboard() {
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage,
   );
->>>>>>> 72078dd (docs(roadmap): add project management and scope analysis implementation plan)
 
   const hour = new Date().getHours();
   const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
@@ -312,66 +280,14 @@ function Dashboard() {
                 </div>
                 <div className="mt-1 flex items-baseline gap-2">
                   <span className="font-display text-2xl font-semibold tabular-nums">
-<<<<<<< HEAD
-                    ₹{totalInvoiced.toLocaleString()}
-=======
-                    ${totalInvoicedInChart.toLocaleString()}
+                    ₹{totalInvoicedInChart.toLocaleString("en-IN")}
                   </span>
                   <span className="text-[12px] text-[color:var(--success)]">
-                    +${totalProtectedInChart.toLocaleString()} protected
->>>>>>> 72078dd (docs(roadmap): add project management and scope analysis implementation plan)
+                    +₹{totalProtectedInChart.toLocaleString("en-IN")} protected
                   </span>
-                  {kpis.revenueProtected > 0 ? (
-                    <span className="text-[12px] text-[color:var(--success)]">
-                      +₹{(kpis.revenueProtected / 1000).toFixed(1)}k protected total
-                    </span>
-                  ) : (
-                    <span className="text-[12px] text-muted-foreground">
-                      No scope creep blocked yet
-                    </span>
-                  )}
                 </div>
               </div>
             </div>
-<<<<<<< HEAD
-            {projects.length === 0 ? (
-              <div className="mt-6 flex h-64 flex-col items-center justify-center gap-2 text-center">
-                <div className="text-[13px] text-muted-foreground">
-                  No revenue data yet — create your first project to start tracking it
-                </div>
-              </div>
-            ) : (
-              <div className="mt-6 space-y-4">
-                <div>
-                  <div className="mb-1 flex items-center justify-between text-[12px] text-muted-foreground">
-                    <span>Total invoiced</span>
-                    <span>₹{totalInvoiced.toLocaleString()}</span>
-                  </div>
-                  <div className="h-2 overflow-hidden rounded-full bg-accent">
-                    <div className="h-full w-full rounded-full bg-primary" />
-                  </div>
-                </div>
-                <div>
-                  <div className="mb-1 flex items-center justify-between text-[12px] text-muted-foreground">
-                    <span>Revenue protected from scope creep</span>
-                    <span>₹{kpis.revenueProtected.toLocaleString()}</span>
-                  </div>
-                  <div className="h-2 overflow-hidden rounded-full bg-accent">
-                    <div
-                      className="h-full rounded-full bg-[color:var(--success)]"
-                      style={{
-                        width: `${
-                          totalInvoiced > 0
-                            ? Math.min(100, (kpis.revenueProtected / totalInvoiced) * 100)
-                            : 0
-                        }%`,
-                      }}
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
-=======
             <div className="mt-6 h-64">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart
@@ -399,7 +315,7 @@ function Dashboard() {
                     tick={{ fill: "var(--muted-foreground)", fontSize: 11 }}
                     axisLine={false}
                     tickLine={false}
-                    tickFormatter={(v: number) => `$${v.toLocaleString()}`}
+                    tickFormatter={(v: number) => `₹${v.toLocaleString("en-IN")}`}
                   />
                   <Tooltip
                     contentStyle={{
@@ -427,7 +343,6 @@ function Dashboard() {
                 </AreaChart>
               </ResponsiveContainer>
             </div>
->>>>>>> 72078dd (docs(roadmap): add project management and scope analysis implementation plan)
           </motion.div>
 
           <motion.div
@@ -649,7 +564,6 @@ function Dashboard() {
                   </Button>
                 </div>
               </div>
-              </div>
 
               {/* Paginated list */}
               <div className="divide-y divide-border">
@@ -673,20 +587,20 @@ function Dashboard() {
                         <div className="flex items-center justify-between">
                           <div className="text-[13px] font-medium">{projectName}</div>
                           <span
-                             className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${
-                               a.verdict === "confirmed_scope_creep" || a.verdict === "out_of_scope"
-                                 ? "bg-destructive/10 text-destructive border border-destructive/20"
-                                 : a.verdict === "in_scope"
-                                   ? "bg-[color:var(--success)]/10 text-[color:var(--success)] border border-[color:var(--success)]/20"
-                                   : "bg-[color:var(--warning)]/10 text-[color:var(--warning)] border border-[color:var(--warning)]/20"
-                             }`}
-                           >
-                             {a.verdict === "confirmed_scope_creep" || a.verdict === "out_of_scope"
-                               ? "Confirmed Creep"
-                               : a.verdict === "in_scope"
-                                 ? "In Scope"
-                                 : "Possible Creep"}
-                           </span>
+                            className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${
+                              a.verdict === "confirmed_scope_creep" || a.verdict === "out_of_scope"
+                                ? "bg-destructive/10 text-destructive border border-destructive/20"
+                                : a.verdict === "in_scope"
+                                  ? "bg-[color:var(--success)]/10 text-[color:var(--success)] border border-[color:var(--success)]/20"
+                                  : "bg-[color:var(--warning)]/10 text-[color:var(--warning)] border border-[color:var(--warning)]/20"
+                            }`}
+                          >
+                            {a.verdict === "confirmed_scope_creep" || a.verdict === "out_of_scope"
+                              ? "Confirmed Creep"
+                              : a.verdict === "in_scope"
+                                ? "In Scope"
+                                : "Possible Creep"}
+                          </span>
                         </div>
                         <div className="mt-3 grid grid-cols-4 gap-2 text-[12px]">
                           <div>
@@ -704,7 +618,7 @@ function Dashboard() {
                           <div>
                             <div className="text-muted-foreground text-[10px]">Cost</div>
                             <div className="mt-0.5 font-display text-[14px] font-semibold tabular-nums">
-                               ₹{a.suggestedCost.toLocaleString("en-IN")}
+                              ₹{a.suggestedCost.toLocaleString("en-IN")}
                             </div>
                           </div>
                           <div>

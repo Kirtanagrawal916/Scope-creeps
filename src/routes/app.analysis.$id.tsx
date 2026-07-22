@@ -170,7 +170,10 @@ function AnalysisPage() {
           {
             icon: DollarSign,
             l: "Suggested Cost Impact",
-            v: analysis.suggestedCost > 0 ? `₹${analysis.suggestedCost.toLocaleString("en-IN")}` : "₹0",
+            v:
+              analysis.suggestedCost > 0
+                ? `₹${analysis.suggestedCost.toLocaleString("en-IN")}`
+                : "₹0",
           },
         ].map((s) => {
           const Icon = s.icon;

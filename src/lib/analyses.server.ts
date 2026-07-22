@@ -104,7 +104,10 @@ function serialize(doc: any): SerializedAnalysis {
     status: doc.status ?? "active",
 
     createdAt: formatRelativeDate(doc.createdAt),
-    createdAtIso: doc.createdAt instanceof Date ? doc.createdAt.toISOString() : new Date(doc.createdAt).toISOString(),
+    createdAtIso:
+      doc.createdAt instanceof Date
+        ? doc.createdAt.toISOString()
+        : new Date(doc.createdAt).toISOString(),
   };
 }
 

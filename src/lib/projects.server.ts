@@ -135,18 +135,9 @@ export const listProjects = createServerFn({ method: "GET" })
     await connectToDatabase();
 
     const showArchived = data?.archived ?? false;
-    let projects = await Project.find({ owner: user._id, archived: showArchived })
+    const projects = await Project.find({ owner: user._id, archived: showArchived })
       .sort({ updatedAt: -1 })
       .lean();
-
-    // If the user is new and has no projects, auto-seed sample data scoped to them (only if requesting active)
-    if (projects.length === 0 && !showArchived) {
-      const { seedUserData } = await import("./seed.server");
-      await seedUserData(user._id);
-      projects = await Project.find({ owner: user._id, archived: false })
-        .sort({ updatedAt: -1 })
-        .lean();
-    }
 
     return projects.map(serialize);
   });
