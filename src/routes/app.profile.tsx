@@ -172,7 +172,7 @@ function ProfilePage() {
         <div className="mt-6 grid gap-3 md:grid-cols-3">
           {[
             { l: "Projects", v: "12" },
-            { l: "Revenue protected", v: "$148.2k" },
+            { l: "Revenue protected", v: "₹148.2k" },
             { l: "Member since", v: "Aug 2024" },
           ].map((s) => (
             <div key={s.l} className="panel p-5">

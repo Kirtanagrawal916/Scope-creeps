@@ -82,7 +82,7 @@ function ProjectDetail() {
 
       <div className="mt-6 grid gap-3 md:grid-cols-4">
         {[
-          { icon: DollarSign, l: "Budget", v: `$${project.budget.toLocaleString()}` },
+          { icon: DollarSign, l: "Budget", v: `₹${project.budget.toLocaleString("en-IN")}` },
           {
             icon: Clock,
             l: "Hours",

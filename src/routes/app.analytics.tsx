@@ -151,7 +151,7 @@ function Analytics() {
           <StatCard
             label="Revenue protected"
             value={revenueProtected}
-            prefix="$"
+            prefix="₹"
             icon={ShieldCheck}
             delta={revenueProtected > 0 ? "from scope creep blocked" : "No creep blocked yet"}
             trend={revenueProtected > 0 ? "up" : "neutral"}
@@ -213,7 +213,7 @@ function Analytics() {
                     tick={{ fill: "var(--muted-foreground)", fontSize: 11 }}
                     axisLine={false}
                     tickLine={false}
-                    tickFormatter={(v: number) => `$${v / 1000}k`}
+                    tickFormatter={(v: number) => `₹${v / 1000}k`}
                   />
                   <Tooltip
                     contentStyle={{

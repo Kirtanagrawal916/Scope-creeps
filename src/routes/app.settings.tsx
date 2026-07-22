@@ -100,12 +100,12 @@ function SettingsPage() {
               <Row label="Default hourly rate" desc="Used for scope creep cost estimates.">
                 <Input
                   name="defaultRate"
-                  defaultValue={user?.defaultRate !== undefined ? `$${user.defaultRate}` : "$150"}
+                  defaultValue={user?.defaultRate !== undefined ? `₹${user.defaultRate}` : "₹150"}
                   className="w-32"
                 />
               </Row>
               <Row label="Currency" desc="Format for money everywhere.">
-                <Input defaultValue="USD" className="w-32" disabled />
+                <Input defaultValue="INR" className="w-32" disabled />
               </Row>
             </div>
 

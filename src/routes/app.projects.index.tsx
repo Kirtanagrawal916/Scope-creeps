@@ -82,8 +82,8 @@ function ProjectsPage() {
                 </div>
                 <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-[12px] md:contents">
                   <div className="text-[13px] tabular-nums">
-                    <span className="text-muted-foreground md:hidden">Budget: </span>$
-                    {p.budget.toLocaleString()}
+                    <span className="text-muted-foreground md:hidden">Budget: </span>₹
+                    {p.budget.toLocaleString("en-IN")}
                   </div>
                   <div className="text-[13px] tabular-nums text-muted-foreground">
                     {p.hoursUsed}h{" "}

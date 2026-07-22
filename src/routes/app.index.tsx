@@ -85,7 +85,7 @@ function Dashboard() {
           <StatCard
             label="Revenue protected"
             value={kpis.revenueProtected}
-            prefix="$"
+            prefix="₹"
             icon={ShieldCheck}
             delta={kpis.revenueProtected > 0 ? "from scope creep blocked" : "No scope creep yet"}
             trend={kpis.revenueProtected > 0 ? "up" : "neutral"}
@@ -133,9 +133,9 @@ function Dashboard() {
                   Revenue overview
                 </div>
                 <div className="mt-1 flex items-baseline gap-2">
-                  <span className="font-display text-2xl font-semibold tabular-nums">$205,000</span>
+                  <span className="font-display text-2xl font-semibold tabular-nums">₹205,000</span>
                   <span className="text-[12px] text-[color:var(--success)]">
-                    +$43k protected in Jan
+                    +₹43k protected in Jan
                   </span>
                 </div>
               </div>
@@ -176,7 +176,7 @@ function Dashboard() {
                     tick={{ fill: "var(--muted-foreground)", fontSize: 11 }}
                     axisLine={false}
                     tickLine={false}
-                    tickFormatter={(v: number) => `$${v / 1000}k`}
+                    tickFormatter={(v: number) => `₹${v / 1000}k`}
                   />
                   <Tooltip
                     contentStyle={{
@@ -385,7 +385,7 @@ function Dashboard() {
                         <div>
                           <div className="text-muted-foreground">Cost</div>
                           <div className="mt-0.5 font-display text-[15px] font-semibold tabular-nums">
-                            ${(a.suggestedCost / 1000).toFixed(1)}k
+                            ₹{(a.suggestedCost / 1000).toFixed(1)}k
                           </div>
                         </div>
                       </div>

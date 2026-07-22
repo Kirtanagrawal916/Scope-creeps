@@ -238,7 +238,7 @@ Both the native iOS app and NetSuite sync fall outside our current statement of 
 
 • Native iOS app (browse, cart, checkout, push): ~120 hours
 • NetSuite inventory sync: ~48 hours
-• Combined budget impact: ~$22,400
+• Combined budget impact: ~₹22,400
 • Timeline: adds approximately 3 weeks — the March 14 launch would move to April 4
 
 If you'd like, I can put together a short change order covering both, or we can phase the iOS app as a v1.1 after the web launch so you still hit March 14. Let me know what works best on your side and I'll get it moving today.
@@ -260,7 +260,7 @@ export const activity = [
     id: 1,
     type: "analysis",
     text: "Scope creep detected on Atlas Commerce",
-    meta: "$22.4k impact",
+    meta: "₹22.4k impact",
     time: "2h ago",
   },
   {
@@ -281,7 +281,7 @@ export const activity = [
     id: 4,
     type: "project",
     text: "Vanta Ops Dashboard marked as completed",
-    meta: "$41k final",
+    meta: "₹41k final",
     time: "3d ago",
   },
   {

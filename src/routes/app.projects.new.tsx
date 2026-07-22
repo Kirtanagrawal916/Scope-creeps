@@ -81,13 +81,13 @@ function NewProjectPage() {
               </div>
               <div className="space-y-1.5">
                 <Label className="text-[12px]" htmlFor="budget">
-                  Budget ($)
+                  Budget (₹)
                 </Label>
                 <Input id="budget" name="budget" type="number" min={0} placeholder="48000" />
               </div>
               <div className="space-y-1.5">
                 <Label className="text-[12px]" htmlFor="hourlyRate">
-                  Hourly rate ($/h)
+                  Hourly rate (₹/h)
                 </Label>
                 <Input id="hourlyRate" name="hourlyRate" type="number" min={0} placeholder="150" />
               </div>

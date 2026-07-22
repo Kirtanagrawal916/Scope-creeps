@@ -124,7 +124,7 @@ function AnalysisPage() {
           {
             icon: DollarSign,
             l: "Cost at risk",
-            v: analysis.suggestedCost > 0 ? `$${analysis.suggestedCost.toLocaleString()}` : "$0",
+            v: analysis.suggestedCost > 0 ? `₹${analysis.suggestedCost.toLocaleString("en-IN")}` : "₹0",
           },
         ].map((s) => {
           const Icon = s.icon;
