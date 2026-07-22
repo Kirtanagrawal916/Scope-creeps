@@ -1,0 +1,1090 @@
+diff --git a/src/components/status-pill.tsx b/src/components/status-pill.tsx
+index e7018d3..1732de5 100644
+--- a/src/components/status-pill.tsx
++++ b/src/components/status-pill.tsx
+@@ -1,5 +1,5 @@
+ import { cn } from "@/lib/utils";
+-import type { ProjectStatus, RiskLevel } from "@/lib/mock-data";
++import type { ProjectStatus, RiskLevel } from "@/models/Project";
+ 
+ const statusMap: Record<ProjectStatus, { label: string; className: string; dot: string }> = {
+   on_track: {
+diff --git a/src/lib/analyses.server.ts b/src/lib/analyses.server.ts
+index ab93fc6..a3d231a 100644
+--- a/src/lib/analyses.server.ts
++++ b/src/lib/analyses.server.ts
+@@ -36,6 +36,8 @@ export type SerializedAnalysis = {
+   suggestedReply: string;
+   /** Human-readable relative date, e.g. "2h ago" */
+   createdAt: string;
++  /** ISO timestamp, for real date math (charts, sorting) on the client */
++  createdAtIso: string;
+ };
+ 
+ export type SerializedAnalysisDetails = {
+@@ -73,6 +75,7 @@ function serialize(doc: any): SerializedAnalysis {
+     reasoning: doc.reasoning ?? "",
+     suggestedReply: doc.suggestedReply ?? "",
+     createdAt: formatRelativeDate(doc.createdAt),
++    createdAtIso: new Date(doc.createdAt).toISOString(),
+   };
+ }
+ 
+diff --git a/src/lib/mock-data.ts b/src/lib/mock-data.ts
+deleted file mode 100644
+index 43a2da7..0000000
+--- a/src/lib/mock-data.ts
++++ /dev/null
+@@ -1,337 +0,0 @@
+-export type ProjectStatus = "on_track" | "at_risk" | "scope_creep" | "completed";
+-export type RiskLevel = "low" | "medium" | "high";
+-
+-export interface Project {
+-  id: string;
+-  name: string;
+-  client: string;
+-  clientInitials: string;
+-  budget: number;
+-  hoursAllocated: number;
+-  hoursUsed: number;
+-  progress: number;
+-  status: ProjectStatus;
+-  risk: RiskLevel;
+-  updatedAt: string;
+-  contract: string;
+-  scopeItems: string[];
+-  outOfScope: string[];
+-}
+-
+-export interface EmailThread {
+-  id: string;
+-  projectId: string;
+-  from: string;
+-  fromInitials: string;
+-  subject: string;
+-  preview: string;
+-  body: string;
+-  receivedAt: string;
+-  analyzed: boolean;
+-  risk: RiskLevel;
+-  unread?: boolean;
+-}
+-
+-export interface Analysis {
+-  id: string;
+-  projectId: string;
+-  emailId: string;
+-  createdAt: string;
+-  verdict: "in_scope" | "out_of_scope" | "mixed";
+-  confidence: number;
+-  additionalHours: number;
+-  timelineImpactDays: number;
+-  suggestedCost: number;
+-  includedFeatures: string[];
+-  outOfScopeFeatures: string[];
+-  reasoning: string;
+-  suggestedReply: string;
+-}
+-
+-export const projects: Project[] = [
+-  {
+-    id: "atlas-commerce",
+-    name: "Atlas Commerce Platform",
+-    client: "Atlas Retail Group",
+-    clientInitials: "AR",
+-    budget: 48000,
+-    hoursAllocated: 320,
+-    hoursUsed: 214,
+-    progress: 67,
+-    status: "at_risk",
+-    risk: "high",
+-    updatedAt: "2 hours ago",
+-    contract:
+-      "Design and development of a headless commerce storefront including product catalog, cart, checkout, and Stripe integration. Excludes: native mobile apps, third-party ERP integrations, custom CMS.",
+-    scopeItems: [
+-      "Storefront (Next.js + Shopify Hydrogen)",
+-      "Product catalog with filtering",
+-      "Cart & Stripe checkout",
+-      "Account dashboard",
+-      "Basic SEO & analytics setup",
+-    ],
+-    outOfScope: [
+-      "Native iOS / Android apps",
+-      "SAP / NetSuite integration",
+-      "Custom headless CMS",
+-      "Multi-currency & tax engine",
+-    ],
+-  },
+-  {
+-    id: "north-star-brand",
+-    name: "North Star Rebrand",
+-    client: "North Star Labs",
+-    clientInitials: "NS",
+-    budget: 22500,
+-    hoursAllocated: 180,
+-    hoursUsed: 96,
+-    progress: 53,
+-    status: "on_track",
+-    risk: "low",
+-    updatedAt: "yesterday",
+-    contract:
+-      "Brand identity system: logo, typography, color, 40-page brand guidelines, and marketing site homepage template.",
+-    scopeItems: ["Logo suite", "Type system", "Brand guidelines PDF", "Homepage Figma"],
+-    outOfScope: ["Full marketing website build", "Motion / video assets"],
+-  },
+-  {
+-    id: "helix-ai",
+-    name: "Helix AI Onboarding",
+-    client: "Helix Health",
+-    clientInitials: "HH",
+-    budget: 36000,
+-    hoursAllocated: 240,
+-    hoursUsed: 118,
+-    progress: 49,
+-    status: "scope_creep",
+-    risk: "high",
+-    updatedAt: "3 hours ago",
+-    contract:
+-      "AI-powered onboarding flow for clinician portal. Includes 6 screens, LLM prompt design, and analytics events.",
+-    scopeItems: ["6 onboarding screens", "Prompt engineering", "Segment analytics"],
+-    outOfScope: ["HIPAA compliance audit", "EMR integrations", "Voice input"],
+-  },
+-  {
+-    id: "orbit-mobile",
+-    name: "Orbit iOS App v2",
+-    client: "Orbit Travel",
+-    clientInitials: "OT",
+-    budget: 58000,
+-    hoursAllocated: 400,
+-    hoursUsed: 388,
+-    progress: 92,
+-    status: "on_track",
+-    risk: "medium",
+-    updatedAt: "1 day ago",
+-    contract: "Rebuild of Orbit iOS app in SwiftUI with new booking flow and loyalty program.",
+-    scopeItems: ["SwiftUI rebuild", "Booking flow", "Loyalty module"],
+-    outOfScope: ["Android version", "Backend rewrite"],
+-  },
+-  {
+-    id: "vanta-dashboard",
+-    name: "Vanta Ops Dashboard",
+-    client: "Vanta Logistics",
+-    clientInitials: "VL",
+-    budget: 41000,
+-    hoursAllocated: 260,
+-    hoursUsed: 260,
+-    progress: 100,
+-    status: "completed",
+-    risk: "low",
+-    updatedAt: "last week",
+-    contract: "Internal ops dashboard with fleet tracking and SLA reporting.",
+-    scopeItems: ["Fleet map", "SLA reports", "Role-based access"],
+-    outOfScope: ["Mobile app"],
+-  },
+-];
+-
+-export const emails: EmailThread[] = [
+-  {
+-    id: "email-1",
+-    projectId: "atlas-commerce",
+-    from: "Priya Shah",
+-    fromInitials: "PS",
+-    subject: "Quick addition — can we get an iOS app too?",
+-    preview:
+-      "Loving the storefront work. The exec team is asking if we can also ship a native iOS app alongside launch…",
+-    body: `Hi team,
+-
+-Loving how the storefront is coming together — the checkout flow feels really tight.
+-
+-Quick one from our exec review this morning: the leadership team would love to also have a native iOS app ready alongside the web launch. Nothing too crazy, just the browse + cart + checkout experience, and probably push notifications for order updates.
+-
+-Also, while we're at it, could we hook this into our NetSuite instance so inventory syncs automatically? Should be straightforward.
+-
+-Ideally we'd still hit the March 14 launch date. Let me know!
+-
+-Best,
+-Priya`,
+-    receivedAt: "2h ago",
+-    analyzed: true,
+-    risk: "high",
+-    unread: true,
+-  },
+-  {
+-    id: "email-2",
+-    projectId: "helix-ai",
+-    from: "Dr. Marcus Wen",
+-    fromInitials: "MW",
+-    subject: "Voice input for the onboarding?",
+-    preview:
+-      "Our clinicians have been asking about dictation for the intake questions. Would love to explore…",
+-    body: `Hi,\n\nGreat progress on the onboarding. One request from the clinical team: they'd love voice dictation for the intake questions.\n\nCan we get this in before rollout next month?\n\nThanks,\nMarcus`,
+-    receivedAt: "5h ago",
+-    analyzed: true,
+-    risk: "high",
+-  },
+-  {
+-    id: "email-3",
+-    projectId: "north-star-brand",
+-    from: "Elena Ortiz",
+-    fromInitials: "EO",
+-    subject: "Small tweak to the logo mark",
+-    preview:
+-      "Could we try a version where the mark sits slightly higher relative to the wordmark? Tiny thing.",
+-    body: `Hey — really happy with direction 2. Small ask: could you try a version where the mark sits about 4px higher relative to the wordmark? Just to test balance.\n\nThanks!`,
+-    receivedAt: "1d ago",
+-    analyzed: true,
+-    risk: "low",
+-  },
+-  {
+-    id: "email-4",
+-    projectId: "orbit-mobile",
+-    from: "Sam Kobayashi",
+-    fromInitials: "SK",
+-    subject: "Loyalty tier icons — final round",
+-    preview: "Attached the final tier icons. Ready when you are for QA sign-off.",
+-    body: "Final tier icons attached. Ready for QA.",
+-    receivedAt: "1d ago",
+-    analyzed: false,
+-    risk: "low",
+-  },
+-];
+-
+-export const analyses: Analysis[] = [
+-  {
+-    id: "an-1",
+-    projectId: "atlas-commerce",
+-    emailId: "email-1",
+-    createdAt: "2h ago",
+-    verdict: "out_of_scope",
+-    confidence: 94,
+-    additionalHours: 168,
+-    timelineImpactDays: 21,
+-    suggestedCost: 22400,
+-    includedFeatures: ["Web checkout (already in contract)"],
+-    outOfScopeFeatures: [
+-      "Native iOS app (browse + cart + checkout)",
+-      "Push notifications for order updates",
+-      "NetSuite inventory sync",
+-    ],
+-    reasoning:
+-      "The original SOW explicitly excludes native mobile applications and third-party ERP integrations (see §4.2 and §4.5). The request adds two distinct workstreams: an iOS build (~120h) and a NetSuite integration (~48h). Delivering both by March 14 is not feasible without extending scope, timeline, and budget.",
+-    suggestedReply: `Hi Priya,
+-
+-Thanks — glad the storefront is landing well.
+-
+-Both the native iOS app and NetSuite sync fall outside our current statement of work (§4.2 and §4.5 of the contract). I'm happy to take them on, but I want to be upfront about what it means for scope so nothing surprises you closer to launch:
+-
+-• Native iOS app (browse, cart, checkout, push): ~120 hours
+-• NetSuite inventory sync: ~48 hours
+-• Combined budget impact: ~₹22,400
+-• Timeline: adds approximately 3 weeks — the March 14 launch would move to April 4
+-
+-If you'd like, I can put together a short change order covering both, or we can phase the iOS app as a v1.1 after the web launch so you still hit March 14. Let me know what works best on your side and I'll get it moving today.
+-
+-Best,
+-Alex`,
+-  },
+-];
+-
+-export const kpis = {
+-  revenueProtected: 148200,
+-  hoursSaved: 312,
+-  emailsAnalyzed: 1284,
+-  activeAlerts: 7,
+-};
+-
+-export const activity = [
+-  {
+-    id: 1,
+-    type: "analysis",
+-    text: "Scope creep detected on Atlas Commerce",
+-    meta: "₹22.4k impact",
+-    time: "2h ago",
+-  },
+-  {
+-    id: 2,
+-    type: "email",
+-    text: "New client email from Dr. Marcus Wen",
+-    meta: "Helix AI Onboarding",
+-    time: "5h ago",
+-  },
+-  {
+-    id: 3,
+-    type: "reply",
+-    text: "Change order reply sent to Priya Shah",
+-    meta: "Atlas Commerce",
+-    time: "yesterday",
+-  },
+-  {
+-    id: 4,
+-    type: "project",
+-    text: "Vanta Ops Dashboard marked as completed",
+-    meta: "₹41k final",
+-    time: "3d ago",
+-  },
+-  {
+-    id: 5,
+-    type: "analysis",
+-    text: "Voice input flagged as out of scope",
+-    meta: "Helix AI Onboarding",
+-    time: "5h ago",
+-  },
+-];
+-
+-export const revenueChart = [
+-  { month: "Jul", protected: 8200, invoiced: 24000 },
+-  { month: "Aug", protected: 12400, invoiced: 28000 },
+-  { month: "Sep", protected: 18900, invoiced: 32000 },
+-  { month: "Oct", protected: 15200, invoiced: 30000 },
+-  { month: "Nov", protected: 22100, invoiced: 36000 },
+-  { month: "Dec", protected: 28400, invoiced: 41000 },
+-  { month: "Jan", protected: 43000, invoiced: 48000 },
+-];
+-
+-export const riskDistribution = [
+-  { name: "In scope", value: 62, color: "var(--success)" },
+-  { name: "Minor scope creep", value: 24, color: "var(--warning)" },
+-  { name: "Major scope creep", value: 14, color: "var(--destructive)" },
+-];
+-
+-export const scopeTrend = [
+-  { week: "W1", detected: 2 },
+-  { week: "W2", detected: 4 },
+-  { week: "W3", detected: 3 },
+-  { week: "W4", detected: 6 },
+-  { week: "W5", detected: 5 },
+-  { week: "W6", detected: 8 },
+-  { week: "W7", detected: 7 },
+-  { week: "W8", detected: 11 },
+-];
+-
+-export function findProject(id: string) {
+-  return projects.find((p) => p.id === id);
+-}
+-export function findEmail(id: string) {
+-  return emails.find((e) => e.id === id);
+-}
+-export function findAnalysis(id: string) {
+-  return analyses.find((a) => a.id === id);
+-}
+-export function analysisForEmail(emailId: string) {
+-  return analyses.find((a) => a.emailId === emailId);
+-}
+-export function emailsForProject(projectId: string) {
+-  return emails.filter((e) => e.projectId === projectId);
+-}
+diff --git a/src/lib/projects.server.ts b/src/lib/projects.server.ts
+index ad067c0..2f7322d 100644
+--- a/src/lib/projects.server.ts
++++ b/src/lib/projects.server.ts
+@@ -83,14 +83,7 @@ export const listProjects = createServerFn({ method: "GET" }).handler(async () =
+   const user = await requireSession();
+   await connectToDatabase();
+   // ✅ Owner filter — only returns the calling user's projects
+-  let projects = await Project.find({ owner: user._id }).sort({ updatedAt: -1 }).lean();
+-
+-  // If the user is new and has no projects, auto-seed sample data scoped to them
+-  if (projects.length === 0) {
+-    const { seedUserData } = await import("./seed.server");
+-    await seedUserData(user._id);
+-    projects = await Project.find({ owner: user._id }).sort({ updatedAt: -1 }).lean();
+-  }
++  const projects = await Project.find({ owner: user._id }).sort({ updatedAt: -1 }).lean();
+ 
+   return projects.map(serialize);
+ });
+diff --git a/src/lib/seed.server.ts b/src/lib/seed.server.ts
+deleted file mode 100644
+index b992809..0000000
+--- a/src/lib/seed.server.ts
++++ /dev/null
+@@ -1,133 +0,0 @@
+-import mongoose from "mongoose";
+-import { Project } from "../models/Project";
+-import { EmailThread } from "../models/EmailThread";
+-import { Analysis } from "../models/Analysis";
+-import {
+-  projects as mockProjects,
+-  emails as mockEmails,
+-  analyses as mockAnalyses,
+-} from "./mock-data";
+-
+-/**
+- * Automatically seeds the database for a user if they have no projects.
+- * Generates valid ObjectIds and maintains correct relationships between
+- * Projects, Emails, and Analyses.
+- */
+-export async function seedUserData(userId: string | mongoose.Types.ObjectId) {
+-  const ownerId = typeof userId === "string" ? new mongoose.Types.ObjectId(userId) : userId;
+-
+-  // 1. Generate ObjectIds for projects and emails to map relationships correctly
+-  const projectIdMap = new Map<string, mongoose.Types.ObjectId>();
+-  const emailIdMap = new Map<string, mongoose.Types.ObjectId>();
+-
+-  for (const mockProj of mockProjects) {
+-    projectIdMap.set(mockProj.id, new mongoose.Types.ObjectId());
+-  }
+-
+-  for (const mockEmail of mockEmails) {
+-    emailIdMap.set(mockEmail.id, new mongoose.Types.ObjectId());
+-  }
+-
+-  // 2. Prepare and save Projects
+-  const projectDocs = mockProjects.map((p) => {
+-    const newId = projectIdMap.get(p.id)!;
+-    return new Project({
+-      _id: newId,
+-      owner: ownerId,
+-      name: p.name,
+-      client: p.client,
+-      clientInitials: p.clientInitials,
+-      budget: p.budget,
+-      hourlyRate: 150, // default rate for mock projects
+-      hoursAllocated: p.hoursAllocated,
+-      hoursUsed: p.hoursUsed,
+-      progress: p.progress,
+-      status: p.status,
+-      risk: p.risk,
+-      contract: p.contract,
+-      scopeItems: p.scopeItems,
+-      outOfScope: p.outOfScope,
+-    });
+-  });
+-
+-  await Project.insertMany(projectDocs);
+-
+-  // 3. Prepare and save Email Threads
+-  const emailDocs = mockEmails.map((e) => {
+-    const newId = emailIdMap.get(e.id)!;
+-    const projectDbId = projectIdMap.get(e.projectId)!;
+-    return new EmailThread({
+-      _id: newId,
+-      owner: ownerId,
+-      projectId: projectDbId,
+-      from: e.from,
+-      fromInitials: e.fromInitials,
+-      subject: e.subject,
+-      preview: e.preview,
+-      body: e.body,
+-      receivedAt: parseMockRelativeDate(e.receivedAt),
+-      analyzed: e.analyzed,
+-      risk: e.risk,
+-      unread: e.unread ?? false,
+-    });
+-  });
+-
+-  await EmailThread.insertMany(emailDocs);
+-
+-  // 4. Prepare and save Analyses
+-  const analysisDocs = mockAnalyses.map((a) => {
+-    const projectDbId = projectIdMap.get(a.projectId)!;
+-    const emailDbId = emailIdMap.get(a.emailId)!;
+-    return new Analysis({
+-      owner: ownerId,
+-      projectId: projectDbId,
+-      emailId: emailDbId,
+-      verdict: a.verdict,
+-      confidence: a.confidence,
+-      additionalHours: a.additionalHours,
+-      timelineImpactDays: a.timelineImpactDays,
+-      suggestedCost: a.suggestedCost,
+-      includedFeatures: a.includedFeatures,
+-      outOfScopeFeatures: a.outOfScopeFeatures,
+-      reasoning: a.reasoning,
+-      suggestedReply: a.suggestedReply,
+-    });
+-  });
+-
+-  await Analysis.insertMany(analysisDocs);
+-}
+-
+-/**
+- * Parses mock date strings like "2h ago", "5h ago", "1d ago", "yesterday", "last week"
+- * into a valid Date object.
+- */
+-function parseMockRelativeDate(relativeStr: string): Date {
+-  const now = new Date();
+-  if (relativeStr.includes("just now")) {
+-    return now;
+-  }
+-  const matchMin = relativeStr.match(/^(\d+)m/);
+-  if (matchMin) {
+-    now.setMinutes(now.getMinutes() - parseInt(matchMin[1], 10));
+-    return now;
+-  }
+-  const matchHour = relativeStr.match(/^(\d+)h/);
+-  if (matchHour) {
+-    now.setHours(now.getHours() - parseInt(matchHour[1], 10));
+-    return now;
+-  }
+-  const matchDay = relativeStr.match(/^(\d+)d/);
+-  if (matchDay) {
+-    now.setDate(now.getDate() - parseInt(matchDay[1], 10));
+-    return now;
+-  }
+-  if (relativeStr.includes("yesterday")) {
+-    now.setDate(now.getDate() - 1);
+-    return now;
+-  }
+-  if (relativeStr.includes("last week")) {
+-    now.setDate(now.getDate() - 7);
+-    return now;
+-  }
+-  return now;
+-}
+diff --git a/src/routes/app.analytics.tsx b/src/routes/app.analytics.tsx
+index bf7ba8c..2a1981f 100644
+--- a/src/routes/app.analytics.tsx
++++ b/src/routes/app.analytics.tsx
+@@ -76,15 +76,12 @@ function Analytics() {
+           },
+         ]
+       : [
+-          { name: "In scope", value: 100, color: "var(--success)" },
++          { name: "In scope", value: 0, color: "var(--success)" },
+           { name: "Minor scope creep", value: 0, color: "var(--warning)" },
+           { name: "Major scope creep", value: 0, color: "var(--destructive)" },
+         ];
+ 
+-  // 2. Dynamic Revenue Chart (rolling last 6 months)
+-  const baselineInvoiced = [24000, 28000, 32000, 30000, 36000, 48000];
+-  const baselineProtected = [8200, 12400, 18900, 15200, 22100, 43000];
+-
++  // 2. Revenue Chart (rolling last 6 months) — built entirely from the user's own data
+   const dynamicRevenueChart = Array.from({ length: 6 }).map((_, idx) => {
+     const d = new Date();
+     d.setMonth(d.getMonth() - (5 - idx));
+@@ -103,7 +100,7 @@ function Analytics() {
+     // Sum user's suggested costs created in this specific month/year
+     const userProtected = analyses
+       .filter((a) => {
+-        const aDate = new Date(a.createdAt);
++        const aDate = new Date(a.createdAtIso);
+         return (
+           aDate.getMonth() === rawMonth && aDate.getFullYear() === year && a.verdict !== "in_scope"
+         );
+@@ -112,13 +109,12 @@ function Analytics() {
+ 
+     return {
+       month: mName,
+-      invoiced: baselineInvoiced[idx] + userInvoiced,
+-      protected: baselineProtected[idx] + userProtected,
++      invoiced: userInvoiced,
++      protected: userProtected,
+     };
+   });
+ 
+-  // 3. Dynamic Scope Trend (rolling last 8 weeks)
+-  const baselineTrend = [2, 4, 3, 6, 5, 8, 7, 11];
++  // 3. Scope Trend (rolling last 8 weeks) — built entirely from the user's own data
+   const dynamicScopeTrend = Array.from({ length: 8 }).map((_, idx) => {
+     const weekStart = new Date();
+     weekStart.setDate(weekStart.getDate() - (7 - idx) * 7);
+@@ -126,13 +122,13 @@ function Analytics() {
+     weekEnd.setDate(weekEnd.getDate() + 7);
+ 
+     const userCreeps = analyses.filter((a) => {
+-      const aDate = new Date(a.createdAt);
++      const aDate = new Date(a.createdAtIso);
+       return aDate >= weekStart && aDate < weekEnd && a.verdict !== "in_scope";
+     }).length;
+ 
+     return {
+       week: `W${idx + 1}`,
+-      detected: baselineTrend[idx] + userCreeps,
++      detected: userCreeps,
+     };
+   });
+ 
+diff --git a/src/routes/app.index.tsx b/src/routes/app.index.tsx
+index 415e4dd..6ec2205 100644
+--- a/src/routes/app.index.tsx
++++ b/src/routes/app.index.tsx
+@@ -10,21 +10,9 @@ import {
+   FileText,
+   Plus,
+ } from "lucide-react";
+-import {
+-  AreaChart,
+-  Area,
+-  ResponsiveContainer,
+-  Tooltip,
+-  XAxis,
+-  YAxis,
+-  CartesianGrid,
+-} from "recharts";
+ import { AppShell, Section } from "@/components/app-shell";
+ import { StatCard } from "@/components/stat-card";
+ import { StatusPill } from "@/components/status-pill";
+-// Chart data and activity feed remain from mock-data until analytics aggregation
+-// is implemented in a future phase.
+-import { activity, revenueChart } from "@/lib/mock-data";
+ import { Button } from "@/components/ui/button";
+ import { listProjects } from "@/lib/projects.server";
+ import { listAllUserEmails } from "@/lib/emails.server";
+@@ -72,6 +60,50 @@ function Dashboard() {
+   // Build a project name map for the analyses section
+   const projectNameById = new Map(projects.map((p) => [p.id, p.name]));
+ 
++  // Build a real activity feed from the user's own projects, emails, and analyses.
++  // Each list is already sorted most-recent-first by its server query, so we take
++  // the top items from each (using their own pre-formatted relative time strings)
++  // rather than re-parsing them into Date objects.
++  type ActivityItem = {
++    id: string;
++    type: "analysis" | "email" | "project";
++    text: string;
++    meta: string;
++    time: string;
++  };
++  const activity: ActivityItem[] = [
++    ...analyses.slice(0, 3).map((a) => ({
++      id: `analysis-${a.id}`,
++      type: "analysis" as const,
++      text:
++        a.verdict === "out_of_scope"
++          ? `Scope creep detected on ${projectNameById.get(a.projectId) ?? "a project"}`
++          : `Analysis completed on ${projectNameById.get(a.projectId) ?? "a project"}`,
++      meta: `₹${(a.suggestedCost / 1000).toFixed(1)}k impact`,
++      time: a.createdAt,
++    })),
++    ...emails.slice(0, 3).map((e) => ({
++      id: `email-${e.id}`,
++      type: "email" as const,
++      text: `New client email from ${e.from}`,
++      meta: projectNameById.get(e.projectId) ?? "Unknown project",
++      time: e.receivedAt,
++    })),
++    ...projects
++      .filter((p) => p.status === "completed")
++      .slice(0, 2)
++      .map((p) => ({
++        id: `project-${p.id}`,
++        type: "project" as const,
++        text: `${p.name} marked as completed`,
++        meta: `₹${(p.budget / 1000).toFixed(1)}k final`,
++        time: p.updatedAt,
++      })),
++  ].slice(0, 5);
++
++  // Total invoiced across the user's own projects, for the revenue overview panel
++  const totalInvoiced = projects.reduce((sum, p) => sum + p.budget, 0);
++
+   const hour = new Date().getHours();
+   const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
+ 
+@@ -133,77 +165,58 @@ function Dashboard() {
+                   Revenue overview
+                 </div>
+                 <div className="mt-1 flex items-baseline gap-2">
+-                  <span className="font-display text-2xl font-semibold tabular-nums">₹205,000</span>
+-                  <span className="text-[12px] text-[color:var(--success)]">
+-                    +₹43k protected in Jan
++                  <span className="font-display text-2xl font-semibold tabular-nums">
++                    ₹{totalInvoiced.toLocaleString()}
+                   </span>
++                  {kpis.revenueProtected > 0 ? (
++                    <span className="text-[12px] text-[color:var(--success)]">
++                      +₹{(kpis.revenueProtected / 1000).toFixed(1)}k protected total
++                    </span>
++                  ) : (
++                    <span className="text-[12px] text-muted-foreground">
++                      No scope creep blocked yet
++                    </span>
++                  )}
+                 </div>
+               </div>
+-              <div className="flex gap-1 rounded-lg border border-border bg-background/40 p-0.5 text-[11px]">
+-                {["7d", "30d", "90d", "12m"].map((t, i) => (
+-                  <button
+-                    key={t}
+-                    className={`rounded-md px-2 py-1 ${
+-                      i === 3 ? "bg-accent text-foreground" : "text-muted-foreground"
+-                    }`}
+-                  >
+-                    {t}
+-                  </button>
+-                ))}
+-              </div>
+-            </div>
+-            <div className="mt-6 h-64">
+-              <ResponsiveContainer width="100%" height="100%">
+-                <AreaChart data={revenueChart} margin={{ top: 8, right: 8, left: -20, bottom: 0 }}>
+-                  <defs>
+-                    <linearGradient id="gInvoiced" x1="0" y1="0" x2="0" y2="1">
+-                      <stop offset="0%" stopColor="var(--primary)" stopOpacity={0.35} />
+-                      <stop offset="100%" stopColor="var(--primary)" stopOpacity={0} />
+-                    </linearGradient>
+-                    <linearGradient id="gProtected" x1="0" y1="0" x2="0" y2="1">
+-                      <stop offset="0%" stopColor="var(--success)" stopOpacity={0.3} />
+-                      <stop offset="100%" stopColor="var(--success)" stopOpacity={0} />
+-                    </linearGradient>
+-                  </defs>
+-                  <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" vertical={false} />
+-                  <XAxis
+-                    dataKey="month"
+-                    tick={{ fill: "var(--muted-foreground)", fontSize: 11 }}
+-                    axisLine={false}
+-                    tickLine={false}
+-                  />
+-                  <YAxis
+-                    tick={{ fill: "var(--muted-foreground)", fontSize: 11 }}
+-                    axisLine={false}
+-                    tickLine={false}
+-                    tickFormatter={(v: number) => `₹${v / 1000}k`}
+-                  />
+-                  <Tooltip
+-                    contentStyle={{
+-                      background: "var(--popover)",
+-                      border: "1px solid var(--border)",
+-                      borderRadius: 12,
+-                      fontSize: 12,
+-                    }}
+-                    labelStyle={{ color: "var(--muted-foreground)" }}
+-                  />
+-                  <Area
+-                    type="monotone"
+-                    dataKey="invoiced"
+-                    stroke="var(--primary)"
+-                    strokeWidth={2}
+-                    fill="url(#gInvoiced)"
+-                  />
+-                  <Area
+-                    type="monotone"
+-                    dataKey="protected"
+-                    stroke="var(--success)"
+-                    strokeWidth={2}
+-                    fill="url(#gProtected)"
+-                  />
+-                </AreaChart>
+-              </ResponsiveContainer>
+             </div>
++            {projects.length === 0 ? (
++              <div className="mt-6 flex h-64 flex-col items-center justify-center gap-2 text-center">
++                <div className="text-[13px] text-muted-foreground">
++                  No revenue data yet — create your first project to start tracking it
++                </div>
++              </div>
++            ) : (
++              <div className="mt-6 space-y-4">
++                <div>
++                  <div className="mb-1 flex items-center justify-between text-[12px] text-muted-foreground">
++                    <span>Total invoiced</span>
++                    <span>₹{totalInvoiced.toLocaleString()}</span>
++                  </div>
++                  <div className="h-2 overflow-hidden rounded-full bg-accent">
++                    <div className="h-full w-full rounded-full bg-primary" />
++                  </div>
++                </div>
++                <div>
++                  <div className="mb-1 flex items-center justify-between text-[12px] text-muted-foreground">
++                    <span>Revenue protected from scope creep</span>
++                    <span>₹{kpis.revenueProtected.toLocaleString()}</span>
++                  </div>
++                  <div className="h-2 overflow-hidden rounded-full bg-accent">
++                    <div
++                      className="h-full rounded-full bg-[color:var(--success)]"
++                      style={{
++                        width: `${
++                          totalInvoiced > 0
++                            ? Math.min(100, (kpis.revenueProtected / totalInvoiced) * 100)
++                            : 0
++                        }%`,
++                      }}
++                    />
++                  </div>
++                </div>
++              </div>
++            )}
+           </motion.div>
+ 
+           <motion.div
+@@ -222,26 +235,31 @@ function Dashboard() {
+               </Link>
+             </div>
+             <div className="mt-4 space-y-4">
+-              {activity.map((a) => (
+-                <div key={a.id} className="flex gap-3">
+-                  <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-accent">
+-                    {a.type === "analysis" && <Sparkles className="h-3.5 w-3.5 text-primary" />}
+-                    {a.type === "email" && <Mail className="h-3.5 w-3.5 text-muted-foreground" />}
+-                    {a.type === "reply" && (
+-                      <ArrowUpRight className="h-3.5 w-3.5 text-[color:var(--success)]" />
+-                    )}
+-                    {a.type === "project" && (
+-                      <FileText className="h-3.5 w-3.5 text-muted-foreground" />
+-                    )}
+-                  </div>
+-                  <div className="min-w-0 flex-1">
+-                    <div className="text-[13px] leading-snug text-foreground">{a.text}</div>
+-                    <div className="mt-0.5 text-[11px] text-muted-foreground">
+-                      {a.meta} · {a.time}
++              {activity.length === 0 ? (
++                <div className="flex flex-col items-center justify-center gap-2 py-10 text-center">
++                  <div className="text-[13px] text-muted-foreground">No activity yet</div>
++                </div>
++              ) : (
++                activity.map((a) => (
++                  <div key={a.id} className="flex gap-3">
++                    <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-accent">
++                      {a.type === "analysis" && <Sparkles className="h-3.5 w-3.5 text-primary" />}
++                      {a.type === "email" && (
++                        <Mail className="h-3.5 w-3.5 text-muted-foreground" />
++                      )}
++                      {a.type === "project" && (
++                        <FileText className="h-3.5 w-3.5 text-muted-foreground" />
++                      )}
++                    </div>
++                    <div className="min-w-0 flex-1">
++                      <div className="text-[13px] leading-snug text-foreground">{a.text}</div>
++                      <div className="mt-0.5 text-[11px] text-muted-foreground">
++                        {a.meta} · {a.time}
++                      </div>
+                     </div>
+                   </div>
+-                </div>
+-              ))}
++                ))
++              )}
+             </div>
+           </motion.div>
+         </div>
+diff --git a/src/routes/app.notifications.tsx b/src/routes/app.notifications.tsx
+index d3a3ab4..7dd9ce2 100644
+--- a/src/routes/app.notifications.tsx
++++ b/src/routes/app.notifications.tsx
+@@ -1,83 +1,109 @@
+-import { createFileRoute } from "@tanstack/react-router";
+-import { Bell, Sparkles, Mail, ArrowUpRight, FileText } from "lucide-react";
+-import { AppShell } from "@/components/app-shell";
+-
+-export const Route = createFileRoute("/app/notifications")({
+-  component: NotificationsPage,
+-  head: () => ({ meta: [{ title: "Notifications — ScopeGuard" }] }),
+-});
+-
+-const items = [
+-  {
+-    icon: Sparkles,
+-    tone: "primary",
+-    t: "Scope creep detected on Atlas Commerce",
+-    m: "₹22.4k impact · Priya Shah requested iOS + NetSuite",
+-    time: "2h ago",
+-    unread: true,
+-  },
+-  {
+-    icon: Mail,
+-    tone: "muted",
+-    t: "New email from Dr. Marcus Wen",
+-    m: "Helix AI Onboarding · voice input request",
+-    time: "5h ago",
+-    unread: true,
+-  },
+-  {
+-    icon: ArrowUpRight,
+-    tone: "success",
+-    t: "Change order reply approved by client",
+-    m: "Atlas Commerce · Priya accepted +₹22.4k",
+-    time: "yesterday",
+-  },
+-  {
+-    icon: FileText,
+-    tone: "muted",
+-    t: "Vanta Ops Dashboard marked completed",
+-    m: "₹41k final invoice generated",
+-    time: "3d ago",
+-  },
+-  {
+-    icon: Bell,
+-    tone: "muted",
+-    t: "Weekly digest ready",
+-    m: "3 alerts, ₹43k protected this week",
+-    time: "1w ago",
+-  },
+-];
+-
+-function NotificationsPage() {
+-  return (
+-    <AppShell title="Notifications" subtitle="What's changed across your workspace.">
+-      <div className="panel divide-y divide-border overflow-hidden">
+-        {items.map((it, i) => {
+-          const Icon = it.icon;
+-          return (
+-            <div key={i} className="flex gap-4 px-5 py-4">
+-              <div
+-                className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${
+-                  it.tone === "primary"
+-                    ? "bg-primary/15 text-primary"
+-                    : it.tone === "success"
+-                      ? "bg-[color-mix(in_oklab,var(--success)_16%,transparent)] text-[color:var(--success)]"
+-                      : "bg-accent text-muted-foreground"
+-                }`}
+-              >
+-                <Icon className="h-4 w-4" strokeWidth={1.75} />
+-              </div>
+-              <div className="flex-1">
+-                <div className="flex items-baseline justify-between gap-2">
+-                  <div className="text-[13px] font-medium">{it.t}</div>
+-                  <div className="text-[11px] text-muted-foreground">{it.time}</div>
+-                </div>
+-                <div className="mt-0.5 text-[12px] text-muted-foreground">{it.m}</div>
+-              </div>
+-              {it.unread && <div className="mt-2 h-1.5 w-1.5 rounded-full bg-primary" />}
+-            </div>
+-          );
+-        })}
+-      </div>
+-    </AppShell>
+-  );
+-}
++import { createFileRoute } from "@tanstack/react-router";
++import { Bell, Sparkles, Mail, FileText } from "lucide-react";
++import { AppShell } from "@/components/app-shell";
++import { listProjects } from "@/lib/projects.server";
++import { listAllUserEmails } from "@/lib/emails.server";
++import { listAllUserAnalyses } from "@/lib/analyses.server";
++
++export const Route = createFileRoute("/app/notifications")({
++  loader: async () => {
++    const [projects, emails, analyses] = await Promise.all([
++      listProjects(),
++      listAllUserEmails(),
++      listAllUserAnalyses(),
++    ]);
++    return { projects, emails, analyses };
++  },
++  component: NotificationsPage,
++  head: () => ({ meta: [{ title: "Notifications — ScopeGuard" }] }),
++});
++
++type NotificationItem = {
++  id: string;
++  icon: typeof Sparkles;
++  tone: "primary" | "success" | "muted";
++  t: string;
++  m: string;
++  time: string;
++  unread?: boolean;
++};
++
++function NotificationsPage() {
++  const { projects, emails, analyses } = Route.useLoaderData();
++  const projectNameById = new Map(projects.map((p) => [p.id, p.name]));
++
++  // Build notifications from the user's own data — no seeded/demo entries.
++  const items: NotificationItem[] = [
++    ...analyses.map((a) => ({
++      id: `analysis-${a.id}`,
++      icon: Sparkles,
++      tone: "primary" as const,
++      t:
++        a.verdict === "out_of_scope"
++          ? `Scope creep detected on ${projectNameById.get(a.projectId) ?? "a project"}`
++          : `Analysis completed on ${projectNameById.get(a.projectId) ?? "a project"}`,
++      m: `₹${(a.suggestedCost / 1000).toFixed(1)}k impact · ${a.additionalHours}h additional`,
++      time: a.createdAt,
++      unread: true,
++    })),
++    ...emails.map((e) => ({
++      id: `email-${e.id}`,
++      icon: Mail,
++      tone: "muted" as const,
++      t: `New email from ${e.from}`,
++      m: `${projectNameById.get(e.projectId) ?? "Unknown project"} · ${e.subject}`,
++      time: e.receivedAt,
++      unread: e.unread,
++    })),
++    ...projects
++      .filter((p) => p.status === "completed")
++      .map((p) => ({
++        id: `project-${p.id}`,
++        icon: FileText,
++        tone: "muted" as const,
++        t: `${p.name} marked completed`,
++        m: `₹${(p.budget / 1000).toFixed(1)}k final`,
++        time: p.updatedAt,
++      })),
++  ];
++
++  return (
++    <AppShell title="Notifications" subtitle="What's changed across your workspace.">
++      <div className="panel divide-y divide-border overflow-hidden">
++        {items.length === 0 ? (
++          <div className="flex flex-col items-center justify-center gap-3 px-8 py-16 text-center">
++            <Bell className="h-7 w-7 text-muted-foreground/40" />
++            <div className="text-[13px] text-muted-foreground">No notifications yet</div>
++          </div>
++        ) : (
++          items.map((it) => {
++            const Icon = it.icon;
++            return (
++              <div key={it.id} className="flex gap-4 px-5 py-4">
++                <div
++                  className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${
++                    it.tone === "primary"
++                      ? "bg-primary/15 text-primary"
++                      : it.tone === "success"
++                        ? "bg-[color-mix(in_oklab,var(--success)_16%,transparent)] text-[color:var(--success)]"
++                        : "bg-accent text-muted-foreground"
++                  }`}
++                >
++                  <Icon className="h-4 w-4" strokeWidth={1.75} />
++                </div>
++                <div className="flex-1">
++                  <div className="flex items-baseline justify-between gap-2">
++                    <div className="text-[13px] font-medium">{it.t}</div>
++                    <div className="text-[11px] text-muted-foreground">{it.time}</div>
++                  </div>
++                  <div className="mt-0.5 text-[12px] text-muted-foreground">{it.m}</div>
++                </div>
++                {it.unread && <div className="mt-2 h-1.5 w-1.5 rounded-full bg-primary" />}
++              </div>
++            );
++          })
++        )}
++      </div>
++    </AppShell>
++  );
++}
+diff --git a/src/routes/register.tsx b/src/routes/register.tsx
+index 3a85f12..9312013 100644
+--- a/src/routes/register.tsx
++++ b/src/routes/register.tsx
+@@ -110,32 +110,32 @@ function RegisterPage() {
+                 <Label htmlFor="firstName" className="text-[12px]">
+                   First name
+                 </Label>
+-                <Input id="firstName" name="firstName" defaultValue="Alex" />
++                <Input id="firstName" name="firstName" placeholder="Jane" />
+               </div>
+               <div className="space-y-1.5">
+                 <Label htmlFor="lastName" className="text-[12px]">
+                   Last name
+                 </Label>
+-                <Input id="lastName" name="lastName" defaultValue="Laurent" />
++                <Input id="lastName" name="lastName" placeholder="Doe" />
+               </div>
+             </div>
+             <div className="space-y-1.5">
+               <Label htmlFor="email" className="text-[12px]">
+                 Work email
+               </Label>
+-              <Input id="email" name="email" type="email" defaultValue="alex@studio.com" />
++              <Input id="email" name="email" type="email" placeholder="you@studio.com" />
+             </div>
+             <div className="space-y-1.5">
+               <Label htmlFor="password" className="text-[12px]">
+                 Password
+               </Label>
+-              <Input id="password" name="password" type="password" defaultValue="password123" />
++              <Input id="password" name="password" type="password" placeholder="••••••••" />
+             </div>
+             <div className="space-y-1.5">
+               <Label htmlFor="workspaceName" className="text-[12px]">
+                 Workspace name
+               </Label>
+-              <Input id="workspaceName" name="workspaceName" defaultValue="Laurent Studio" />
++              <Input id="workspaceName" name="workspaceName" placeholder="Your Studio" />
+             </div>
+             {message ? <p className="text-center text-[13px] text-destructive">{message}</p> : null}
+             <Button type="submit" className="w-full">

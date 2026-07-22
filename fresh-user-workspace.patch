@@ -1,0 +1,444 @@
+diff --git a/src/lib/projects.server.ts b/src/lib/projects.server.ts
+index 633f0a0..e6d1b01 100644
+--- a/src/lib/projects.server.ts
++++ b/src/lib/projects.server.ts
+@@ -83,15 +83,7 @@ export const listProjects = createServerFn({ method: "GET" }).handler(async () =
+   const user = await requireSession();
+   await connectToDatabase();
+   // ✅ Owner filter — only returns the calling user's projects
+-  let projects = await Project.find({ owner: user._id }).sort({ updatedAt: -1 }).lean();
+-
+-  // If the user is new and has no projects, auto-seed sample data scoped to them
+-  if (projects.length === 0) {
+-    const { seedUserData } = await import("./seed.server");
+-    await seedUserData(user._id);
+-    projects = await Project.find({ owner: user._id }).sort({ updatedAt: -1 }).lean();
+-  }
+-
++  const projects = await Project.find({ owner: user._id }).sort({ updatedAt: -1 }).lean();
+   return projects.map(serialize);
+ });
+ 
+diff --git a/src/routes/app.analytics.tsx b/src/routes/app.analytics.tsx
+index c0fd79b..5089bea 100644
+--- a/src/routes/app.analytics.tsx
++++ b/src/routes/app.analytics.tsx
+@@ -81,10 +81,7 @@ function Analytics() {
+           { name: "Major scope creep", value: 0, color: "var(--destructive)" },
+         ];
+ 
+-  // 2. Dynamic Revenue Chart (rolling last 6 months)
+-  const baselineInvoiced = [24000, 28000, 32000, 30000, 36000, 48000];
+-  const baselineProtected = [8200, 12400, 18900, 15200, 22100, 43000];
+-
++  // 2. Revenue Chart (rolling last 6 months — real user data only)
+   const dynamicRevenueChart = Array.from({ length: 6 }).map((_, idx) => {
+     const d = new Date();
+     d.setMonth(d.getMonth() - (5 - idx));
+@@ -92,16 +89,14 @@ function Analytics() {
+     const year = d.getFullYear();
+     const rawMonth = d.getMonth();
+ 
+-    // Sum user's project budgets created in this specific month/year
+-    const userInvoiced = projects
++    const invoiced = projects
+       .filter((p) => {
+         const pDate = new Date(p.createdAt);
+         return pDate.getMonth() === rawMonth && pDate.getFullYear() === year;
+       })
+       .reduce((sum, p) => sum + p.budget, 0);
+ 
+-    // Sum user's suggested costs created in this specific month/year
+-    const userProtected = analyses
++    const protected_ = analyses
+       .filter((a) => {
+         const aDate = new Date(a.createdAt);
+         return (
+@@ -110,32 +105,28 @@ function Analytics() {
+       })
+       .reduce((sum, a) => sum + a.suggestedCost, 0);
+ 
+-    return {
+-      month: mName,
+-      invoiced: baselineInvoiced[idx] + userInvoiced,
+-      protected: baselineProtected[idx] + userProtected,
+-    };
++    return { month: mName, invoiced, protected: protected_ };
+   });
+ 
+-  // 3. Dynamic Scope Trend (rolling last 8 weeks)
+-  const baselineTrend = [2, 4, 3, 6, 5, 8, 7, 11];
++  const hasRevenueData = dynamicRevenueChart.some((r) => r.invoiced > 0 || r.protected > 0);
++
++  // 3. Scope Trend (rolling last 8 weeks — real user data only)
+   const dynamicScopeTrend = Array.from({ length: 8 }).map((_, idx) => {
+     const weekStart = new Date();
+     weekStart.setDate(weekStart.getDate() - (7 - idx) * 7);
+     const weekEnd = new Date(weekStart);
+     weekEnd.setDate(weekEnd.getDate() + 7);
+ 
+-    const userCreeps = analyses.filter((a) => {
++    const detected = analyses.filter((a) => {
+       const aDate = new Date(a.createdAt);
+       return aDate >= weekStart && aDate < weekEnd && a.verdict !== "in_scope";
+     }).length;
+ 
+-    return {
+-      week: `W${idx + 1}`,
+-      detected: baselineTrend[idx] + userCreeps,
+-    };
++    return { week: `W${idx + 1}`, detected };
+   });
+ 
++  const hasTrendData = dynamicScopeTrend.some((w) => w.detected > 0);
++
+   return (
+     <AppShell
+       title="Analytics"
+@@ -187,6 +178,7 @@ function Analytics() {
+               Revenue protected vs. invoiced
+             </div>
+             <div className="mt-6 h-72">
++              {hasRevenueData ? (
+               <ResponsiveContainer width="100%" height="100%">
+                 <AreaChart
+                   data={dynamicRevenueChart}
+@@ -240,6 +232,11 @@ function Analytics() {
+                   />
+                 </AreaChart>
+               </ResponsiveContainer>
++              ) : (
++                <div className="flex h-full items-center justify-center text-[13px] text-muted-foreground">
++                  No revenue data yet — create a project to get started.
++                </div>
++              )}
+             </div>
+           </div>
+ 
+@@ -293,6 +290,7 @@ function Analytics() {
+             Scope creep detected (last 8 weeks)
+           </div>
+           <div className="mt-6 h-64">
++            {hasTrendData ? (
+             <ResponsiveContainer width="100%" height="100%">
+               <BarChart
+                 data={dynamicScopeTrend}
+@@ -322,6 +320,11 @@ function Analytics() {
+                 <Bar dataKey="detected" fill="var(--primary)" radius={[6, 6, 0, 0]} />
+               </BarChart>
+             </ResponsiveContainer>
++            ) : (
++              <div className="flex h-full items-center justify-center text-[13px] text-muted-foreground">
++                No scope creep detected yet — analyze emails to see trends.
++              </div>
++            )}
+           </div>
+         </div>
+       </div>
+diff --git a/src/routes/app.index.tsx b/src/routes/app.index.tsx
+index a2638b0..536ff55 100644
+--- a/src/routes/app.index.tsx
++++ b/src/routes/app.index.tsx
+@@ -7,7 +7,6 @@ import {
+   AlertTriangle,
+   ArrowUpRight,
+   Sparkles,
+-  FileText,
+   Plus,
+ } from "lucide-react";
+ import {
+@@ -22,9 +21,6 @@ import {
+ import { AppShell, Section } from "@/components/app-shell";
+ import { StatCard } from "@/components/stat-card";
+ import { StatusPill } from "@/components/status-pill";
+-// Chart data and activity feed remain from mock-data until analytics aggregation
+-// is implemented in a future phase.
+-import { activity, revenueChart } from "@/lib/mock-data";
+ import { Button } from "@/components/ui/button";
+ import { listProjects } from "@/lib/projects.server";
+ import { listAllUserEmails } from "@/lib/emails.server";
+@@ -72,6 +68,33 @@ function Dashboard() {
+   // Build a project name map for the analyses section
+   const projectNameById = new Map(projects.map((p) => [p.id, p.name]));
+ 
++  // Build revenue chart from real user data (rolling last 7 months)
++  const revenueChart = Array.from({ length: 7 }).map((_, idx) => {
++    const d = new Date();
++    d.setMonth(d.getMonth() - (6 - idx));
++    const rawMonth = d.getMonth();
++    const year = d.getFullYear();
++    const invoiced = projects
++      .filter((p) => {
++        const pd = new Date(p.createdAt);
++        return pd.getMonth() === rawMonth && pd.getFullYear() === year;
++      })
++      .reduce((s, p) => s + p.budget, 0);
++    const protected_ = analyses
++      .filter((a) => {
++        const ad = new Date(a.createdAt);
++        return ad.getMonth() === rawMonth && ad.getFullYear() === year && a.verdict !== "in_scope";
++      })
++      .reduce((s, a) => s + a.suggestedCost, 0);
++    return {
++      month: d.toLocaleString("default", { month: "short" }),
++      invoiced,
++      protected: protected_,
++    };
++  });
++
++  const hasChartData = revenueChart.some((r) => r.invoiced > 0 || r.protected > 0);
++
+   const hour = new Date().getHours();
+   const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
+ 
+@@ -133,26 +156,19 @@ function Dashboard() {
+                   Revenue overview
+                 </div>
+                 <div className="mt-1 flex items-baseline gap-2">
+-                  <span className="font-display text-2xl font-semibold tabular-nums">$205,000</span>
+-                  <span className="text-[12px] text-[color:var(--success)]">
+-                    +$43k protected in Jan
++                  <span className="font-display text-2xl font-semibold tabular-nums">
++                    ₹{projects.reduce((s, p) => s + p.budget, 0).toLocaleString("en-IN")}
+                   </span>
++                  {kpis.revenueProtected > 0 && (
++                    <span className="text-[12px] text-[color:var(--success)]">
++                      +₹{(kpis.revenueProtected / 1000).toFixed(1)}k protected
++                    </span>
++                  )}
+                 </div>
+               </div>
+-              <div className="flex gap-1 rounded-lg border border-border bg-background/40 p-0.5 text-[11px]">
+-                {["7d", "30d", "90d", "12m"].map((t, i) => (
+-                  <button
+-                    key={t}
+-                    className={`rounded-md px-2 py-1 ${
+-                      i === 3 ? "bg-accent text-foreground" : "text-muted-foreground"
+-                    }`}
+-                  >
+-                    {t}
+-                  </button>
+-                ))}
+-              </div>
+             </div>
+             <div className="mt-6 h-64">
++              {hasChartData ? (
+               <ResponsiveContainer width="100%" height="100%">
+                 <AreaChart data={revenueChart} margin={{ top: 8, right: 8, left: -20, bottom: 0 }}>
+                   <defs>
+@@ -203,6 +219,11 @@ function Dashboard() {
+                   />
+                 </AreaChart>
+               </ResponsiveContainer>
++              ) : (
++                <div className="flex h-full items-center justify-center text-[13px] text-muted-foreground">
++                  No revenue data yet — create a project to get started.
++                </div>
++              )}
+             </div>
+           </motion.div>
+ 
+@@ -213,7 +234,7 @@ function Dashboard() {
+             className="panel p-6"
+           >
+             <div className="flex items-center justify-between">
+-              <div className="text-[12px] font-medium text-muted-foreground">Activity</div>
++              <div className="text-[12px] font-medium text-muted-foreground">Recent activity</div>
+               <Link
+                 to="/app/notifications"
+                 className="text-[12px] text-muted-foreground hover:text-foreground"
+@@ -222,26 +243,39 @@ function Dashboard() {
+               </Link>
+             </div>
+             <div className="mt-4 space-y-4">
+-              {activity.map((a) => (
+-                <div key={a.id} className="flex gap-3">
+-                  <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-accent">
+-                    {a.type === "analysis" && <Sparkles className="h-3.5 w-3.5 text-primary" />}
+-                    {a.type === "email" && <Mail className="h-3.5 w-3.5 text-muted-foreground" />}
+-                    {a.type === "reply" && (
+-                      <ArrowUpRight className="h-3.5 w-3.5 text-[color:var(--success)]" />
+-                    )}
+-                    {a.type === "project" && (
+-                      <FileText className="h-3.5 w-3.5 text-muted-foreground" />
+-                    )}
+-                  </div>
+-                  <div className="min-w-0 flex-1">
+-                    <div className="text-[13px] leading-snug text-foreground">{a.text}</div>
+-                    <div className="mt-0.5 text-[11px] text-muted-foreground">
+-                      {a.meta} · {a.time}
++              {emails.length === 0 && analyses.length === 0 ? (
++                <div className="flex flex-col items-center justify-center gap-2 py-8 text-center">
++                  <ArrowUpRight className="h-6 w-6 text-muted-foreground/40" />
++                  <div className="text-[13px] text-muted-foreground">No activity yet</div>
++                </div>
++              ) : (
++                [...analyses.slice(0, 2).map((a) => ({
++                  key: `a-${a.id}`,
++                  icon: <Sparkles className="h-3.5 w-3.5 text-primary" />,
++                  text: `Analysis: ${projectNameById.get(a.projectId) ?? "project"}`,
++                  meta: a.verdict === "out_of_scope" ? "Out of scope detected" : a.verdict === "mixed" ? "Mixed verdict" : "In scope",
++                  time: a.createdAt,
++                })),
++                ...emails.slice(0, 3).map((e) => ({
++                  key: `e-${e.id}`,
++                  icon: <Mail className="h-3.5 w-3.5 text-muted-foreground" />,
++                  text: e.subject,
++                  meta: `From ${e.from}`,
++                  time: e.receivedAt,
++                }))].slice(0, 5).map((item) => (
++                  <div key={item.key} className="flex gap-3">
++                    <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-accent">
++                      {item.icon}
++                    </div>
++                    <div className="min-w-0 flex-1">
++                      <div className="truncate text-[13px] leading-snug text-foreground">{item.text}</div>
++                      <div className="mt-0.5 text-[11px] text-muted-foreground">
++                        {item.meta} · {item.time}
++                      </div>
+                     </div>
+                   </div>
+-                </div>
+-              ))}
++                ))
++              )}
+             </div>
+           </motion.div>
+         </div>
+diff --git a/src/routes/app.notifications.tsx b/src/routes/app.notifications.tsx
+index a64c9d2..9b4f3c8 100644
+--- a/src/routes/app.notifications.tsx
++++ b/src/routes/app.notifications.tsx
+@@ -1,5 +1,5 @@
+ import { createFileRoute } from "@tanstack/react-router";
+-import { Bell, Sparkles, Mail, ArrowUpRight, FileText } from "lucide-react";
++import { Bell } from "lucide-react";
+ import { AppShell } from "@/components/app-shell";
+ 
+ export const Route = createFileRoute("/app/notifications")({
+@@ -7,76 +7,16 @@ export const Route = createFileRoute("/app/notifications")({
+   head: () => ({ meta: [{ title: "Notifications — ScopeGuard" }] }),
+ });
+ 
+-const items = [
+-  {
+-    icon: Sparkles,
+-    tone: "primary",
+-    t: "Scope creep detected on Atlas Commerce",
+-    m: "$22.4k impact · Priya Shah requested iOS + NetSuite",
+-    time: "2h ago",
+-    unread: true,
+-  },
+-  {
+-    icon: Mail,
+-    tone: "muted",
+-    t: "New email from Dr. Marcus Wen",
+-    m: "Helix AI Onboarding · voice input request",
+-    time: "5h ago",
+-    unread: true,
+-  },
+-  {
+-    icon: ArrowUpRight,
+-    tone: "success",
+-    t: "Change order reply approved by client",
+-    m: "Atlas Commerce · Priya accepted +$22.4k",
+-    time: "yesterday",
+-  },
+-  {
+-    icon: FileText,
+-    tone: "muted",
+-    t: "Vanta Ops Dashboard marked completed",
+-    m: "$41k final invoice generated",
+-    time: "3d ago",
+-  },
+-  {
+-    icon: Bell,
+-    tone: "muted",
+-    t: "Weekly digest ready",
+-    m: "3 alerts, $43k protected this week",
+-    time: "1w ago",
+-  },
+-];
+-
+ function NotificationsPage() {
+   return (
+     <AppShell title="Notifications" subtitle="What's changed across your workspace.">
+-      <div className="panel divide-y divide-border overflow-hidden">
+-        {items.map((it, i) => {
+-          const Icon = it.icon;
+-          return (
+-            <div key={i} className="flex gap-4 px-5 py-4">
+-              <div
+-                className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${
+-                  it.tone === "primary"
+-                    ? "bg-primary/15 text-primary"
+-                    : it.tone === "success"
+-                      ? "bg-[color-mix(in_oklab,var(--success)_16%,transparent)] text-[color:var(--success)]"
+-                      : "bg-accent text-muted-foreground"
+-                }`}
+-              >
+-                <Icon className="h-4 w-4" strokeWidth={1.75} />
+-              </div>
+-              <div className="flex-1">
+-                <div className="flex items-baseline justify-between gap-2">
+-                  <div className="text-[13px] font-medium">{it.t}</div>
+-                  <div className="text-[11px] text-muted-foreground">{it.time}</div>
+-                </div>
+-                <div className="mt-0.5 text-[12px] text-muted-foreground">{it.m}</div>
+-              </div>
+-              {it.unread && <div className="mt-2 h-1.5 w-1.5 rounded-full bg-primary" />}
+-            </div>
+-          );
+-        })}
++      <div className="panel flex flex-col items-center justify-center gap-3 px-8 py-20 text-center">
++        <Bell className="h-8 w-8 text-muted-foreground/40" />
++        <div className="text-[14px] font-medium">No notifications yet</div>
++        <div className="max-w-xs text-[13px] text-muted-foreground">
++          You'll be notified here when scope creep is detected, emails arrive, or your weekly digest
++          is ready.
++        </div>
+       </div>
+     </AppShell>
+   );
+diff --git a/src/routes/register.tsx b/src/routes/register.tsx
+index 42a262a..afba241 100644
+--- a/src/routes/register.tsx
++++ b/src/routes/register.tsx
+@@ -110,32 +110,32 @@ function RegisterPage() {
+                 <Label htmlFor="firstName" className="text-[12px]">
+                   First name
+                 </Label>
+-                <Input id="firstName" name="firstName" defaultValue="Alex" />
++                <Input id="firstName" name="firstName" />
+               </div>
+               <div className="space-y-1.5">
+                 <Label htmlFor="lastName" className="text-[12px]">
+                   Last name
+                 </Label>
+-                <Input id="lastName" name="lastName" defaultValue="Laurent" />
++                <Input id="lastName" name="lastName" />
+               </div>
+             </div>
+             <div className="space-y-1.5">
+               <Label htmlFor="email" className="text-[12px]">
+                 Work email
+               </Label>
+-              <Input id="email" name="email" type="email" defaultValue="alex@studio.com" />
++              <Input id="email" name="email" type="email" />
+             </div>
+             <div className="space-y-1.5">
+               <Label htmlFor="password" className="text-[12px]">
+                 Password
+               </Label>
+-              <Input id="password" name="password" type="password" defaultValue="password123" />
++              <Input id="password" name="password" type="password" />
+             </div>
+             <div className="space-y-1.5">
+               <Label htmlFor="workspaceName" className="text-[12px]">
+                 Workspace name
+               </Label>
+-              <Input id="workspaceName" name="workspaceName" defaultValue="Laurent Studio" />
++              <Input id="workspaceName" name="workspaceName" />
+             </div>
+             {message ? <p className="text-center text-[13px] text-destructive">{message}</p> : null}
+             <Button type="submit" className="w-full">
