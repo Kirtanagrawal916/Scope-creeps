@@ -84,6 +84,9 @@ function Dashboard() {
 
   const highRiskProjects = projects.filter((p) => p.risk === "high" || p.status === "scope_creep");
 
+  // Build a project name map for the analyses section
+  const projectNameById = new Map(projects.map((p) => [p.id, p.name]));
+
   const latestScopeChanges = analyses
     .filter(
       (a) => a.verdict !== "in_scope" && a.outOfScopeFeatures && a.outOfScopeFeatures.length > 0,
@@ -99,9 +102,6 @@ function Dashboard() {
       })),
     )
     .slice(0, 4);
-
-  // Build a project name map for the analyses section
-  const projectNameById = new Map(projects.map((p) => [p.id, p.name]));
   // Total invoiced across the user's own projects, for the revenue overview panel
   const totalInvoiced = projects.reduce((sum, p) => sum + p.budget, 0);
 

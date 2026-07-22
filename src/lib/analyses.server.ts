@@ -855,7 +855,7 @@ export const queryAnalyses = createServerFn({ method: "POST" })
     }
 
     // Sorting
-    const sortObj: Record<string, number> = { createdAt: -1 }; // default: newest
+    const sortObj: Record<string, 1 | -1> = { createdAt: -1 }; // default: newest
     if (data.sortBy === "oldest") {
       sortObj.createdAt = 1;
     } else if (data.sortBy === "highest_risk") {
