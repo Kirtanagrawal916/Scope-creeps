@@ -38,26 +38,38 @@ const verdictConfig = {
     icon: ShieldX,
     color: "var(--destructive)",
     label: "Out of scope",
-    bg: "bg-destructive/10 text-destructive",
+    bg: "bg-destructive/10 text-destructive border border-destructive/20",
   },
   in_scope: {
     icon: ShieldCheck,
     color: "var(--success)",
     label: "In scope",
-    bg: "bg-[color:var(--success)]/10 text-[color:var(--success)]",
+    bg: "bg-[color:var(--success)]/10 text-[color:var(--success)] border border-[color:var(--success)]/20",
   },
   mixed: {
     icon: ShieldAlert,
     color: "var(--warning)",
     label: "Mixed / Partial",
-    bg: "bg-[color:var(--warning)]/10 text-[color:var(--warning)]",
+    bg: "bg-[color:var(--warning)]/10 text-[color:var(--warning)] border border-[color:var(--warning)]/20",
+  },
+  possible_scope_creep: {
+    icon: ShieldAlert,
+    color: "var(--warning)",
+    label: "Possible Creep",
+    bg: "bg-[color:var(--warning)]/10 text-[color:var(--warning)] border border-[color:var(--warning)]/20",
+  },
+  confirmed_scope_creep: {
+    icon: ShieldX,
+    color: "var(--destructive)",
+    label: "Confirmed Creep",
+    bg: "bg-destructive/10 text-destructive border border-destructive/20",
   },
 } as const;
 
 function AnalysisPage() {
   const { analysis, project, email } = Route.useLoaderData();
   const [copied, setCopied] = useState(false);
-  const verdict = verdictConfig[analysis.verdict];
+  const verdict = verdictConfig[analysis.verdict] || verdictConfig.possible_scope_creep;
   const VerdictIcon = verdict.icon;
 
   const handleCopy = () => {
@@ -109,35 +121,55 @@ function AnalysisPage() {
             <span>Analyzed {analysis.createdAt}</span>
           </div>
         </div>
-        <div
-          className={`flex items-center gap-2 rounded-xl px-3 py-1.5 text-[13px] font-medium ${verdict.bg}`}
-        >
-          <VerdictIcon className="h-4 w-4" />
-          {verdict.label}
+        <div className="flex items-center gap-2.5">
+          <div className="text-[11px] font-medium bg-accent px-2.5 py-1 rounded border border-border/40 capitalize">
+            Status: {analysis.status}
+          </div>
+          <div className="text-[11px] font-medium bg-accent px-2.5 py-1 rounded border border-border/40 capitalize">
+            Priority: {analysis.priority}
+          </div>
+          <div
+            className={`flex items-center gap-2 rounded-xl px-3 py-1.5 text-[13px] font-medium ${verdict.bg}`}
+          >
+            <VerdictIcon className="h-4 w-4" />
+            {verdict.label}
+          </div>
         </div>
       </div>
+
+      {/* Summary Alert */}
+      {analysis.aiSummary && (
+        <div className="mt-6 p-4 rounded-xl border border-primary/20 bg-primary/5 flex items-start gap-3">
+          <Sparkles className="h-5 w-5 text-primary shrink-0 mt-0.5" />
+          <div>
+            <div className="text-[13px] font-semibold text-foreground">AI Executive Summary</div>
+            <p className="text-[12.5px] text-muted-foreground mt-0.5">{analysis.aiSummary}</p>
+          </div>
+        </div>
+      )}
 
       {/* Stat Row */}
       <div className="mt-6 grid gap-3 md:grid-cols-4">
         {[
           {
             icon: Sparkles,
-            l: "Confidence",
+            l: "Confidence Score",
             v: `${analysis.confidence}%`,
           },
           {
             icon: Clock,
-            l: "Extra hours",
-            v: analysis.additionalHours > 0 ? `+${analysis.additionalHours}h` : "None",
+            l: "Extra Hours Required",
+            v: analysis.additionalHours > 0 ? `+${analysis.additionalHours}h` : "0h",
           },
           {
             icon: Clock,
-            l: "Timeline impact",
-            v: analysis.timelineImpactDays > 0 ? `+${analysis.timelineImpactDays} days` : "None",
+            l: "Timeline Delay",
+            v:
+              analysis.timelineImpactDays > 0 ? `+${analysis.timelineImpactDays} days` : "No delay",
           },
           {
             icon: DollarSign,
-            l: "Cost at risk",
+            l: "Suggested Cost Impact",
             v: analysis.suggestedCost > 0 ? `₹${analysis.suggestedCost.toLocaleString("en-IN")}` : "₹0",
           },
         ].map((s) => {
@@ -158,15 +190,15 @@ function AnalysisPage() {
       <div className="mt-6 grid gap-4 lg:grid-cols-2">
         {/* Original email or manual request info */}
         <div className="panel p-6">
-          <div className="text-[12px] font-medium uppercase tracking-wider text-muted-foreground">
+          <div className="text-[12px] font-medium uppercase tracking-wider text-muted-foreground border-b border-border/40 pb-2 mb-4">
             {email ? "Client email thread" : "Scope request context"}
           </div>
           {email ? (
-            <p className="mt-4 whitespace-pre-line text-[13px] leading-relaxed text-foreground">
+            <p className="whitespace-pre-line text-[13px] leading-relaxed text-foreground">
               {email.body}
             </p>
           ) : (
-            <div className="mt-4 space-y-4 text-[13px]">
+            <div className="space-y-4 text-[13px]">
               <div>
                 <div className="text-[11px] font-semibold text-muted-foreground uppercase">
                   Baseline contract scope
@@ -187,60 +219,130 @@ function AnalysisPage() {
 
         {/* AI reasoning */}
         <div className="panel p-6">
-          <div className="flex items-center gap-2 text-[12px] font-medium uppercase tracking-wider text-muted-foreground">
+          <div className="flex items-center gap-2 text-[12px] font-medium uppercase tracking-wider text-muted-foreground border-b border-border/40 pb-2 mb-4">
             <Sparkles className="h-3.5 w-3.5 text-primary" />
-            AI reasoning
+            AI Difference Explanation
           </div>
-          <p className="mt-4 text-[13px] leading-relaxed text-foreground">{analysis.reasoning}</p>
+          <p className="text-[13px] leading-relaxed text-foreground">
+            {analysis.explanation || analysis.reasoning}
+          </p>
         </div>
 
-        {/* Feature breakdown */}
-        {(analysis.includedFeatures.length > 0 || analysis.outOfScopeFeatures.length > 0) && (
-          <div className="panel p-6 lg:col-span-2">
-            <div className="text-[12px] font-medium uppercase tracking-wider text-muted-foreground">
-              Feature breakdown
-            </div>
-            <div className="mt-4 grid gap-6 md:grid-cols-2">
-              {analysis.includedFeatures.length > 0 && (
-                <div>
-                  <div className="text-[12px] font-medium text-[color:var(--success)]">
-                    Included in scope
-                  </div>
-                  <ul className="mt-2 space-y-2 text-[13px]">
-                    {analysis.includedFeatures.map((f: string) => (
-                      <li key={f} className="flex items-start gap-2">
-                        <div className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-[color:var(--success)]" />
-                        {f}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-              {analysis.outOfScopeFeatures.length > 0 && (
-                <div>
-                  <div className="text-[12px] font-medium text-[color:var(--destructive)]">
-                    Out of scope
-                  </div>
-                  <ul className="mt-2 space-y-2 text-[13px]">
-                    {analysis.outOfScopeFeatures.map((f: string) => (
-                      <li key={f} className="flex items-start gap-2">
-                        <div className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-[color:var(--destructive)]" />
-                        <span className="text-muted-foreground">{f}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
+        {/* Structural Changes Breakdown */}
+        <div className="panel p-6 lg:col-span-2">
+          <div className="text-[12px] font-medium uppercase tracking-wider text-muted-foreground border-b border-border/40 pb-2 mb-4">
+            Structural Scope Differences
+          </div>
+
+          <div className="grid gap-6 md:grid-cols-3">
+            <div>
+              <div className="text-[12px] font-semibold text-[color:var(--success)] flex items-center gap-1.5">
+                <ShieldCheck className="h-4 w-4" />
+                In Scope Features
+              </div>
+              {analysis.includedFeatures && analysis.includedFeatures.length > 0 ? (
+                <ul className="mt-3 space-y-2 text-[13px]">
+                  {analysis.includedFeatures.map((f: string) => (
+                    <li
+                      key={f}
+                      className="flex items-start gap-2 bg-accent/20 px-2.5 py-1.5 rounded border border-border/30"
+                    >
+                      <div className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[color:var(--success)]" />
+                      <span>{f}</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-[12px] text-muted-foreground mt-2 italic">
+                  No matching in-scope items detected.
+                </p>
               )}
             </div>
+
+            <div>
+              <div className="text-[12px] font-semibold text-[color:var(--destructive)] flex items-center gap-1.5">
+                <ShieldX className="h-4 w-4" />
+                Added / Out of Scope Features
+              </div>
+              {analysis.outOfScopeFeatures && analysis.outOfScopeFeatures.length > 0 ? (
+                <ul className="mt-3 space-y-2 text-[13px]">
+                  {analysis.outOfScopeFeatures.map((f: string) => (
+                    <li
+                      key={f}
+                      className="flex items-start gap-2 bg-destructive/5 px-2.5 py-1.5 rounded border border-destructive/10 text-destructive"
+                    >
+                      <div className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[color:var(--destructive)]" />
+                      <span>{f}</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-[12px] text-muted-foreground mt-2 italic">
+                  No out-of-scope creep detected.
+                </p>
+              )}
+            </div>
+
+            <div>
+              <div className="text-[12px] font-semibold text-[color:var(--warning)] flex items-center gap-1.5">
+                <ShieldAlert className="h-4 w-4" />
+                Modified / Priority Changes
+              </div>
+              {analysis.detectedFeatures &&
+              analysis.detectedFeatures.filter(
+                (f: string) => !analysis.outOfScopeFeatures.includes(f),
+              ).length > 0 ? (
+                <ul className="mt-3 space-y-2 text-[13px]">
+                  {analysis.detectedFeatures
+                    .filter((f: string) => !analysis.outOfScopeFeatures.includes(f))
+                    .map((f: string) => (
+                      <li
+                        key={f}
+                        className="flex items-start gap-2 bg-[color:var(--warning)]/5 px-2.5 py-1.5 rounded border border-[color:var(--warning)]/10 text-[color:var(--warning)]"
+                      >
+                        <div className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[color:var(--warning)]" />
+                        <span>{f} (Modified)</span>
+                      </li>
+                    ))}
+                </ul>
+              ) : (
+                <p className="text-[12px] text-muted-foreground mt-2 italic">
+                  No modified scope requirements detected.
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Missing Requirements & SOW Discrepancies */}
+        {analysis.missingRequirements && analysis.missingRequirements.length > 0 && (
+          <div className="panel p-6 lg:col-span-2 bg-yellow-500/5 border-yellow-500/20">
+            <div className="text-[12px] font-medium uppercase tracking-wider text-yellow-600 border-b border-yellow-500/10 pb-2 mb-4 flex items-center gap-2">
+              <ShieldAlert className="h-4 w-4 text-yellow-600 animate-bounce" />
+              Missing Information Needed from Client
+            </div>
+            <ul className="grid gap-3 md:grid-cols-2">
+              {analysis.missingRequirements.map((r: string, idx: number) => (
+                <li
+                  key={idx}
+                  className="text-[13px] bg-background/50 border border-yellow-500/10 p-3 rounded-lg leading-relaxed flex items-start gap-2.5"
+                >
+                  <span className="font-bold text-[11px] bg-yellow-500/20 text-yellow-700 px-1.5 py-0.5 rounded shrink-0">
+                    #{idx + 1}
+                  </span>
+                  <span>{r}</span>
+                </li>
+              ))}
+            </ul>
           </div>
         )}
 
         {/* Suggested reply */}
         {analysis.suggestedReply && (
           <div className="panel p-6 lg:col-span-2">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between border-b border-border/40 pb-2 mb-4">
               <div className="text-[12px] font-medium uppercase tracking-wider text-muted-foreground">
-                Suggested reply
+                Suggested client email response
               </div>
               <Button variant="ghost" size="sm" onClick={handleCopy}>
                 {copied ? (
@@ -256,8 +358,8 @@ function AnalysisPage() {
                 )}
               </Button>
             </div>
-            <div className="mt-4 rounded-xl border border-border bg-background/40 px-5 py-4 font-serif text-[13px] leading-relaxed text-foreground">
-              <p>{analysis.suggestedReply}</p>
+            <div className="rounded-xl border border-border bg-background/40 px-5 py-4 font-serif text-[13px] leading-relaxed text-foreground whitespace-pre-wrap">
+              {analysis.suggestedReply}
             </div>
           </div>
         )}

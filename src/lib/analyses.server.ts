@@ -1,7 +1,7 @@
 /**
  * analyses.server.ts — Ownership-aware CRUD for Analysis documents.
  *
- * SECURITY CONTRACT: Every analysis query MUST include `{ owner: user._id }`.
+ * SECURITY CONTRACT: Every analysis query MUST include `{ owner: user._id }` or `{ userId: user._id }`.
  * Before creating an analysis, BOTH the parent project AND parent email are
  * verified to belong to the session user — preventing ownership-chain attacks.
  */
@@ -24,6 +24,7 @@ import type { ProjectStatus, RiskLevel } from "../models/Project";
 export type SerializedAnalysis = {
   id: string;
   owner: string;
+  userId: string;
   projectId: string;
   emailId?: string;
   originalRequirement: string;
@@ -39,6 +40,15 @@ export type SerializedAnalysis = {
   outOfScopeFeatures: string[];
   reasoning: string;
   suggestedReply: string;
+
+  // Extended fields
+  aiSummary: string;
+  explanation: string;
+  detectedFeatures: string[];
+  missingRequirements: string[];
+  priority: "low" | "medium" | "high";
+  status: "active" | "pending" | "resolved";
+
   /** Human-readable relative date, e.g. "2h ago" */
   createdAt: string;
   /** ISO timestamp, for real date math (charts, sorting) on the client */
@@ -68,6 +78,7 @@ function serialize(doc: any): SerializedAnalysis {
   return {
     id: String(doc._id),
     owner: String(doc.owner),
+    userId: String(doc.userId || doc.owner),
     projectId: String(doc.projectId),
     emailId: doc.emailId ? String(doc.emailId) : undefined,
     originalRequirement: doc.originalRequirement ?? "",
@@ -83,36 +94,55 @@ function serialize(doc: any): SerializedAnalysis {
     outOfScopeFeatures: doc.outOfScopeFeatures ?? [],
     reasoning: doc.reasoning ?? "",
     suggestedReply: doc.suggestedReply ?? "",
+
+    // Extended fields mappings
+    aiSummary: doc.aiSummary ?? "",
+    explanation: doc.explanation ?? doc.aiExplanation ?? doc.reasoning ?? "",
+    detectedFeatures: doc.detectedFeatures ?? [],
+    missingRequirements: doc.missingRequirements ?? [],
+    priority: doc.priority ?? "medium",
+    status: doc.status ?? "active",
+
     createdAt: formatRelativeDate(doc.createdAt),
     createdAtIso: doc.createdAt instanceof Date ? doc.createdAt.toISOString() : new Date(doc.createdAt).toISOString(),
   };
 }
 
 // ---------------------------------------------------------------------------
-// Scope Analysis Engine Helper
+// Scope Analysis Engine & Difference Detection
 // ---------------------------------------------------------------------------
 
 function performAnalysis(
-  project: { hourlyRate: number; budget: number; scopeItems: string[]; outOfScope: string[] },
-  text: string,
+  project: {
+    hourlyRate: number;
+    budget: number;
+    scopeItems: string[];
+    outOfScope: string[];
+    client: string;
+    contract: string;
+  },
+  changedRequirement: string,
   subject: string,
 ) {
-  const content = (subject + " " + text).toLowerCase();
+  const content = (subject + " " + changedRequirement).toLowerCase();
 
-  let verdict: "in_scope" | "out_of_scope" | "mixed" = "in_scope";
+  const addedFeatures: string[] = [];
+  const removedFeatures: string[] = [];
+  const modifiedFeatures: string[] = [];
+  const missingRequirements: string[] = [];
+
+  let timelineChanges = false;
+  let priorityChanges = false;
+
   let additionalHours = 0;
-  const outOfScopeFeatures: string[] = [];
-  const includedFeatures: string[] = [];
 
-  // Check against project's explicit out-of-scope items
+  // 1. Identify added features (explicit exclusions or keyword checks)
   for (const item of project.outOfScope || []) {
     if (content.includes(item.toLowerCase())) {
-      outOfScopeFeatures.push(item);
-      verdict = "out_of_scope";
+      addedFeatures.push(item);
     }
   }
 
-  // Check general creep keywords if not already out of scope
   const creepKeywords = [
     { kw: "ios", label: "Native iOS Application", hours: 120 },
     { kw: "android", label: "Native Android Application", hours: 120 },
@@ -128,28 +158,83 @@ function performAnalysis(
 
   for (const item of creepKeywords) {
     if (content.includes(item.kw)) {
-      if (!outOfScopeFeatures.includes(item.label)) {
-        outOfScopeFeatures.push(item.label);
+      if (!addedFeatures.includes(item.label)) {
+        addedFeatures.push(item.label);
       }
       additionalHours += item.hours;
-      verdict = verdict === "in_scope" ? "mixed" : "out_of_scope";
     }
   }
 
-  // Check in-scope items
-  for (const item of project.scopeItems || []) {
-    if (content.includes(item.toLowerCase())) {
-      includedFeatures.push(item);
+  // 2. Identify modified features (indicators of replacement/modification)
+  const modificationIndicators = [
+    "instead of",
+    "replace",
+    "modify",
+    "update",
+    "change",
+    "switch",
+    "alter",
+    "upgrade",
+  ];
+  for (const ind of modificationIndicators) {
+    if (content.includes(ind)) {
+      for (const item of project.scopeItems || []) {
+        if (content.includes(item.toLowerCase()) && !modifiedFeatures.includes(item)) {
+          modifiedFeatures.push(item);
+          additionalHours += 8; // baseline modification hours
+        }
+      }
+      break;
     }
   }
 
-  // Set default hours if verdict is out of scope / mixed but no hours calculated
-  if (verdict === "out_of_scope" && additionalHours === 0) {
-    additionalHours = 20;
-  } else if (verdict === "mixed" && additionalHours === 0) {
-    additionalHours = 10;
-  } else if (verdict === "in_scope") {
-    additionalHours = 0;
+  // 3. Identify removed features (indicators of dropping scope items)
+  const removalIndicators = [
+    "remove",
+    "delete",
+    "omit",
+    "exclude",
+    "drop",
+    "cancel",
+    "no longer need",
+    "without",
+  ];
+  for (const ind of removalIndicators) {
+    if (content.includes(ind)) {
+      for (const item of project.scopeItems || []) {
+        if (content.includes(item.toLowerCase()) && !removedFeatures.includes(item)) {
+          removedFeatures.push(item);
+        }
+      }
+      break;
+    }
+  }
+
+  // 4. Identify timeline and priority alerts
+  if (content.match(/launch|schedule|deadline|timeline|date|days|weeks|months|milestone|urgency/)) {
+    timelineChanges = true;
+  }
+  if (content.match(/urgent|priority|critical|rush|asap|delay|postpone/)) {
+    priorityChanges = true;
+  }
+
+  // 5. Deduce missing requirements details needed from client
+  if (content.includes("voice") && !content.includes("language")) {
+    missingRequirements.push("Specification of supported voice recognition languages.");
+  }
+  if ((content.includes("ios") || content.includes("android")) && !content.includes("store")) {
+    missingRequirements.push("App Store deployment keys and publisher account details.");
+  }
+  if (content.includes("integration") && !content.includes("api documentation")) {
+    missingRequirements.push("API documentation and sandbox access for third-party endpoints.");
+  }
+
+  // 6. Verdict and estimations
+  let verdict: "in_scope" | "possible_scope_creep" | "confirmed_scope_creep" = "in_scope";
+  if (addedFeatures.length > 0) {
+    verdict = additionalHours > 50 ? "confirmed_scope_creep" : "possible_scope_creep";
+  } else if (modifiedFeatures.length > 0) {
+    verdict = "possible_scope_creep";
   }
 
   const hourlyRate = project.hourlyRate || 150;
@@ -159,13 +244,15 @@ function performAnalysis(
   const riskLevel: "low" | "medium" | "high" =
     additionalHours > 50 ? "high" : additionalHours > 15 ? "medium" : "low";
 
-  let reasoning = "";
+  // 7. Textual summary & reply drafts
+  let aiSummary = "";
+  let explanation = "";
   if (verdict === "in_scope") {
-    reasoning = `The requested item matches the contracted deliverables. It fits within the original project scope (e.g. ${project.scopeItems.slice(0, 2).join(", ") || "defined items"}). No budget or timeline adjustments are needed.`;
-  } else if (verdict === "out_of_scope") {
-    reasoning = `The request introduces deliverables that are explicitly excluded from the current Statement of Work. Specifically, the additions of ${outOfScopeFeatures.join(", ")} are outside of scope. Doing this by the target launch date will require an additional ${additionalHours}h of effort, increasing the budget by $${suggestedCost.toLocaleString()} and extending the timeline by ${timelineImpactDays} days.`;
+    aiSummary = "Requested adjustments cleared as in-scope.";
+    explanation = `The requested adjustments fit within the original contract scope items (${project.scopeItems.slice(0, 2).join(", ") || "defined deliverables"}). No budget or timeline adjustments are needed.`;
   } else {
-    reasoning = `The request is mixed. While some aspects (like ${includedFeatures.join(", ") || "basic adjustments"}) fall within the original scope, other parts (such as ${outOfScopeFeatures.join(", ")}) represent new requirements. Incorporating these out-of-scope items will require ${additionalHours}h of extra effort, costing $${suggestedCost.toLocaleString()} and adding ${timelineImpactDays} days to the schedule.`;
+    aiSummary = `Scope creep warning: ${addedFeatures.length} addition(s) and ${modifiedFeatures.length} modification(s) detected.`;
+    explanation = `The request introduces new features outside the Statement of Work: ${addedFeatures.join(", ")}. Incorporating this will require an estimated ${additionalHours} hours of development, costing an extra $${suggestedCost.toLocaleString()} and adding approximately ${timelineImpactDays} days to the timeline.`;
   }
 
   const clientName = project.client.split(" ")[0] || "Client";
@@ -174,12 +261,19 @@ function performAnalysis(
     suggestedReply = `Hi ${clientName},\n\nThanks for reaching out! Happy to confirm that this falls within our agreed scope of work. We'll proceed with this and keep you updated on progress.\n\nBest,\nAlex`;
   } else {
     suggestedReply =
-      `Hi ${clientName},\n\nThanks — glad the progress is landing well.\n\nRegarding the additions of ${outOfScopeFeatures.join(" and ")}: these fall outside our current statement of work. I'm happy to take them on, but I want to be upfront about the project impact so there are no surprises:\n\n` +
+      `Hi ${clientName},\n\nThanks — glad the progress is landing well.\n\nRegarding the additions of ${addedFeatures.join(" and ")}: these fall outside our current statement of work. I'm happy to take them on, but I want to be upfront about the project impact so there are no surprises:\n\n` +
       `• Combined effort: +${additionalHours} hours\n` +
       `• Budget impact: +$${suggestedCost.toLocaleString()}\n` +
       `• Timeline: adds approximately ${timelineImpactDays} days\n\n` +
       `If you'd like, I can draft a short change order covering these, or we can phase them for a post-launch v1.1. Let me know what you prefer!\n\nBest,\nAlex`;
   }
+
+  const priority: "low" | "medium" | "high" =
+    priorityChanges || riskLevel === "high" ? "high" : riskLevel === "medium" ? "medium" : "low";
+  const outOfScopeFeatures = addedFeatures;
+  const includedFeatures = project.scopeItems.filter((item) =>
+    content.includes(item.toLowerCase()),
+  );
 
   return {
     verdict,
@@ -190,7 +284,12 @@ function performAnalysis(
     suggestedCost,
     includedFeatures,
     outOfScopeFeatures,
-    reasoning,
+    reasoning: explanation,
+    aiSummary,
+    explanation,
+    detectedFeatures: [...addedFeatures, ...modifiedFeatures],
+    missingRequirements,
+    priority,
     suggestedReply,
   };
 }
@@ -210,7 +309,13 @@ const getAnalysisSchema = z.object({
 const createAnalysisSchema = z.object({
   projectId: z.string().min(1, "Project ID is required"),
   emailId: z.string().min(1, "Email ID is required"),
-  verdict: z.enum(["in_scope", "out_of_scope", "mixed"]),
+  verdict: z.enum([
+    "in_scope",
+    "possible_scope_creep",
+    "confirmed_scope_creep",
+    "out_of_scope",
+    "mixed",
+  ]),
   confidence: z.number().min(0).max(100),
   additionalHours: z.number().min(0).optional(),
   timelineImpactDays: z.number().min(0).optional(),
@@ -219,6 +324,12 @@ const createAnalysisSchema = z.object({
   outOfScopeFeatures: z.array(z.string()).optional(),
   reasoning: z.string().optional(),
   suggestedReply: z.string().optional(),
+  aiSummary: z.string().optional(),
+  explanation: z.string().optional(),
+  detectedFeatures: z.array(z.string()).optional(),
+  missingRequirements: z.array(z.string()).optional(),
+  priority: z.enum(["low", "medium", "high"]).optional(),
+  status: z.enum(["active", "pending", "resolved"]).optional(),
 });
 
 const runScopeAnalysisSchema = z.object({
@@ -231,13 +342,28 @@ const analyzeEmailSchema = z.object({
   emailId: z.string().min(1, "Email ID is required"),
 });
 
+const updateAnalysisSchema = z.object({
+  id: z.string().min(1, "Analysis ID is required"),
+  priority: z.enum(["low", "medium", "high"]).optional(),
+  status: z.enum(["active", "pending", "resolved"]).optional(),
+  verdict: z
+    .enum(["in_scope", "possible_scope_creep", "confirmed_scope_creep", "out_of_scope", "mixed"])
+    .optional(),
+  riskLevel: z.enum(["low", "medium", "high"]).optional(),
+  suggestedReply: z.string().optional(),
+});
+
+const deleteAnalysisSchema = z.object({
+  id: z.string().min(1, "Analysis ID is required"),
+});
+
 // ---------------------------------------------------------------------------
-// Server Functions
+// Server Functions (CRUD)
 // ---------------------------------------------------------------------------
 
 /**
  * Returns all analyses for a project.
- * Verifies project ownership before returning child analyses.
+ * Verifies project ownership first.
  */
 export const listAnalysesForProject = createServerFn({ method: "GET" })
   .validator((data: unknown) => listAnalysesSchema.parse(data))
@@ -283,7 +409,7 @@ export const getAnalysis = createServerFn({ method: "GET" })
   });
 
 /**
- * Returns the analysis along with its parent project and email, in a single round-trip.
+ * Returns the analysis along with its parent project and email details in one trip.
  */
 export const getAnalysisDetails = createServerFn({ method: "GET" })
   .validator((data: unknown) => getAnalysisSchema.parse(data))
@@ -360,6 +486,7 @@ export const createAnalysis = createServerFn({ method: "POST" })
 
     const analysis = new Analysis({
       owner: user._id,
+      userId: user._id,
       projectId: data.projectId,
       emailId: data.emailId,
       originalRequirement: project.contract || project.scopeItems.join(", "),
@@ -375,6 +502,14 @@ export const createAnalysis = createServerFn({ method: "POST" })
       outOfScopeFeatures: data.outOfScopeFeatures ?? [],
       reasoning: reasoning,
       suggestedReply: data.suggestedReply ?? "",
+
+      // Extended fields
+      aiSummary: data.aiSummary ?? "",
+      explanation: data.explanation ?? reasoning,
+      detectedFeatures: data.detectedFeatures ?? [],
+      missingRequirements: data.missingRequirements ?? [],
+      priority: data.priority ?? "medium",
+      status: data.status ?? "active",
     });
 
     await analysis.save();
@@ -385,6 +520,51 @@ export const createAnalysis = createServerFn({ method: "POST" })
     );
 
     return serialize(analysis.toObject());
+  });
+
+/**
+ * Updates an analysis document (Steps 3 — CRUD).
+ */
+export const updateAnalysis = createServerFn({ method: "POST" })
+  .validator((data: unknown) => updateAnalysisSchema.parse(data))
+  .handler(async ({ data }) => {
+    const user = await requireSession();
+    await connectToDatabase();
+
+    const analysis = await Analysis.findOne({ _id: data.id, owner: user._id });
+    if (!analysis) throw new AppError(404, "Analysis not found.");
+
+    if (data.priority !== undefined) analysis.priority = data.priority;
+    if (data.status !== undefined) analysis.status = data.status;
+    if (data.verdict !== undefined) analysis.verdict = data.verdict;
+    if (data.riskLevel !== undefined) analysis.riskLevel = data.riskLevel;
+    if (data.suggestedReply !== undefined) analysis.suggestedReply = data.suggestedReply;
+
+    await analysis.save();
+    return serialize(analysis.toObject());
+  });
+
+/**
+ * Deletes an analysis document (Steps 3 — CRUD).
+ */
+export const deleteAnalysis = createServerFn({ method: "POST" })
+  .validator((data: unknown) => deleteAnalysisSchema.parse(data))
+  .handler(async ({ data }) => {
+    const user = await requireSession();
+    await connectToDatabase();
+
+    const deleted = await Analysis.findOneAndDelete({ _id: data.id, owner: user._id });
+    if (!deleted) throw new AppError(404, "Analysis not found.");
+
+    // If there was an email associated, toggle it back to unanalyzed
+    if (deleted.emailId) {
+      await EmailThread.findOneAndUpdate(
+        { _id: deleted.emailId, owner: user._id },
+        { analyzed: false, risk: "low" },
+      );
+    }
+
+    return { success: true };
   });
 
 /**
@@ -400,17 +580,25 @@ export const runScopeAnalysis = createServerFn({ method: "POST" })
     if (!project) throw new AppError(404, "Project not found.");
 
     const analysisResult = performAnalysis(
-      project,
+      {
+        hourlyRate: project.hourlyRate,
+        budget: project.budget,
+        scopeItems: project.scopeItems,
+        outOfScope: project.outOfScope,
+        client: project.client,
+        contract: project.contract || "",
+      },
       data.changedRequirement,
       "Manual requirement analysis",
     );
 
     const analysis = new Analysis({
       owner: user._id,
+      userId: user._id,
       projectId: project._id,
       originalRequirement: data.originalRequirement,
       changedRequirement: data.changedRequirement,
-      aiExplanation: analysisResult.reasoning,
+      aiExplanation: analysisResult.explanation,
       verdict: analysisResult.verdict,
       confidence: analysisResult.confidence,
       riskLevel: analysisResult.riskLevel,
@@ -421,6 +609,14 @@ export const runScopeAnalysis = createServerFn({ method: "POST" })
       outOfScopeFeatures: analysisResult.outOfScopeFeatures,
       reasoning: analysisResult.reasoning,
       suggestedReply: analysisResult.suggestedReply,
+
+      // Extended fields
+      aiSummary: analysisResult.aiSummary,
+      explanation: analysisResult.explanation,
+      detectedFeatures: analysisResult.detectedFeatures,
+      missingRequirements: analysisResult.missingRequirements,
+      priority: analysisResult.priority,
+      status: "active",
     });
 
     await analysis.save();
@@ -445,15 +641,27 @@ export const analyzeEmail = createServerFn({ method: "POST" })
     const existing = await Analysis.findOne({ emailId: email._id, owner: user._id }).lean();
     if (existing) return serialize(existing);
 
-    const analysisResult = performAnalysis(project, email.body, email.subject);
+    const analysisResult = performAnalysis(
+      {
+        hourlyRate: project.hourlyRate,
+        budget: project.budget,
+        scopeItems: project.scopeItems,
+        outOfScope: project.outOfScope,
+        client: project.client,
+        contract: project.contract || "",
+      },
+      email.body,
+      email.subject,
+    );
 
     const analysis = new Analysis({
       owner: user._id,
+      userId: user._id,
       projectId: project._id,
       emailId: email._id,
       originalRequirement: project.contract || project.scopeItems.join(", "),
       changedRequirement: email.body,
-      aiExplanation: analysisResult.reasoning,
+      aiExplanation: analysisResult.explanation,
       verdict: analysisResult.verdict,
       confidence: analysisResult.confidence,
       riskLevel: analysisResult.riskLevel,
@@ -464,6 +672,14 @@ export const analyzeEmail = createServerFn({ method: "POST" })
       outOfScopeFeatures: analysisResult.outOfScopeFeatures,
       reasoning: analysisResult.reasoning,
       suggestedReply: analysisResult.suggestedReply,
+
+      // Extended fields
+      aiSummary: analysisResult.aiSummary,
+      explanation: analysisResult.explanation,
+      detectedFeatures: analysisResult.detectedFeatures,
+      missingRequirements: analysisResult.missingRequirements,
+      priority: analysisResult.priority,
+      status: "active",
     });
 
     await analysis.save();

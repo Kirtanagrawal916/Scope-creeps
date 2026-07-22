@@ -1,9 +1,11 @@
 import mongoose, { Schema, Document, Types } from "mongoose";
 
-export type AnalysisVerdict = "in_scope" | "out_of_scope" | "mixed";
+export type AnalysisVerdict =
+  "in_scope" | "possible_scope_creep" | "confirmed_scope_creep" | "out_of_scope" | "mixed";
 
 export interface IAnalysis extends Document {
-  owner: Types.ObjectId;
+  owner: Types.ObjectId; // Original ownership field
+  userId: Types.ObjectId; // Added for alignment with new specs (ref: User)
   projectId: Types.ObjectId;
   emailId?: Types.ObjectId;
   originalRequirement: string;
@@ -19,6 +21,15 @@ export interface IAnalysis extends Document {
   outOfScopeFeatures: string[];
   reasoning: string;
   suggestedReply: string;
+
+  // New extended fields
+  aiSummary: string;
+  explanation: string;
+  detectedFeatures: string[];
+  missingRequirements: string[];
+  priority: "low" | "medium" | "high";
+  status: "active" | "pending" | "resolved";
+
   createdAt: Date;
   updatedAt: Date;
 }
@@ -26,6 +37,12 @@ export interface IAnalysis extends Document {
 const AnalysisSchema = new Schema<IAnalysis>(
   {
     owner: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+      index: true,
+    },
+    userId: {
       type: Schema.Types.ObjectId,
       ref: "User",
       required: true,
@@ -48,7 +65,7 @@ const AnalysisSchema = new Schema<IAnalysis>(
     aiExplanation: { type: String, required: true, default: "" },
     verdict: {
       type: String,
-      enum: ["in_scope", "out_of_scope", "mixed"],
+      enum: ["in_scope", "possible_scope_creep", "confirmed_scope_creep", "out_of_scope", "mixed"],
       required: true,
     },
     confidence: { type: Number, required: true, min: 0, max: 100 },
@@ -64,14 +81,32 @@ const AnalysisSchema = new Schema<IAnalysis>(
     outOfScopeFeatures: [{ type: String }],
     reasoning: { type: String, default: "" },
     suggestedReply: { type: String, default: "" },
+
+    // New fields implementations
+    aiSummary: { type: String, required: true, default: "" },
+    explanation: { type: String, required: true, default: "" },
+    detectedFeatures: [{ type: String }],
+    missingRequirements: [{ type: String }],
+    priority: {
+      type: String,
+      enum: ["low", "medium", "high"],
+      default: "medium",
+    },
+    status: {
+      type: String,
+      enum: ["active", "pending", "resolved"],
+      default: "active",
+    },
   },
   { timestamps: true },
 );
 
 AnalysisSchema.index({ owner: 1, _id: 1 });
+AnalysisSchema.index({ userId: 1, _id: 1 });
 AnalysisSchema.index({ owner: 1, projectId: 1 });
-// One analysis per email thread per owner — enforced at application layer too, sparse for manual analyses
+AnalysisSchema.index({ userId: 1, projectId: 1 });
 AnalysisSchema.index({ owner: 1, emailId: 1 }, { unique: true, sparse: true });
+AnalysisSchema.index({ userId: 1, emailId: 1 }, { unique: true, sparse: true });
 
 export const Analysis =
   mongoose.models.Analysis || mongoose.model<IAnalysis>("Analysis", AnalysisSchema);

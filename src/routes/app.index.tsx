@@ -66,6 +66,31 @@ function Dashboard() {
     activeAlerts: emails.filter((e) => e.risk !== "low" && !e.analyzed).length,
   };
 
+  const avgConfidence =
+    analyses.length > 0
+      ? Math.round(analyses.reduce((sum, a) => sum + a.confidence, 0) / analyses.length)
+      : 100;
+
+  const scopeCreepCount = analyses.filter((a) => a.verdict !== "in_scope").length;
+
+  const highRiskProjects = projects.filter((p) => p.risk === "high" || p.status === "scope_creep");
+
+  const latestScopeChanges = analyses
+    .filter(
+      (a) => a.verdict !== "in_scope" && a.outOfScopeFeatures && a.outOfScopeFeatures.length > 0,
+    )
+    .flatMap((a) =>
+      a.outOfScopeFeatures.map((f) => ({
+        id: a.id,
+        feature: f,
+        projectName: projectNameById.get(a.projectId) || "Project",
+        cost: a.suggestedCost,
+        hours: a.additionalHours,
+        time: a.createdAt,
+      })),
+    )
+    .slice(0, 4);
+
   // Build a project name map for the analyses section
   const projectNameById = new Map(projects.map((p) => [p.id, p.name]));
 
@@ -201,21 +226,19 @@ function Dashboard() {
   });
 
   const sortedAnalyses = [...filteredAnalyses].sort((a, b) => {
-    let aVal: string | number | Date = a.createdAt;
-    let bVal: string | number | Date = b.createdAt;
+    let aVal = 0;
+    let bVal = 0;
 
     if (sortBy === "cost") {
       aVal = a.suggestedCost;
-      bVal = a.suggestedCost;
+      bVal = b.suggestedCost;
     } else if (sortBy === "hours") {
       aVal = a.additionalHours;
-      bVal = a.additionalHours;
+      bVal = b.additionalHours;
     } else if (sortBy === "confidence") {
       aVal = a.confidence;
-      bVal = a.confidence;
-    }
-
-    if (sortBy === "date") {
+      bVal = b.confidence;
+    } else {
       const aTime = new Date(a.createdAt).getTime();
       const bTime = new Date(b.createdAt).getTime();
       return sortOrder === "asc" ? aTime - bTime : bTime - aTime;
@@ -247,36 +270,31 @@ function Dashboard() {
             value={kpis.revenueProtected}
             prefix="₹"
             icon={ShieldCheck}
-            delta={kpis.revenueProtected > 0 ? "from scope creep blocked" : "No scope creep yet"}
+            delta={kpis.revenueProtected > 0 ? "Blocked invoice leakage" : "No scope creep yet"}
             trend={kpis.revenueProtected > 0 ? "up" : "neutral"}
           />
           <StatCard
-            label="Hours saved"
-            value={kpis.hoursSaved}
-            suffix="h"
-            icon={Clock}
-            delta={
-              kpis.hoursSaved > 0 ? "from flagged out-of-scope work" : "Track your first email"
-            }
-            trend={kpis.hoursSaved > 0 ? "up" : "neutral"}
+            label="Scope creep incidents"
+            value={scopeCreepCount}
+            suffix=" cases"
+            icon={AlertTriangle}
+            delta={`${scopeCreepCount} out-of-scope warnings`}
+            trend={scopeCreepCount > 0 ? "down" : "neutral"}
           />
           <StatCard
-            label="Emails analyzed"
-            value={kpis.emailsAnalyzed}
-            icon={Mail}
-            delta={
-              kpis.emailsAnalyzed > 0
-                ? `${projects.length} project${projects.length !== 1 ? "s" : ""} monitored`
-                : "Connect an email to start"
-            }
+            label="Average Confidence"
+            value={avgConfidence}
+            suffix="%"
+            icon={Sparkles}
+            delta="AI model reliability rating"
             trend="neutral"
           />
           <StatCard
-            label="Active scope alerts"
-            value={kpis.activeAlerts}
+            label="High Risk Projects"
+            value={highRiskProjects.length}
             icon={AlertTriangle}
-            delta={kpis.activeAlerts > 0 ? `${kpis.activeAlerts} need review` : "All clear"}
-            trend={kpis.activeAlerts > 0 ? "down" : "neutral"}
+            delta={`${highRiskProjects.length} projects need review`}
+            trend={highRiskProjects.length > 0 ? "down" : "neutral"}
           />
         </div>
 
@@ -418,59 +436,35 @@ function Dashboard() {
             transition={{ delay: 0.1 }}
             className="panel p-6 bg-background/50 backdrop-blur"
           >
-            <div className="flex items-center justify-between">
-              <div className="text-[12px] font-medium text-muted-foreground">
-                Live Activity Feed
+            <div className="flex items-center justify-between border-b border-border/40 pb-2 mb-4">
+              <div className="text-[12px] font-medium text-muted-foreground flex items-center gap-1.5">
+                <Sparkles className="h-3.5 w-3.5 text-primary" />
+                Latest Scope Changes
               </div>
-              <Link
-                to="/app/notifications"
-                className="text-[12px] text-muted-foreground hover:text-foreground"
-              >
-                View all
-              </Link>
             </div>
-            <div className="mt-4 space-y-4">
-<<<<<<< HEAD
-              {activity.length === 0 ? (
-                <div className="flex flex-col items-center justify-center gap-2 py-10 text-center">
-                  <div className="text-[13px] text-muted-foreground">No activity yet</div>
-                </div>
-              ) : (
-                activity.map((a) => (
-                  <div key={a.id} className="flex gap-3">
-                    <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-accent">
-                      {a.type === "analysis" && <Sparkles className="h-3.5 w-3.5 text-primary" />}
-                      {a.type === "email" && (
-                        <Mail className="h-3.5 w-3.5 text-muted-foreground" />
-=======
-              {dynamicActivity.length === 0 ? (
+            <div className="space-y-4 max-h-[300px] overflow-y-auto pr-1">
+              {latestScopeChanges.length === 0 ? (
                 <div className="text-center py-12 text-[12px] text-muted-foreground italic">
-                  No activity logged yet.
+                  No out-of-scope feature changes logged yet.
                 </div>
               ) : (
-                dynamicActivity.map((a) => (
-                  <div key={a.id} className="flex gap-3">
-                    <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-accent">
-                      {a.type === "analysis" && <Sparkles className="h-3.5 w-3.5 text-primary" />}
-                      {a.type === "reply" && (
-                        <ArrowUpRight className="h-3.5 w-3.5 text-[color:var(--success)]" />
->>>>>>> 72078dd (docs(roadmap): add project management and scope analysis implementation plan)
-                      )}
-                      {a.type === "project" && (
-                        <FileText className="h-3.5 w-3.5 text-muted-foreground" />
-                      )}
+                latestScopeChanges.map((sc, idx) => (
+                  <Link
+                    key={idx}
+                    to="/app/analysis/$id"
+                    params={{ id: sc.id }}
+                    className="block hover:bg-accent/30 p-2.5 rounded-lg border border-border/30 bg-accent/5 hover:border-border/60 transition-all"
+                  >
+                    <div className="text-[12.5px] font-medium text-foreground leading-snug">
+                      {sc.feature}
                     </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="text-[13px] leading-snug text-foreground">{a.text}</div>
-<<<<<<< HEAD
-                      <div className="mt-0.5 text-[11px] text-muted-foreground">
-=======
-                      <div className="mt-0.5 text-[11px] text-muted-foreground font-mono">
->>>>>>> 72078dd (docs(roadmap): add project management and scope analysis implementation plan)
-                        {a.meta} · {a.time}
-                      </div>
+                    <div className="mt-1 flex items-baseline justify-between text-[10.5px] text-muted-foreground">
+                      <span>{sc.projectName}</span>
+                      <span className="font-semibold text-destructive/95">
+                        +₹{sc.cost.toLocaleString("en-IN")} (+{sc.hours}h)
+                      </span>
                     </div>
-                  </div>
+                  </Link>
                 ))
               )}
             </div>
@@ -603,6 +597,8 @@ function Dashboard() {
                     <SelectContent>
                       <SelectItem value="all">All Verdicts</SelectItem>
                       <SelectItem value="in_scope">In scope</SelectItem>
+                      <SelectItem value="possible_scope_creep">Possible creep</SelectItem>
+                      <SelectItem value="confirmed_scope_creep">Confirmed creep</SelectItem>
                       <SelectItem value="out_of_scope">Out of scope</SelectItem>
                       <SelectItem value="mixed">Mixed</SelectItem>
                     </SelectContent>

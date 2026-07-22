@@ -132,6 +132,44 @@ function Analytics() {
     };
   });
 
+  // 4. Confidence Score Distribution
+  const bin95 = analyses.filter((a) => a.confidence >= 95).length;
+  const bin90 = analyses.filter((a) => a.confidence >= 90 && a.confidence < 95).length;
+  const bin80 = analyses.filter((a) => a.confidence >= 80 && a.confidence < 90).length;
+  const binUnder80 = analyses.filter((a) => a.confidence < 80).length;
+
+  const confidenceChartData = [
+    { name: "95-100% (High)", value: bin95, color: "var(--success)" },
+    { name: "90-94% (Good)", value: bin90, color: "var(--primary)" },
+    { name: "80-89% (Medium)", value: bin80, color: "var(--warning)" },
+    { name: "<80% (Low)", value: binUnder80, color: "var(--destructive)" },
+  ].filter((b) => b.value > 0);
+
+  // 5. Monthly Workspace Growth (last 6 months)
+  const monthlyGrowthChart = Array.from({ length: 6 }).map((_, idx) => {
+    const d = new Date();
+    d.setMonth(d.getMonth() - (5 - idx));
+    const mName = d.toLocaleString("default", { month: "short" });
+    const year = d.getFullYear();
+    const rawMonth = d.getMonth();
+
+    const newProjects = projects.filter((p) => {
+      const pDate = new Date(p.createdAt);
+      return pDate.getMonth() === rawMonth && pDate.getFullYear() === year;
+    }).length;
+
+    const ranAnalyses = analyses.filter((a) => {
+      const aDate = new Date(a.createdAt);
+      return aDate.getMonth() === rawMonth && aDate.getFullYear() === year;
+    }).length;
+
+    return {
+      month: mName,
+      projects: newProjects,
+      scans: ranAnalyses,
+    };
+  });
+
   return (
     <AppShell
       title="Analytics"
@@ -284,19 +322,116 @@ function Analytics() {
           </div>
         </div>
 
+        <div className="grid gap-4 lg:grid-cols-2">
+          <div className="panel p-6">
+            <div className="text-[12px] font-medium uppercase tracking-wider text-muted-foreground">
+              Scope creep detected (last 8 weeks)
+            </div>
+            <div className="mt-6 h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  data={dynamicScopeTrend}
+                  margin={{ top: 8, right: 8, left: -20, bottom: 0 }}
+                >
+                  <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" vertical={false} />
+                  <XAxis
+                    dataKey="week"
+                    tick={{ fill: "var(--muted-foreground)", fontSize: 11 }}
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <YAxis
+                    tick={{ fill: "var(--muted-foreground)", fontSize: 11 }}
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      background: "var(--popover)",
+                      border: "1px solid var(--border)",
+                      borderRadius: 12,
+                      fontSize: 12,
+                    }}
+                    cursor={{ fill: "var(--accent)" }}
+                  />
+                  <Bar dataKey="detected" fill="var(--primary)" radius={[6, 6, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          <div className="panel p-6">
+            <div className="text-[12px] font-medium uppercase tracking-wider text-muted-foreground">
+              Confidence score distribution
+            </div>
+            {confidenceChartData.length === 0 ? (
+              <div className="flex items-center justify-center h-64 text-[12px] text-muted-foreground italic">
+                No analyses scanned yet.
+              </div>
+            ) : (
+              <>
+                <div className="mt-6 h-48">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={confidenceChartData}
+                        dataKey="value"
+                        innerRadius={45}
+                        outerRadius={70}
+                        paddingAngle={3}
+                        stroke="var(--background)"
+                        strokeWidth={2}
+                      >
+                        {confidenceChartData.map((entry, idx) => (
+                          <Cell key={idx} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip
+                        contentStyle={{
+                          background: "var(--popover)",
+                          border: "1px solid var(--border)",
+                          borderRadius: 12,
+                          fontSize: 12,
+                        }}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+                <div className="mt-4 grid grid-cols-2 gap-2">
+                  {confidenceChartData.map((c) => (
+                    <div
+                      key={c.name}
+                      className="flex items-center justify-between text-[11px] bg-accent/20 px-2.5 py-1 rounded border border-border/30"
+                    >
+                      <div className="flex items-center gap-1.5 truncate">
+                        <span
+                          className="h-1.5 w-1.5 rounded-full shrink-0"
+                          style={{ background: c.color }}
+                        />
+                        <span className="text-foreground truncate">{c.name}</span>
+                      </div>
+                      <span className="font-semibold text-muted-foreground ml-1">{c.value}</span>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+
         <div className="panel p-6">
           <div className="text-[12px] font-medium uppercase tracking-wider text-muted-foreground">
-            Scope creep detected (last 8 weeks)
+            Workspace growth & scan activity (last 6 months)
           </div>
           <div className="mt-6 h-64">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart
-                data={dynamicScopeTrend}
+                data={monthlyGrowthChart}
                 margin={{ top: 8, right: 8, left: -20, bottom: 0 }}
               >
                 <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" vertical={false} />
                 <XAxis
-                  dataKey="week"
+                  dataKey="month"
                   tick={{ fill: "var(--muted-foreground)", fontSize: 11 }}
                   axisLine={false}
                   tickLine={false}
@@ -313,9 +448,20 @@ function Analytics() {
                     borderRadius: 12,
                     fontSize: 12,
                   }}
-                  cursor={{ fill: "var(--accent)" }}
                 />
-                <Bar dataKey="detected" fill="var(--primary)" radius={[6, 6, 0, 0]} />
+                <Legend wrapperStyle={{ fontSize: 11 }} />
+                <Bar
+                  dataKey="projects"
+                  name="New Projects"
+                  fill="var(--primary)"
+                  radius={[4, 4, 0, 0]}
+                />
+                <Bar
+                  dataKey="scans"
+                  name="AI Scans Ran"
+                  fill="var(--success)"
+                  radius={[4, 4, 0, 0]}
+                />
               </BarChart>
             </ResponsiveContainer>
           </div>

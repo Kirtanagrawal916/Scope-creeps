@@ -28,7 +28,13 @@ import {
   restoreProject,
 } from "@/lib/projects.server";
 import { listEmailsForProject } from "@/lib/emails.server";
-import { listAnalysesForProject, runScopeAnalysis, analyzeEmail } from "@/lib/analyses.server";
+import {
+  listAnalysesForProject,
+  runScopeAnalysis,
+  analyzeEmail,
+  deleteAnalysis,
+  updateAnalysis,
+} from "@/lib/analyses.server";
 import type { ProjectStatus, RiskLevel } from "@/models/Project";
 import {
   Dialog,
@@ -515,55 +521,115 @@ function ProjectDetail() {
               </div>
             )}
             {projectAnalyses.map((a) => (
-              <Link
+              <div
                 key={a.id}
-                to="/app/analysis/$id"
-                params={{ id: a.id }}
-                className="block p-5 hover:bg-accent/40 transition-all"
+                className="p-5 hover:bg-accent/20 transition-all relative group flex flex-col md:flex-row gap-4 justify-between"
               >
-                <div className="flex items-center justify-between">
-                  <div className="font-semibold text-[13px] truncate flex items-center gap-2">
-                    <Sparkles className="h-4 w-4 text-primary" />
-                    {a.emailId ? "Email Thread Scan" : "Manual Scope Scan"}
-                  </div>
-                  <span
-                    className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${
-                      a.verdict === "out_of_scope"
-                        ? "bg-destructive/10 text-destructive"
+                <Link to="/app/analysis/$id" params={{ id: a.id }} className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="font-semibold text-[13px] truncate flex items-center gap-2">
+                      <Sparkles className="h-4 w-4 text-primary animate-pulse" />
+                      {a.emailId ? "Email Thread Scan" : "Manual Scope Scan"}
+                      <span className="text-[11px] font-normal text-muted-foreground ml-2">
+                        {a.createdAt}
+                      </span>
+                    </div>
+                    <span
+                      className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${
+                        a.verdict === "confirmed_scope_creep" || a.verdict === "out_of_scope"
+                          ? "bg-destructive/10 text-destructive border border-destructive/20"
+                          : a.verdict === "in_scope"
+                            ? "bg-[color:var(--success)]/10 text-[color:var(--success)] border border-[color:var(--success)]/20"
+                            : "bg-[color:var(--warning)]/10 text-[color:var(--warning)] border border-[color:var(--warning)]/20"
+                      }`}
+                    >
+                      {a.verdict === "confirmed_scope_creep" || a.verdict === "out_of_scope"
+                        ? "Confirmed Creep"
                         : a.verdict === "in_scope"
-                          ? "bg-[color:var(--success)]/10 text-[color:var(--success)]"
-                          : "bg-[color:var(--warning)]/10 text-[color:var(--warning)]"
-                    }`}
+                          ? "In Scope"
+                          : "Possible Creep"}
+                    </span>
+                  </div>
+                  <div className="mt-2 text-[12.5px] text-muted-foreground line-clamp-2 pr-6">
+                    {a.changedRequirement}
+                  </div>
+                  <div className="mt-3.5 flex flex-wrap gap-x-6 gap-y-2 text-[11px] border-t border-border/40 pt-2.5">
+                    <div>
+                      <span className="text-muted-foreground">Confidence: </span>
+                      <span className="font-semibold text-foreground">{a.confidence}%</span>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Cost: </span>
+                      <span className="font-semibold text-foreground">${a.suggestedCost}</span>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Hours: </span>
+                      <span className="font-semibold text-foreground">+{a.additionalHours}h</span>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Risk: </span>
+                      <span className="font-semibold text-foreground capitalize">
+                        {a.riskLevel}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Priority: </span>
+                      <span className="font-semibold text-foreground capitalize">{a.priority}</span>
+                    </div>
+                  </div>
+                </Link>
+
+                <div className="flex items-center gap-3 self-end md:self-center">
+                  <div onClick={(e) => e.stopPropagation()}>
+                    <select
+                      value={a.status}
+                      onChange={async (e) => {
+                        try {
+                          await updateAnalysis({
+                            data: {
+                              id: a.id,
+                              status: e.target.value as "active" | "pending" | "resolved",
+                            },
+                          });
+                          toast.success("Analysis status updated.");
+                          router.invalidate();
+                        } catch (err: unknown) {
+                          toast.error(
+                            err instanceof Error ? err.message : "Failed to update status.",
+                          );
+                        }
+                      }}
+                      className="bg-accent/40 text-[11px] font-medium text-muted-foreground border border-border/50 rounded px-2.5 py-1 focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer hover:text-foreground hover:bg-accent transition-all"
+                    >
+                      <option value="active">Active</option>
+                      <option value="pending">Pending</option>
+                      <option value="resolved">Resolved</option>
+                    </select>
+                  </div>
+
+                  <button
+                    onClick={async (e) => {
+                      e.stopPropagation();
+                      e.preventDefault();
+                      if (confirm("Are you sure you want to delete this analysis?")) {
+                        try {
+                          await deleteAnalysis({ data: { id: a.id } });
+                          toast.success("Analysis deleted successfully.");
+                          router.invalidate();
+                        } catch (err: unknown) {
+                          toast.error(
+                            err instanceof Error ? err.message : "Failed to delete analysis.",
+                          );
+                        }
+                      }
+                    }}
+                    className="p-1.5 rounded bg-destructive/10 hover:bg-destructive/20 text-destructive transition-colors"
+                    title="Delete Analysis"
                   >
-                    {a.verdict === "out_of_scope"
-                      ? "Out of scope"
-                      : a.verdict === "in_scope"
-                        ? "In scope"
-                        : "Mixed"}
-                  </span>
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
                 </div>
-                <div className="mt-2 text-[12.5px] text-muted-foreground line-clamp-2">
-                  {a.changedRequirement}
-                </div>
-                <div className="mt-3.5 grid grid-cols-4 gap-2 text-[11px] border-t border-border/40 pt-2.5">
-                  <div>
-                    <span className="text-muted-foreground">Confidence: </span>
-                    <span className="font-semibold text-foreground">{a.confidence}%</span>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">Cost Protected: </span>
-                    <span className="font-semibold text-foreground">${a.suggestedCost}</span>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">Hours: </span>
-                    <span className="font-semibold text-foreground">+{a.additionalHours}h</span>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">Risk: </span>
-                    <span className="font-semibold text-foreground capitalize">{a.riskLevel}</span>
-                  </div>
-                </div>
-              </Link>
+              </div>
             ))}
           </div>
         </TabsContent>
