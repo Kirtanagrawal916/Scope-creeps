@@ -11,6 +11,7 @@ import { Analysis } from "../models/Analysis";
 import { Project } from "../models/Project";
 import { EmailThread } from "../models/EmailThread";
 import { requireSession } from "./authorize.server";
+import { notifyUser } from "./notifications.server";
 import { AppError } from "./app-error";
 import { formatRelativeDate } from "./utils";
 import { z } from "zod";
@@ -822,6 +823,28 @@ export const runScopeAnalysis = createServerFn({ method: "POST" })
     });
 
     await analysis.save();
+
+    const isHighRisk =
+      analysisResult.riskLevel === "high" ||
+      analysisResult.verdict === "out_of_scope" ||
+      analysisResult.verdict === "confirmed_scope_creep";
+
+    await notifyUser({
+      userId: user._id,
+      title: isHighRisk ? "High Risk Scope Creep Detected" : "Scope Analysis Completed",
+      message: `Project "${project.name}": ${analysisResult.aiSummary || "Analysis finished successfully."}`,
+      type: isHighRisk ? "high_risk" : "analysis_completed",
+      priority: isHighRisk ? "high" : "medium",
+      entityType: "analysis",
+      entityId: String(analysis._id),
+      actionUrl: `/app/analysis/${analysis._id}`,
+      metadata: {
+        verdict: analysisResult.verdict,
+        suggestedCost: analysisResult.suggestedCost,
+        additionalHours: analysisResult.additionalHours,
+      },
+    });
+
     return serialize(analysis.toObject());
   });
 
@@ -890,6 +913,26 @@ export const analyzeEmail = createServerFn({ method: "POST" })
     email.analyzed = true;
     email.risk = analysisResult.riskLevel;
     await email.save();
+
+    const isHighRisk =
+      analysisResult.riskLevel === "high" ||
+      analysisResult.verdict === "out_of_scope" ||
+      analysisResult.verdict === "confirmed_scope_creep";
+
+    await notifyUser({
+      userId: user._id,
+      title: isHighRisk ? "High Risk Scope Creep Detected" : "Email Thread Analyzed",
+      message: `Project "${project.name}" email from ${email.from}: ${analysisResult.aiSummary || "Analysis completed."}`,
+      type: isHighRisk ? "high_risk" : "analysis_completed",
+      priority: isHighRisk ? "high" : "medium",
+      entityType: "analysis",
+      entityId: String(analysis._id),
+      actionUrl: `/app/analysis/${analysis._id}`,
+      metadata: {
+        verdict: analysisResult.verdict,
+        emailSubject: email.subject,
+      },
+    });
 
     return serialize(analysis.toObject());
   });

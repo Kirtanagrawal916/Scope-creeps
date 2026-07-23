@@ -28,6 +28,7 @@ import { Button } from "@/components/ui/button";
 import { listProjects } from "@/lib/projects.server";
 import { listAllUserEmails } from "@/lib/emails.server";
 import { listAllUserAnalyses } from "@/lib/analyses.server";
+import { listNotifications } from "@/lib/notifications.server";
 import {
   Select,
   SelectContent,
@@ -40,12 +41,17 @@ import { useState } from "react";
 
 export const Route = createFileRoute("/app/")({
   loader: async () => {
-    const [projects, emails, analyses] = await Promise.all([
+    const [projects, emails, analyses, notificationsRes] = await Promise.all([
       listProjects({ data: { archived: false } }),
       listAllUserEmails(),
       listAllUserAnalyses(),
+      listNotifications({ data: { limit: 5 } }) as Promise<{
+        notifications: any[];
+        totalCount: number;
+        unreadCount: number;
+      }>,
     ]);
-    return { projects, emails, analyses };
+    return { projects, emails, analyses, notifications: notificationsRes.notifications };
   },
   component: Dashboard,
   head: () => ({ meta: [{ title: "Dashboard — ScopeGuard" }] }),
@@ -61,7 +67,7 @@ function Dashboard() {
       workspaceName?: string;
     } | null;
   };
-  const { projects, emails, analyses } = Route.useLoaderData();
+  const { projects, emails, analyses, notifications } = Route.useLoaderData();
 
   const greetingName = user?.firstName || user?.email?.split("@")[0] || "there";
 

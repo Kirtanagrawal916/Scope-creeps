@@ -11,6 +11,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { connectToDatabase } from "./db";
 import { Project } from "../models/Project";
 import { requireSession } from "./authorize.server";
+import { notifyUser } from "./notifications.server";
 import { AppError } from "./app-error";
 import { formatRelativeDate } from "./utils";
 import type { ProjectStatus, RiskLevel } from "../models/Project";
@@ -186,6 +187,18 @@ export const createProject = createServerFn({ method: "POST" })
     });
 
     await project.save();
+
+    await notifyUser({
+      userId: user._id,
+      title: "New Project Created",
+      message: `Project "${project.name}" for client ${project.client} was successfully created.`,
+      type: "project_created",
+      priority: "low",
+      entityType: "project",
+      entityId: String(project._id),
+      actionUrl: `/app/projects/${project._id}`,
+    });
+
     return serialize(project.toObject());
   });
 
@@ -219,6 +232,18 @@ export const updateProject = createServerFn({ method: "POST" })
     if (data.archived !== undefined) project.archived = data.archived;
 
     await project.save();
+
+    await notifyUser({
+      userId: user._id,
+      title: "Project Updated",
+      message: `Project "${project.name}" details have been updated.`,
+      type: "project_updated",
+      priority: "low",
+      entityType: "project",
+      entityId: String(project._id),
+      actionUrl: `/app/projects/${project._id}`,
+    });
+
     return serialize(project.toObject());
   });
 
@@ -237,6 +262,18 @@ export const archiveProject = createServerFn({ method: "POST" })
       { new: true },
     );
     if (!project) throw new AppError(404, "Project not found.");
+
+    await notifyUser({
+      userId: user._id,
+      title: "Project Archived",
+      message: `Project "${project.name}" has been moved to archives.`,
+      type: "project_archived",
+      priority: "medium",
+      entityType: "project",
+      entityId: String(project._id),
+      actionUrl: `/app/projects`,
+    });
+
     return serialize(project.toObject());
   });
 

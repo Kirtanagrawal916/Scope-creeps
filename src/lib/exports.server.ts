@@ -11,6 +11,7 @@ import { connectToDatabase } from "./db";
 import { Project } from "../models/Project";
 import { Analysis } from "../models/Analysis";
 import { requireSession } from "./authorize.server";
+import { notifyUser } from "./notifications.server";
 import type {
   DashboardExportData,
   ProjectReportData,
@@ -374,24 +375,17 @@ export const getBulkExport = createServerFn({ method: "POST" })
 
     const { scope, targetId, filters } = data;
 
+    let payload: ExportPayload;
+
     if (scope === "dashboard") {
-      return getDashboardExport({ data: filters });
-    }
-
-    if (scope === "project" && targetId) {
-      return getProjectExport({ data: { id: targetId } });
-    }
-
-    if (scope === "analysis" && targetId) {
-      return getAnalysisExport({ data: { id: targetId } });
-    }
-
-    if (scope === "analytics") {
-      return getAnalyticsExport({ data: filters });
-    }
-
-    // Projects Bulk
-    if (scope === "projects_bulk") {
+      payload = await getDashboardExport({ data: filters });
+    } else if (scope === "project" && targetId) {
+      payload = await getProjectExport({ data: { id: targetId } });
+    } else if (scope === "analysis" && targetId) {
+      payload = await getAnalysisExport({ data: { id: targetId } });
+    } else if (scope === "analytics") {
+      payload = await getAnalyticsExport({ data: filters });
+    } else if (scope === "projects_bulk") {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const query: any = { owner: user._id };
 
@@ -434,11 +428,8 @@ export const getBulkExport = createServerFn({ method: "POST" })
         },
       }));
 
-      return { type: "projects_bulk", data: projectsData };
-    }
-
-    // Analyses Bulk
-    if (scope === "analyses_bulk") {
+      payload = { type: "projects_bulk", data: projectsData };
+    } else if (scope === "analyses_bulk") {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const query: any = { owner: user._id };
 
@@ -507,11 +498,8 @@ export const getBulkExport = createServerFn({ method: "POST" })
         };
       });
 
-      return { type: "analyses_bulk", data: analysesData };
-    }
-
-    // Complete Workspace Export
-    if (scope === "workspace") {
+      payload = { type: "analyses_bulk", data: analysesData };
+    } else if (scope === "workspace") {
       const [dashPayload, analyticsPayload] = await Promise.all([
         getDashboardExport({ data: filters }),
         getAnalyticsExport({ data: filters }),
@@ -529,8 +517,20 @@ export const getBulkExport = createServerFn({ method: "POST" })
         analytics: analyticsPayload.data as AnalyticsReportData,
       };
 
-      return { type: "workspace", data: workspaceData };
+      payload = { type: "workspace", data: workspaceData };
+    } else {
+      throw new Error(`Unsupported export scope: ${scope}`);
     }
 
-    throw new Error(`Unsupported export scope: ${scope}`);
+    await notifyUser({
+      userId: user._id,
+      title: "Export Report Generated",
+      message: `Your ${scope.replace(/_/g, " ").toUpperCase()} export report was generated successfully.`,
+      type: "export_completed",
+      priority: "low",
+      entityType: "export",
+      actionUrl: `/app/notifications`,
+    });
+
+    return payload;
   });
