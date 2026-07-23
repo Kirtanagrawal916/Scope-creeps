@@ -21,6 +21,7 @@ import {
   Search,
 } from "lucide-react";
 import { AppShell, Section } from "@/components/app-shell";
+import { ExportButton } from "@/components/export/export-button";
 import { StatCard } from "@/components/stat-card";
 import { StatusPill } from "@/components/status-pill";
 import { Button } from "@/components/ui/button";
@@ -230,6 +231,7 @@ function Dashboard() {
     <AppShell
       title={`${greeting}, ${greetingName}`}
       subtitle="Here's what's happened across your workspace today."
+      action={<ExportButton defaultScope="dashboard" label="Export Dashboard Report" />}
     >
       <div className="space-y-8">
         <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">

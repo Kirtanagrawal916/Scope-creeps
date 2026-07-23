@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { AppShell } from "@/components/app-shell";
+import { ExportButton } from "@/components/export/export-button";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { listProjects, type SerializedProject } from "@/lib/projects.server";
@@ -354,9 +355,7 @@ function HistoryPage() {
             </button>
           </div>
 
-          <Button variant="outline" size="sm" onClick={() => exportToCSV(queryResult.analyses)}>
-            <Download className="mr-1.5 h-3.5 w-3.5" /> Export Page CSV
-          </Button>
+          <ExportButton defaultScope="analyses_bulk" label="Export Reports" />
         </div>
       </div>
 

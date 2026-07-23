@@ -17,6 +17,7 @@ import {
   RefreshCw,
 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
+import { ExportButton } from "@/components/export/export-button";
 import { StatusPill, RiskChip } from "@/components/status-pill";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -249,6 +250,7 @@ function ProjectDetail() {
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
+          <ExportButton defaultScope="project" defaultTargetId={project.id} label="Export Report" />
           {project.archived ? (
             <Button
               variant="outline"

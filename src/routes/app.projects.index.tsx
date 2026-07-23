@@ -1,6 +1,7 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { Search, Filter, ArrowUpRight, FolderOpen, Archive, CheckCircle2 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
+import { ExportButton } from "@/components/export/export-button";
 import { StatusPill, RiskChip } from "@/components/status-pill";
 import { listProjects } from "@/lib/projects.server";
 import { Input } from "@/components/ui/input";
@@ -85,7 +86,11 @@ function ProjectsPage() {
   );
 
   return (
-    <AppShell title="Projects" subtitle="Every engagement, one source of truth.">
+    <AppShell
+      title="Projects"
+      subtitle="Every engagement, one source of truth."
+      action={<ExportButton defaultScope="projects_bulk" label="Export Projects Report" />}
+    >
       {/* Active vs Archived Tabs */}
       <div className="mb-6 flex border-b border-border">
         <button

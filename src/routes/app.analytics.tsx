@@ -16,6 +16,7 @@ import {
 } from "recharts";
 import { ShieldCheck, Clock, FolderKanban, TrendingUp, Download } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
+import { ExportButton } from "@/components/export/export-button";
 import { StatCard } from "@/components/stat-card";
 import { Button } from "@/components/ui/button";
 import { listProjects } from "@/lib/projects.server";
@@ -174,11 +175,7 @@ function Analytics() {
     <AppShell
       title="Analytics"
       subtitle="How much your discipline is actually worth."
-      action={
-        <Button variant="outline" size="sm">
-          <Download className="mr-1.5 h-3.5 w-3.5" /> Export
-        </Button>
-      }
+      action={<ExportButton defaultScope="analytics" label="Export Report" />}
     >
       <div className="space-y-8">
         <div className="grid gap-3 md:grid-cols-4">

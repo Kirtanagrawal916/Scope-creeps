@@ -14,6 +14,7 @@ import {
   Printer,
 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
+import { ExportButton } from "@/components/export/export-button";
 import { RiskChip, StatusPill } from "@/components/status-pill";
 import { Button } from "@/components/ui/button";
 import { getAnalysisDetails, updateAnalysis } from "@/lib/analyses.server";
@@ -229,9 +230,12 @@ function AnalysisPage() {
               {analysis.bookmarked ? "Bookmarked" : "Bookmark"}
             </Button>
 
-            <Button variant="outline" size="sm" onClick={handlePrint} className="h-8 text-[12px]">
-              <Printer className="mr-1.5 h-3.5 w-3.5" /> PDF Export
-            </Button>
+            <ExportButton
+              defaultScope="analysis"
+              defaultTargetId={analysis.id}
+              label="Export Report"
+              className="h-8 text-[12px]"
+            />
           </div>
 
           <div className="text-[11px] font-medium bg-accent px-2.5 py-1.5 rounded border border-border/40 capitalize shrink-0 h-8 flex items-center">

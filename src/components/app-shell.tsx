@@ -23,6 +23,7 @@ import { Avatar, AvatarFallback } from "./ui/avatar";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "./ui/sheet";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { ExportButton } from "@/components/export/export-button";
 
 interface NavItem {
   to: string;
@@ -230,6 +231,7 @@ export function AppShell({
           </div>
           <div className="flex shrink-0 items-center gap-2">
             <ThemeToggle className="hidden lg:flex" compact />
+            <ExportButton defaultScope="workspace" label="Export" variant="outline" className="h-8 text-xs font-medium hidden sm:flex" />
             <div className="hidden sm:block">{action}</div>
             <Button size="sm" className="gap-1.5" asChild>
               <Link to="/app/projects/new">
