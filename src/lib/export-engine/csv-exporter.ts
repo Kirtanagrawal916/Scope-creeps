@@ -44,11 +44,8 @@ export function generateCsvReport(payload: ExportPayload): string {
       const metaRow = `"# ScopeGuard Dashboard Summary Report"`;
       const metaRow2 = `"Workspace: ${data.meta.workspaceName}","Generated: ${data.meta.generatedAt}"`;
       const emptyRow = `""`;
-      
-      const statsHeaders = [
-        "Metric",
-        "Value",
-      ];
+
+      const statsHeaders = ["Metric", "Value"];
       const statsRows = [
         `"Total Projects",${data.stats.totalProjects}`,
         `"Total Analyses",${data.stats.totalAnalyses}`,
@@ -69,7 +66,10 @@ export function generateCsvReport(payload: ExportPayload): string {
         { key: "suggestedCost", label: "Suggested Cost ($)" },
         { key: "createdAt", label: "Date" },
       ];
-      const scopeChangesCsv = recordsToCsv(scopeChangesHeaders, data.recentScopeChanges as unknown as Record<string, unknown>[]);
+      const scopeChangesCsv = recordsToCsv(
+        scopeChangesHeaders,
+        data.recentScopeChanges as unknown as Record<string, unknown>[],
+      );
 
       return [
         metaRow,
@@ -97,6 +97,8 @@ export function generateCsvReport(payload: ExportPayload): string {
         { key: "status", label: "Status" },
         { key: "additionalHours", label: "Est. Additional Hours" },
         { key: "suggestedCost", label: "Est. Suggested Cost ($)" },
+        { key: "aiModel", label: "AI Model" },
+        { key: "isFallback", label: "Is Fallback" },
         { key: "aiSummary", label: "AI Summary" },
         { key: "explanation", label: "AI Explanation" },
         { key: "originalRequirement", label: "Original Requirement" },
@@ -167,7 +169,10 @@ export function generateCsvReport(payload: ExportPayload): string {
         { key: "createdAt", label: "Date" },
       ];
 
-      const analysesCsv = recordsToCsv(analysesHeaders, proj.analyses as unknown as Record<string, unknown>[]);
+      const analysesCsv = recordsToCsv(
+        analysesHeaders,
+        proj.analyses as unknown as Record<string, unknown>[],
+      );
 
       return [
         `"# Project Summary Report"`,
@@ -199,10 +204,7 @@ export function generateCsvReport(payload: ExportPayload): string {
 
     case "analytics": {
       const data = payload.data;
-      const headers = [
-        "Metric",
-        "Value",
-      ];
+      const headers = ["Metric", "Value"];
       const kpiRows = [
         `"Total Revenue Protected ($)",${data.kpis.totalRevenueProtected}`,
         `"Total Hours Saved",${data.kpis.totalHoursSaved}`,
@@ -217,7 +219,10 @@ export function generateCsvReport(payload: ExportPayload): string {
         { key: "scopeCreepCount", label: "Scope Creep Count" },
         { key: "revenueProtected", label: "Revenue Protected ($)" },
       ];
-      const monthlyCsv = recordsToCsv(monthlyHeaders, data.monthlyActivity as unknown as Record<string, unknown>[]);
+      const monthlyCsv = recordsToCsv(
+        monthlyHeaders,
+        data.monthlyActivity as unknown as Record<string, unknown>[],
+      );
 
       return [
         `"# ScopeGuard Analytics Report"`,

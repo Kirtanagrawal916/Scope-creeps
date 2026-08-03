@@ -22,17 +22,33 @@ export interface IAnalysis extends Document {
   reasoning: string;
   suggestedReply: string;
 
-  // New extended fields
+  // New extended AI fields
   aiSummary: string;
   explanation: string;
-  detectedFeatures: string[];
+  executiveSummary: string;
+  technicalExplanation: string;
+  potentialRisks: string[];
+  recommendations: string[];
+  addedRequirements: string[];
+  removedRequirements: string[];
+  modifiedRequirements: string[];
   missingRequirements: string[];
+  detectedFeatures?: string[];
+  clientFriendlinessScore: number;
   priority: "low" | "medium" | "high";
   status: "active" | "pending" | "resolved";
   pinned: boolean;
   bookmarked: boolean;
   archived: boolean;
   aiModel?: string;
+  promptVersion?: string;
+  tokensUsed?: {
+    inputTokens: number;
+    outputTokens: number;
+    totalTokens: number;
+  };
+  processingTime?: number;
+  isFallback?: boolean;
 
   createdAt: Date;
   updatedAt: Date;
@@ -89,8 +105,16 @@ const AnalysisSchema = new Schema<IAnalysis>(
     // New fields implementations
     aiSummary: { type: String, required: true, default: "" },
     explanation: { type: String, required: true, default: "" },
+    executiveSummary: { type: String, default: "" },
+    technicalExplanation: { type: String, default: "" },
+    potentialRisks: [{ type: String }],
+    recommendations: [{ type: String }],
+    addedRequirements: [{ type: String }],
+    removedRequirements: [{ type: String }],
+    modifiedRequirements: [{ type: String }],
     detectedFeatures: [{ type: String }],
     missingRequirements: [{ type: String }],
+    clientFriendlinessScore: { type: Number, default: 85, min: 0, max: 100 },
     priority: {
       type: String,
       enum: ["low", "medium", "high"],
@@ -104,7 +128,15 @@ const AnalysisSchema = new Schema<IAnalysis>(
     pinned: { type: Boolean, default: false, index: true },
     bookmarked: { type: Boolean, default: false, index: true },
     archived: { type: Boolean, default: false, index: true },
-    aiModel: { type: String, default: "mockup" },
+    aiModel: { type: String, default: "gemini-2.5-flash" },
+    promptVersion: { type: String, default: "v1.0" },
+    tokensUsed: {
+      inputTokens: { type: Number, default: 0 },
+      outputTokens: { type: Number, default: 0 },
+      totalTokens: { type: Number, default: 0 },
+    },
+    processingTime: { type: Number, default: 0 },
+    isFallback: { type: Boolean, default: false, index: true },
   },
   { timestamps: true },
 );

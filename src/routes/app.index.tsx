@@ -28,7 +28,7 @@ import { Button } from "@/components/ui/button";
 import { listProjects } from "@/lib/projects.server";
 import { listAllUserEmails } from "@/lib/emails.server";
 import { listAllUserAnalyses } from "@/lib/analyses.server";
-import { listNotifications } from "@/lib/notifications.server";
+import { listNotifications, type SerializedNotification } from "@/lib/notifications.server";
 import {
   Select,
   SelectContent,
@@ -46,7 +46,7 @@ export const Route = createFileRoute("/app/")({
       listAllUserEmails(),
       listAllUserAnalyses(),
       listNotifications({ data: { limit: 5 } }) as Promise<{
-        notifications: any[];
+        notifications: SerializedNotification[];
         totalCount: number;
         unreadCount: number;
       }>,
@@ -272,6 +272,41 @@ function Dashboard() {
             delta={`${highRiskProjects.length} projects need review`}
             trend={highRiskProjects.length > 0 ? "down" : "neutral"}
           />
+        </div>
+
+        {/* AI System Health & Metrics Bar */}
+        <div className="rounded-xl border border-primary/20 bg-primary/5 p-3.5 flex flex-wrap items-center justify-between gap-3 text-[12.5px]">
+          <div className="flex items-center gap-2 font-medium text-foreground">
+            <Sparkles className="h-4 w-4 text-primary" />
+            <span>Gemini AI Engine: Active</span>
+            <span className="text-[11px] bg-primary/10 text-primary px-2 py-0.5 rounded font-mono">
+              gemini-2.5-flash
+            </span>
+          </div>
+          <div className="flex items-center flex-wrap gap-4 text-muted-foreground text-[12px]">
+            <span>
+              Total AI Analyses:{" "}
+              <strong className="text-foreground font-semibold">{analyses.length}</strong>
+            </span>
+            <span>·</span>
+            <span>
+              Avg Confidence:{" "}
+              <strong className="text-foreground font-semibold">{avgConfidence}%</strong>
+            </span>
+            <span>·</span>
+            <span>
+              Avg Speed:{" "}
+              <strong className="text-foreground font-semibold">
+                {analyses.length > 0
+                  ? `${Math.round(analyses.reduce((s, a) => s + (a.processingTime || 0), 0) / analyses.length)}ms`
+                  : "0ms"}
+              </strong>
+            </span>
+            <span>·</span>
+            <span className="text-[color:var(--success)] font-medium">
+              ✓ Fallback Engine Online
+            </span>
+          </div>
         </div>
 
         <div className="grid gap-4 lg:grid-cols-[1.6fr_1fr]">

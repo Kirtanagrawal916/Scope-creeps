@@ -135,7 +135,10 @@ export function ExportDialog({
               </DialogDescription>
             </div>
           </div>
-          <Badge variant="outline" className="border-primary/30 text-primary bg-primary/5 text-xs px-2.5 py-1">
+          <Badge
+            variant="outline"
+            className="border-primary/30 text-primary bg-primary/5 text-xs px-2.5 py-1"
+          >
             <Sparkles className="mr-1 h-3 w-3" /> ScopeGuard Engine
           </Badge>
         </div>
@@ -299,7 +302,9 @@ export function ExportDialog({
             </div>
 
             <div>
-              <Label className="text-[11px] text-muted-foreground mb-2 block">Risk Level Filter</Label>
+              <Label className="text-[11px] text-muted-foreground mb-2 block">
+                Risk Level Filter
+              </Label>
               <div className="flex items-center gap-4 text-xs">
                 <label className="flex items-center gap-1.5 cursor-pointer">
                   <Checkbox checked={riskLow} onCheckedChange={(c) => setRiskLow(!!c)} />
@@ -322,7 +327,8 @@ export function ExportDialog({
             <div className="space-y-2 bg-primary/5 p-3 rounded-lg border border-primary/20">
               <div className="flex justify-between text-xs font-semibold text-primary">
                 <span className="flex items-center gap-1.5">
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" /> Generating {format.toUpperCase()} report...
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" /> Generating {format.toUpperCase()}{" "}
+                  report...
                 </span>
                 <span>{progress}%</span>
               </div>

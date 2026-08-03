@@ -82,7 +82,10 @@ export const getDashboardExport = createServerFn({ method: "POST" })
     const totalAnalyses = analyses.length;
 
     const scopeCreepAnalyses = analyses.filter(
-      (a) => a.verdict === "out_of_scope" || a.verdict === "confirmed_scope_creep" || a.verdict === "possible_scope_creep",
+      (a) =>
+        a.verdict === "out_of_scope" ||
+        a.verdict === "confirmed_scope_creep" ||
+        a.verdict === "possible_scope_creep",
     );
     const scopeCreepCount = scopeCreepAnalyses.length;
 
@@ -160,7 +163,10 @@ export const getProjectExport = createServerFn({ method: "POST" })
       .lean();
 
     const scopeCreepAnalyses = analyses.filter(
-      (a) => a.verdict === "out_of_scope" || a.verdict === "confirmed_scope_creep" || a.verdict === "possible_scope_creep",
+      (a) =>
+        a.verdict === "out_of_scope" ||
+        a.verdict === "confirmed_scope_creep" ||
+        a.verdict === "possible_scope_creep",
     );
 
     const totalEstimatedHours = analyses.reduce((acc, a) => acc + (a.additionalHours ?? 0), 0);
@@ -275,16 +281,26 @@ export const getAnalyticsExport = createServerFn({ method: "POST" })
 
     const totalAnalyses = analyses.length;
     const scopeCreepAnalyses = analyses.filter(
-      (a) => a.verdict === "out_of_scope" || a.verdict === "confirmed_scope_creep" || a.verdict === "possible_scope_creep",
+      (a) =>
+        a.verdict === "out_of_scope" ||
+        a.verdict === "confirmed_scope_creep" ||
+        a.verdict === "possible_scope_creep",
     );
 
-    const totalRevenueProtected = scopeCreepAnalyses.reduce((acc, a) => acc + (a.suggestedCost ?? 0), 0);
-    const totalHoursSaved = scopeCreepAnalyses.reduce((acc, a) => acc + (a.additionalHours ?? 0), 0);
+    const totalRevenueProtected = scopeCreepAnalyses.reduce(
+      (acc, a) => acc + (a.suggestedCost ?? 0),
+      0,
+    );
+    const totalHoursSaved = scopeCreepAnalyses.reduce(
+      (acc, a) => acc + (a.additionalHours ?? 0),
+      0,
+    );
     const avgConfidenceScore =
       totalAnalyses > 0
         ? Math.round(analyses.reduce((acc, a) => acc + (a.confidence ?? 0), 0) / totalAnalyses)
         : 100;
-    const scopeCreepRatio = totalAnalyses > 0 ? Math.round((scopeCreepAnalyses.length / totalAnalyses) * 100) : 0;
+    const scopeCreepRatio =
+      totalAnalyses > 0 ? Math.round((scopeCreepAnalyses.length / totalAnalyses) * 100) : 0;
 
     const riskDistribution = {
       low: analyses.filter((a) => a.riskLevel === "low").length,
@@ -301,10 +317,17 @@ export const getAnalyticsExport = createServerFn({ method: "POST" })
     // Monthly trends aggregation
     const monthlyMap = new Map<string, { total: number; creep: number; revenue: number }>();
     analyses.forEach((a) => {
-      const monthKey = new Date(a.createdAt).toLocaleString("en-US", { month: "short", year: "numeric" });
+      const monthKey = new Date(a.createdAt).toLocaleString("en-US", {
+        month: "short",
+        year: "numeric",
+      });
       const current = monthlyMap.get(monthKey) || { total: 0, creep: 0, revenue: 0 };
       current.total += 1;
-      if (a.verdict === "out_of_scope" || a.verdict === "confirmed_scope_creep" || a.verdict === "possible_scope_creep") {
+      if (
+        a.verdict === "out_of_scope" ||
+        a.verdict === "confirmed_scope_creep" ||
+        a.verdict === "possible_scope_creep"
+      ) {
         current.creep += 1;
         current.revenue += a.suggestedCost ?? 0;
       }

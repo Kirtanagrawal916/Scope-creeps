@@ -123,7 +123,10 @@ export function buildExcelWorkbook(sheets: ExcelSheet[]): string {
     });
 
     const headerCells = sheet.columns
-      .map((col) => `<Cell ss:StyleID="Header"><Data ss:Type="String">${escapeXml(col.title)}</Data></Cell>`)
+      .map(
+        (col) =>
+          `<Cell ss:StyleID="Header"><Data ss:Type="String">${escapeXml(col.title)}</Data></Cell>`,
+      )
       .join("");
 
     const dataRowsXml = sheet.rows
@@ -132,7 +135,11 @@ export function buildExcelWorkbook(sheets: ExcelSheet[]): string {
           .map((cell) => {
             const val = cell.value;
             const type = cell.type ?? (typeof val === "number" ? "Number" : "String");
-            const styleAttr = cell.styleId ? ` ss:StyleID="${cell.styleId}"` : type === "Number" ? ' ss:StyleID="Number"' : "";
+            const styleAttr = cell.styleId
+              ? ` ss:StyleID="${cell.styleId}"`
+              : type === "Number"
+                ? ' ss:StyleID="Number"'
+                : "";
             return `<Cell${styleAttr}><Data ss:Type="${type}">${escapeXml(val)}</Data></Cell>`;
           })
           .join("");
@@ -189,10 +196,16 @@ export function generateExcelReport(payload: ExportPayload): string {
           [{ value: "Total Projects" }, { value: d.stats.totalProjects, type: "Number" }],
           [{ value: "Total Analyses" }, { value: d.stats.totalAnalyses, type: "Number" }],
           [{ value: "Scope Creep Count" }, { value: d.stats.scopeCreepCount, type: "Number" }],
-          [{ value: "Revenue Protected ($)" }, { value: d.stats.revenueProtected, type: "Number", styleId: "Currency" }],
+          [
+            { value: "Revenue Protected ($)" },
+            { value: d.stats.revenueProtected, type: "Number", styleId: "Currency" },
+          ],
           [{ value: "Hours Saved" }, { value: d.stats.hoursSaved, type: "Number" }],
           [{ value: "Average Confidence (%)" }, { value: d.stats.avgConfidence, type: "Number" }],
-          [{ value: "High Risk Projects" }, { value: d.stats.highRiskProjectsCount, type: "Number" }],
+          [
+            { value: "High Risk Projects" },
+            { value: d.stats.highRiskProjectsCount, type: "Number" },
+          ],
         ],
       });
 
@@ -241,7 +254,15 @@ export function generateExcelReport(payload: ExportPayload): string {
           { value: c.originalRequirement },
           { value: c.changedRequirement },
           { value: c.verdict },
-          { value: c.riskLevel, styleId: c.riskLevel === "high" ? "BadgeHigh" : c.riskLevel === "medium" ? "BadgeMed" : "BadgeLow" },
+          {
+            value: c.riskLevel,
+            styleId:
+              c.riskLevel === "high"
+                ? "BadgeHigh"
+                : c.riskLevel === "medium"
+                  ? "BadgeMed"
+                  : "BadgeLow",
+          },
           { value: c.additionalHours, type: "Number" },
           { value: c.suggestedCost, type: "Number", styleId: "Currency" },
           { value: c.createdAt },
@@ -255,17 +276,17 @@ export function generateExcelReport(payload: ExportPayload): string {
       sheets.push({
         name: "Project Overview",
         showFreezePane: true,
-        columns: [
-          { title: "Property" },
-          { title: "Value" },
-        ],
+        columns: [{ title: "Property" }, { title: "Value" }],
         rows: [
           [{ value: "Project Name" }, { value: p.name }],
           [{ value: "Client" }, { value: p.client }],
           [{ value: "Status" }, { value: p.status }],
           [{ value: "Risk Score" }, { value: p.risk }],
           [{ value: "Budget ($)" }, { value: p.budget, type: "Number", styleId: "Currency" }],
-          [{ value: "Hourly Rate ($)" }, { value: p.hourlyRate, type: "Number", styleId: "Currency" }],
+          [
+            { value: "Hourly Rate ($)" },
+            { value: p.hourlyRate, type: "Number", styleId: "Currency" },
+          ],
           [{ value: "Hours Allocated" }, { value: p.hoursAllocated, type: "Number" }],
           [{ value: "Hours Used" }, { value: p.hoursUsed, type: "Number" }],
           [{ value: "Progress (%)" }, { value: p.progress, type: "Number" }],
@@ -329,7 +350,11 @@ export function generateExcelReport(payload: ExportPayload): string {
           { value: p.name },
           { value: p.client },
           { value: p.status },
-          { value: p.risk, styleId: p.risk === "high" ? "BadgeHigh" : p.risk === "medium" ? "BadgeMed" : "BadgeLow" },
+          {
+            value: p.risk,
+            styleId:
+              p.risk === "high" ? "BadgeHigh" : p.risk === "medium" ? "BadgeMed" : "BadgeLow",
+          },
           { value: p.budget, type: "Number", styleId: "Currency" },
           { value: p.hourlyRate, type: "Number", styleId: "Currency" },
           { value: p.hoursAllocated, type: "Number" },
@@ -357,7 +382,10 @@ export function generateExcelReport(payload: ExportPayload): string {
           [{ value: "Priority" }, { value: a.priority }],
           [{ value: "Status" }, { value: a.status }],
           [{ value: "Est. Additional Hours" }, { value: a.additionalHours, type: "Number" }],
-          [{ value: "Est. Suggested Cost ($)" }, { value: a.suggestedCost, type: "Number", styleId: "Currency" }],
+          [
+            { value: "Est. Suggested Cost ($)" },
+            { value: a.suggestedCost, type: "Number", styleId: "Currency" },
+          ],
           [{ value: "AI Summary" }, { value: a.aiSummary }],
           [{ value: "AI Explanation" }, { value: a.explanation || a.aiExplanation }],
           [{ value: "Original Requirement" }, { value: a.originalRequirement }],
@@ -396,7 +424,15 @@ export function generateExcelReport(payload: ExportPayload): string {
           { value: a.clientName },
           { value: a.verdict },
           { value: a.confidence, type: "Number" },
-          { value: a.riskLevel, styleId: a.riskLevel === "high" ? "BadgeHigh" : a.riskLevel === "medium" ? "BadgeMed" : "BadgeLow" },
+          {
+            value: a.riskLevel,
+            styleId:
+              a.riskLevel === "high"
+                ? "BadgeHigh"
+                : a.riskLevel === "medium"
+                  ? "BadgeMed"
+                  : "BadgeLow",
+          },
           { value: a.priority },
           { value: a.status },
           { value: a.additionalHours, type: "Number" },
@@ -415,11 +451,23 @@ export function generateExcelReport(payload: ExportPayload): string {
         showFreezePane: true,
         columns: [{ title: "KPI Metric" }, { title: "Value" }],
         rows: [
-          [{ value: "Total Revenue Protected ($)" }, { value: data.kpis.totalRevenueProtected, type: "Number", styleId: "Currency" }],
+          [
+            { value: "Total Revenue Protected ($)" },
+            { value: data.kpis.totalRevenueProtected, type: "Number", styleId: "Currency" },
+          ],
           [{ value: "Total Hours Saved" }, { value: data.kpis.totalHoursSaved, type: "Number" }],
-          [{ value: "Average Confidence Score (%)" }, { value: data.kpis.avgConfidenceScore, type: "Number" }],
-          [{ value: "Total Scope Analyses" }, { value: data.kpis.totalAnalysesPerformed, type: "Number" }],
-          [{ value: "Scope Creep Ratio (%)" }, { value: data.kpis.scopeCreepRatio, type: "Number" }],
+          [
+            { value: "Average Confidence Score (%)" },
+            { value: data.kpis.avgConfidenceScore, type: "Number" },
+          ],
+          [
+            { value: "Total Scope Analyses" },
+            { value: data.kpis.totalAnalysesPerformed, type: "Number" },
+          ],
+          [
+            { value: "Scope Creep Ratio (%)" },
+            { value: data.kpis.scopeCreepRatio, type: "Number" },
+          ],
         ],
       });
 

@@ -19,6 +19,8 @@ import mongoose from "mongoose";
 import type { AnalysisVerdict } from "../models/Analysis";
 import type { ProjectStatus, RiskLevel } from "../models/Project";
 
+import { analyzeScopeWithAI } from "./ai/service";
+
 // ---------------------------------------------------------------------------
 // Serialized types — safe for client consumption
 // ---------------------------------------------------------------------------
@@ -46,14 +48,30 @@ export type SerializedAnalysis = {
   // Extended fields
   aiSummary: string;
   explanation: string;
-  detectedFeatures: string[];
+  executiveSummary: string;
+  technicalExplanation: string;
+  potentialRisks: string[];
+  recommendations: string[];
+  addedRequirements: string[];
+  removedRequirements: string[];
+  modifiedRequirements: string[];
   missingRequirements: string[];
+  detectedFeatures?: string[];
+  clientFriendlinessScore: number;
   priority: "low" | "medium" | "high";
   status: "active" | "pending" | "resolved";
   pinned: boolean;
   bookmarked: boolean;
   archived: boolean;
   aiModel?: string;
+  promptVersion?: string;
+  tokensUsed?: {
+    inputTokens: number;
+    outputTokens: number;
+    totalTokens: number;
+  };
+  processingTime?: number;
+  isFallback?: boolean;
 
   /** Human-readable relative date, e.g. "2h ago" */
   createdAt: string;
@@ -104,14 +122,26 @@ function serialize(doc: any): SerializedAnalysis {
     // Extended fields mappings
     aiSummary: doc.aiSummary ?? "",
     explanation: doc.explanation ?? doc.aiExplanation ?? doc.reasoning ?? "",
-    detectedFeatures: doc.detectedFeatures ?? [],
+    executiveSummary: doc.executiveSummary ?? doc.aiSummary ?? "",
+    technicalExplanation: doc.technicalExplanation ?? doc.explanation ?? "",
+    potentialRisks: doc.potentialRisks ?? [],
+    recommendations: doc.recommendations ?? [],
+    addedRequirements: doc.addedRequirements ?? doc.outOfScopeFeatures ?? [],
+    removedRequirements: doc.removedRequirements ?? [],
+    modifiedRequirements: doc.modifiedRequirements ?? [],
     missingRequirements: doc.missingRequirements ?? [],
+    detectedFeatures: doc.detectedFeatures ?? [],
+    clientFriendlinessScore: doc.clientFriendlinessScore ?? 85,
     priority: doc.priority ?? "medium",
     status: doc.status ?? "active",
     pinned: doc.pinned ?? false,
     bookmarked: doc.bookmarked ?? false,
     archived: doc.archived ?? false,
-    aiModel: doc.aiModel ?? "mockup",
+    aiModel: doc.aiModel ?? "gemini-2.5-flash",
+    promptVersion: doc.promptVersion ?? "v1.0",
+    tokensUsed: doc.tokensUsed ?? { inputTokens: 0, outputTokens: 0, totalTokens: 0 },
+    processingTime: doc.processingTime ?? 0,
+    isFallback: doc.isFallback ?? false,
 
     createdAt: formatRelativeDate(doc.createdAt),
     createdAtIso:
@@ -315,179 +345,22 @@ async function performAiAnalysis(
     outOfScope: string[];
     client: string;
     contract: string;
+    name?: string;
   },
   changedRequirement: string,
   subject: string,
-): Promise<{
-  verdict: AnalysisVerdict;
-  confidence: number;
-  riskLevel: "low" | "medium" | "high";
-  additionalHours: number;
-  timelineImpactDays: number;
-  suggestedCost: number;
-  includedFeatures: string[];
-  outOfScopeFeatures: string[];
-  reasoning: string;
-  suggestedReply: string;
-  aiSummary: string;
-  explanation: string;
-  detectedFeatures: string[];
-  missingRequirements: string[];
-  priority: "low" | "medium" | "high";
-  aiModel: string;
-}> {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) {
-    console.warn("[ANALYSIS] GEMINI_API_KEY is not defined. Falling back to rule-based mockup engine.");
-    const result = performAnalysis(project, changedRequirement, subject);
-    return {
-      ...result,
-      aiModel: "mockup",
-    };
-  }
-
-  console.log("[ANALYSIS] Running Gemini API semantic analysis...");
-  try {
-    const prompt = `
-You are ScopeGuard AI, an expert software architect, contract reviewer, and product manager.
-Your task is to analyze a new client request against the agreed project contract parameters and deliverables to detect scope creep.
-
----
-PROJECT PARAMETERS:
-- Client Name: ${project.client}
-- Hourly Rate: ₹${project.hourlyRate}
-- Original Budget: ₹${project.budget}
-- Agreed Scope Items (Statement of Work):
-${project.scopeItems.map((item) => `  * ${item}`).join("\n")}
-- Explicitly Out of Scope Exclusions:
-${project.outOfScope.map((item) => `  * ${item}`).join("\n")}
-- Contract Text Summary / AI Notes:
-  ${project.contract || "(None provided)"}
-
----
-NEW CLIENT REQUEST:
-- Context / Subject: ${subject}
-- Email Body / Request Text:
-"${changedRequirement}"
-
----
-INSTRUCTIONS:
-1. Compare the client request to the Agreed Scope Items and Out of Scope list.
-2. Determine the "verdict":
-   - "in_scope": If the requested changes are fully covered in the deliverables list.
-   - "possible_scope_creep": Minor additions or clarifications requiring up to 15 hours of extra effort.
-   - "confirmed_scope_creep": Significant new features or explicit exclusions requested.
-   - "out_of_scope": The changes are clearly outside SOW.
-   - "mixed": A combination of in-scope changes and creep.
-3. Calculate "additionalHours":
-   - Be realistic. If they request a mobile app, estimate ~100-120 hours. For integrations, estimate ~40 hours. If it's a simple CSS tweak or configuration, estimate ~0-5 hours.
-4. Calculate "suggestedCost": This must equal additionalHours * project.hourlyRate (₹${project.hourlyRate}).
-5. Calculate "timelineImpactDays" based on additionalHours (assume 6 hours of work per day, so additionalHours / 6, rounded up).
-6. Formulate "suggestedReply" in Indian Rupees (₹) formatting. Address the client warmly but keep firm professional boundaries. Structure it as a friendly message explaining the effort, cost impact, and offering to prepare a change order.
-7. Fill all other fields matching the JSON schema. Format numbers exactly. Do not use markdown inside the reply.
-`;
-
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          contents: [
-            {
-              parts: [
-                {
-                  text: prompt,
-                },
-              ],
-            },
-          ],
-          generationConfig: {
-            responseMimeType: "application/json",
-            responseSchema: {
-              type: "OBJECT",
-              properties: {
-                verdict: {
-                  type: "STRING",
-                  enum: ["in_scope", "possible_scope_creep", "confirmed_scope_creep", "out_of_scope", "mixed"],
-                },
-                confidence: { type: "INTEGER" },
-                riskLevel: { type: "STRING", enum: ["low", "medium", "high"] },
-                additionalHours: { type: "NUMBER" },
-                timelineImpactDays: { type: "NUMBER" },
-                suggestedCost: { type: "NUMBER" },
-                includedFeatures: { type: "ARRAY", items: { type: "STRING" } },
-                outOfScopeFeatures: { type: "ARRAY", items: { type: "STRING" } },
-                reasoning: { type: "STRING" },
-                suggestedReply: { type: "STRING" },
-                aiSummary: { type: "STRING" },
-                explanation: { type: "STRING" },
-                detectedFeatures: { type: "ARRAY", items: { type: "STRING" } },
-                missingRequirements: { type: "ARRAY", items: { type: "STRING" } },
-                priority: { type: "STRING", enum: ["low", "medium", "high"] },
-              },
-              required: [
-                "verdict",
-                "confidence",
-                "riskLevel",
-                "additionalHours",
-                "timelineImpactDays",
-                "suggestedCost",
-                "includedFeatures",
-                "outOfScopeFeatures",
-                "reasoning",
-                "suggestedReply",
-                "aiSummary",
-                "explanation",
-                "detectedFeatures",
-                "missingRequirements",
-                "priority",
-              ],
-            },
-          },
-        }),
-      },
-    );
-
-    if (!response.ok) {
-      throw new Error(`Gemini API returned status code \${response.status}: \${await response.text()}`);
-    }
-
-    const payload = await response.json();
-    const text = payload.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!text) {
-      throw new Error("Empty response from Gemini model.");
-    }
-
-    const json = JSON.parse(text);
-    return {
-      verdict: json.verdict,
-      confidence: json.confidence ?? 90,
-      riskLevel: json.riskLevel ?? "low",
-      additionalHours: json.additionalHours ?? 0,
-      timelineImpactDays: json.timelineImpactDays ?? 0,
-      suggestedCost: json.suggestedCost ?? 0,
-      includedFeatures: json.includedFeatures ?? [],
-      outOfScopeFeatures: json.outOfScopeFeatures ?? [],
-      reasoning: json.reasoning ?? "",
-      suggestedReply: json.suggestedReply ?? "",
-      aiSummary: json.aiSummary ?? "",
-      explanation: json.explanation ?? "",
-      detectedFeatures: json.detectedFeatures ?? [],
-      missingRequirements: json.missingRequirements ?? [],
-      priority: json.priority ?? "medium",
-      aiModel: "gemini-1.5-flash",
-    };
-  } catch (err) {
-    console.error("[ANALYSIS] Failed calling Gemini API, falling back to mockup engine:", err);
-    const result = performAnalysis(project, changedRequirement, subject);
-    return {
-      ...result,
-      aiModel: "fallback-mockup",
-    };
-  }
+) {
+  return analyzeScopeWithAI({
+    projectName: project.name || "Software Project",
+    clientName: project.client,
+    hourlyRate: project.hourlyRate,
+    budget: project.budget,
+    scopeItems: project.scopeItems,
+    outOfScopeItems: project.outOfScope,
+    contractTerms: project.contract,
+    subject,
+    changedRequirement,
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -800,26 +673,37 @@ export const runScopeAnalysis = createServerFn({ method: "POST" })
       projectId: project._id,
       originalRequirement: data.originalRequirement,
       changedRequirement: data.changedRequirement,
-      aiExplanation: analysisResult.explanation,
+      aiExplanation: analysisResult.explanation || analysisResult.reasoning,
       verdict: analysisResult.verdict,
       confidence: analysisResult.confidence,
       riskLevel: analysisResult.riskLevel,
-      additionalHours: analysisResult.additionalHours,
-      timelineImpactDays: analysisResult.timelineImpactDays,
-      suggestedCost: analysisResult.suggestedCost,
-      includedFeatures: analysisResult.includedFeatures,
-      outOfScopeFeatures: analysisResult.outOfScopeFeatures,
+      additionalHours: analysisResult.estimatedExtraHours ?? analysisResult.additionalHours ?? 0,
+      timelineImpactDays: analysisResult.timelineImpactDays ?? 0,
+      suggestedCost: analysisResult.estimatedExtraCost ?? analysisResult.suggestedCost ?? 0,
+      includedFeatures: analysisResult.addedRequirements || [],
+      outOfScopeFeatures: analysisResult.addedRequirements || [],
       reasoning: analysisResult.reasoning,
       suggestedReply: analysisResult.suggestedReply,
 
-      // Extended fields
-      aiSummary: analysisResult.aiSummary,
-      explanation: analysisResult.explanation,
-      detectedFeatures: analysisResult.detectedFeatures,
-      missingRequirements: analysisResult.missingRequirements,
-      priority: analysisResult.priority,
+      // Extended AI fields
+      aiSummary: analysisResult.executiveSummary || analysisResult.reasoning,
+      explanation: analysisResult.technicalExplanation || analysisResult.reasoning,
+      executiveSummary: analysisResult.executiveSummary,
+      technicalExplanation: analysisResult.technicalExplanation,
+      potentialRisks: analysisResult.potentialRisks || [],
+      recommendations: analysisResult.recommendations || [],
+      addedRequirements: analysisResult.addedRequirements || [],
+      removedRequirements: analysisResult.removedRequirements || [],
+      modifiedRequirements: analysisResult.modifiedRequirements || [],
+      missingRequirements: analysisResult.missingRequirements || [],
+      clientFriendlinessScore: analysisResult.clientFriendlinessScore ?? 85,
+      priority: analysisResult.priority || "medium",
       status: "active",
       aiModel: analysisResult.aiModel,
+      promptVersion: analysisResult.promptVersion,
+      tokensUsed: analysisResult.tokensUsed,
+      processingTime: analysisResult.processingTime,
+      isFallback: analysisResult.isFallback,
     });
 
     await analysis.save();
@@ -886,26 +770,37 @@ export const analyzeEmail = createServerFn({ method: "POST" })
       emailId: email._id,
       originalRequirement: project.contract || project.scopeItems.join(", "),
       changedRequirement: email.body,
-      aiExplanation: analysisResult.explanation,
+      aiExplanation: analysisResult.explanation || analysisResult.reasoning,
       verdict: analysisResult.verdict,
       confidence: analysisResult.confidence,
       riskLevel: analysisResult.riskLevel,
-      additionalHours: analysisResult.additionalHours,
-      timelineImpactDays: analysisResult.timelineImpactDays,
-      suggestedCost: analysisResult.suggestedCost,
-      includedFeatures: analysisResult.includedFeatures,
-      outOfScopeFeatures: analysisResult.outOfScopeFeatures,
+      additionalHours: analysisResult.estimatedExtraHours ?? analysisResult.additionalHours ?? 0,
+      timelineImpactDays: analysisResult.timelineImpactDays ?? 0,
+      suggestedCost: analysisResult.estimatedExtraCost ?? analysisResult.suggestedCost ?? 0,
+      includedFeatures: analysisResult.addedRequirements || [],
+      outOfScopeFeatures: analysisResult.addedRequirements || [],
       reasoning: analysisResult.reasoning,
       suggestedReply: analysisResult.suggestedReply,
 
-      // Extended fields
-      aiSummary: analysisResult.aiSummary,
-      explanation: analysisResult.explanation,
-      detectedFeatures: analysisResult.detectedFeatures,
-      missingRequirements: analysisResult.missingRequirements,
-      priority: analysisResult.priority,
+      // Extended AI fields
+      aiSummary: analysisResult.executiveSummary || analysisResult.reasoning,
+      explanation: analysisResult.technicalExplanation || analysisResult.reasoning,
+      executiveSummary: analysisResult.executiveSummary,
+      technicalExplanation: analysisResult.technicalExplanation,
+      potentialRisks: analysisResult.potentialRisks || [],
+      recommendations: analysisResult.recommendations || [],
+      addedRequirements: analysisResult.addedRequirements || [],
+      removedRequirements: analysisResult.removedRequirements || [],
+      modifiedRequirements: analysisResult.modifiedRequirements || [],
+      missingRequirements: analysisResult.missingRequirements || [],
+      clientFriendlinessScore: analysisResult.clientFriendlinessScore ?? 85,
+      priority: analysisResult.priority || "medium",
       status: "active",
       aiModel: analysisResult.aiModel,
+      promptVersion: analysisResult.promptVersion,
+      tokensUsed: analysisResult.tokensUsed,
+      processingTime: analysisResult.processingTime,
+      isFallback: analysisResult.isFallback,
     });
 
     await analysis.save();

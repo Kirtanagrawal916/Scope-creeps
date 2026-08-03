@@ -14,7 +14,7 @@ import {
   Tooltip,
   Legend,
 } from "recharts";
-import { ShieldCheck, Clock, FolderKanban, TrendingUp, Download } from "lucide-react";
+import { ShieldCheck, Clock, FolderKanban, TrendingUp, Download, Sparkles } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { ExportButton } from "@/components/export/export-button";
 import { StatCard } from "@/components/stat-card";

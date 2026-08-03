@@ -96,5 +96,4 @@ NotificationSchema.index({ userId: 1, createdAt: -1 });
 NotificationSchema.index({ userId: 1, type: 1, createdAt: -1 });
 
 export const Notification =
-  mongoose.models.Notification ||
-  mongoose.model<INotification>("Notification", NotificationSchema);
+  mongoose.models.Notification || mongoose.model<INotification>("Notification", NotificationSchema);

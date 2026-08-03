@@ -82,7 +82,8 @@ function getIconForType(type: string, priority: string) {
 
 function NotificationsPage() {
   const { initialNotifications, unreadCount: initialUnread } = Route.useLoaderData();
-  const [notifications, setNotifications] = useState<SerializedNotification[]>(initialNotifications);
+  const [notifications, setNotifications] =
+    useState<SerializedNotification[]>(initialNotifications);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
@@ -170,9 +171,7 @@ function NotificationsPage() {
   };
 
   const toggleSelect = (id: string) => {
-    setSelectedIds((prev) =>
-      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id],
-    );
+    setSelectedIds((prev) => (prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]));
   };
 
   // Actions
@@ -228,9 +227,7 @@ function NotificationsPage() {
     e.stopPropagation();
     try {
       await markAsRead({ data: { id } });
-      setNotifications((prev) =>
-        prev.map((n) => (n.id === id ? { ...n, isRead: true } : n)),
-      );
+      setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, isRead: true } : n)));
       toast.success("Marked as read.");
     } catch {
       toast.error("Failed to mark notification as read.");
@@ -257,11 +254,22 @@ function NotificationsPage() {
       subtitle="Track alerts, scope creep warnings, project activities, and report exports."
       action={
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={refreshData} disabled={isLoading} className="h-8 text-xs">
-            <RefreshCw className={`mr-1.5 h-3.5 w-3.5 ${isLoading ? "animate-spin" : ""}`} /> Refresh
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={refreshData}
+            disabled={isLoading}
+            className="h-8 text-xs"
+          >
+            <RefreshCw className={`mr-1.5 h-3.5 w-3.5 ${isLoading ? "animate-spin" : ""}`} />{" "}
+            Refresh
           </Button>
           {unreadCount > 0 && (
-            <Button size="sm" onClick={handleMarkAllRead} className="h-8 text-xs bg-primary hover:bg-primary/90 text-primary-foreground font-semibold">
+            <Button
+              size="sm"
+              onClick={handleMarkAllRead}
+              className="h-8 text-xs bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
+            >
               <CheckCheck className="mr-1.5 h-3.5 w-3.5" /> Mark All Read
             </Button>
           )}
@@ -284,7 +292,10 @@ function NotificationsPage() {
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
-              <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as "all" | "unread" | "read")}>
+              <Select
+                value={statusFilter}
+                onValueChange={(v) => setStatusFilter(v as "all" | "unread" | "read")}
+              >
                 <SelectTrigger className="w-[120px] h-9 text-xs">
                   <SelectValue placeholder="Status" />
                 </SelectTrigger>
@@ -342,17 +353,32 @@ function NotificationsPage() {
 
                 {selectedIds.length > 0 && (
                   <div className="flex items-center gap-2 animate-in fade-in">
-                    <Button variant="outline" size="sm" onClick={handleMarkSelectedRead} className="h-7 text-xs">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleMarkSelectedRead}
+                      className="h-7 text-xs"
+                    >
                       <CheckCheck className="mr-1 h-3 w-3 text-primary" /> Mark Read
                     </Button>
-                    <Button variant="outline" size="sm" onClick={handleDeleteSelected} className="h-7 text-xs text-rose-500 hover:text-rose-600">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleDeleteSelected}
+                      className="h-7 text-xs text-rose-500 hover:text-rose-600"
+                    >
                       <Trash2 className="mr-1 h-3 w-3" /> Delete
                     </Button>
                   </div>
                 )}
               </div>
 
-              <Button variant="ghost" size="sm" onClick={handleClearAll} className="h-7 text-xs text-muted-foreground hover:text-rose-500">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleClearAll}
+                className="h-7 text-xs text-muted-foreground hover:text-rose-500"
+              >
                 <XCircle className="mr-1 h-3.5 w-3.5" /> Clear All Notifications
               </Button>
             </div>
@@ -367,9 +393,20 @@ function NotificationsPage() {
             </div>
             <h3 className="text-sm font-bold text-foreground">No Notifications Found</h3>
             <p className="text-xs text-muted-foreground max-w-sm">
-              No notifications match your current filter selection. Try resetting filters or running a scope analysis.
+              No notifications match your current filter selection. Try resetting filters or running
+              a scope analysis.
             </p>
-            <Button variant="outline" size="sm" onClick={() => { setStatusFilter("all"); setTypeFilter("all"); setPriorityFilter("all"); setSearchQuery(""); }} className="h-8 text-xs mt-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setStatusFilter("all");
+                setTypeFilter("all");
+                setPriorityFilter("all");
+                setSearchQuery("");
+              }}
+              className="h-8 text-xs mt-2"
+            >
               Reset Filters
             </Button>
           </div>
@@ -396,10 +433,7 @@ function NotificationsPage() {
                       }`}
                     >
                       <div className="pt-0.5" onClick={(e) => e.stopPropagation()}>
-                        <Checkbox
-                          checked={isSelected}
-                          onCheckedChange={() => toggleSelect(n.id)}
-                        />
+                        <Checkbox checked={isSelected} onCheckedChange={() => toggleSelect(n.id)} />
                       </div>
 
                       <div className="p-2.5 rounded-xl bg-accent shrink-0">
@@ -409,17 +443,23 @@ function NotificationsPage() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between gap-2 mb-1">
                           <div className="flex items-center gap-2 min-w-0">
-                            <span className="text-xs font-bold text-foreground truncate">{n.title}</span>
+                            <span className="text-xs font-bold text-foreground truncate">
+                              {n.title}
+                            </span>
                             {n.priority === "high" || n.priority === "urgent" ? (
                               <Badge className="bg-rose-500/10 text-rose-500 border-rose-500/20 text-[10px] px-1.5 py-0 font-semibold uppercase">
                                 High Risk
                               </Badge>
                             ) : null}
                           </div>
-                          <span className="text-[11px] text-muted-foreground shrink-0">{n.createdAt}</span>
+                          <span className="text-[11px] text-muted-foreground shrink-0">
+                            {n.createdAt}
+                          </span>
                         </div>
 
-                        <p className="text-xs text-muted-foreground leading-relaxed mb-2">{n.message}</p>
+                        <p className="text-xs text-muted-foreground leading-relaxed mb-2">
+                          {n.message}
+                        </p>
 
                         {n.actionUrl && (
                           <div className="flex items-center gap-1.5 text-[11px] font-semibold text-primary group-hover:underline">
@@ -429,7 +469,10 @@ function NotificationsPage() {
                         )}
                       </div>
 
-                      <div className="flex items-center gap-1 shrink-0 opacity-80 group-hover:opacity-100" onClick={(e) => e.stopPropagation()}>
+                      <div
+                        className="flex items-center gap-1 shrink-0 opacity-80 group-hover:opacity-100"
+                        onClick={(e) => e.stopPropagation()}
+                      >
                         {!n.isRead && (
                           <Button
                             variant="ghost"

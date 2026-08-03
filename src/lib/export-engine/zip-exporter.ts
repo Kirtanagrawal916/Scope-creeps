@@ -12,7 +12,7 @@ export function generateZipReportBundle(payload: ExportPayload): {
   files: { name: string; content: string; mimeType: string }[];
 } {
   const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-  
+
   return {
     filename: `ScopeGuard_Export_Bundle_${timestamp}.zip`,
     files: [

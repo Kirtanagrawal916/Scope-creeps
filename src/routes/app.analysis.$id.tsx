@@ -238,6 +238,18 @@ function AnalysisPage() {
             />
           </div>
 
+          <div className="text-[11px] font-medium bg-primary/10 text-primary px-2.5 py-1.5 rounded border border-primary/20 shrink-0 h-8 flex items-center gap-1.5">
+            <Sparkles className="h-3 w-3" />
+            {analysis.isFallback
+              ? "Fallback: Rule Engine"
+              : `AI Model: ${analysis.aiModel || "gemini-2.5-flash"}`}
+          </div>
+          {analysis.processingTime ? (
+            <div className="text-[11px] font-medium bg-accent px-2.5 py-1.5 rounded border border-border/40 shrink-0 h-8 flex items-center gap-1.5">
+              <Clock className="h-3 w-3 text-muted-foreground" />
+              {analysis.processingTime}ms
+            </div>
+          ) : null}
           <div className="text-[11px] font-medium bg-accent px-2.5 py-1.5 rounded border border-border/40 capitalize shrink-0 h-8 flex items-center">
             Status: {analysis.status}
           </div>
@@ -453,6 +465,42 @@ function AnalysisPage() {
                 </li>
               ))}
             </ul>
+          </div>
+        )}
+
+        {/* AI Potential Risks & Recommendations */}
+        {((analysis.potentialRisks && analysis.potentialRisks.length > 0) ||
+          (analysis.recommendations && analysis.recommendations.length > 0)) && (
+          <div className="grid gap-4 lg:col-span-2 md:grid-cols-2">
+            {analysis.potentialRisks && analysis.potentialRisks.length > 0 && (
+              <div className="panel p-6 border-destructive/20 bg-destructive/5">
+                <div className="text-[12px] font-semibold uppercase tracking-wider text-destructive border-b border-destructive/20 pb-2 mb-3 flex items-center gap-2">
+                  <ShieldAlert className="h-4 w-4" /> Potential Risks
+                </div>
+                <ul className="space-y-2 text-[13px]">
+                  {analysis.potentialRisks.map((risk: string, i: number) => (
+                    <li key={i} className="flex items-start gap-2 text-foreground/90">
+                      <span className="text-destructive font-bold">•</span> {risk}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {analysis.recommendations && analysis.recommendations.length > 0 && (
+              <div className="panel p-6 border-primary/20 bg-primary/5">
+                <div className="text-[12px] font-semibold uppercase tracking-wider text-primary border-b border-primary/20 pb-2 mb-3 flex items-center gap-2">
+                  <Sparkles className="h-4 w-4" /> AI Recommendations
+                </div>
+                <ul className="space-y-2 text-[13px]">
+                  {analysis.recommendations.map((rec: string, i: number) => (
+                    <li key={i} className="flex items-start gap-2 text-foreground/90">
+                      <span className="text-primary font-bold">✓</span> {rec}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </div>
         )}
 

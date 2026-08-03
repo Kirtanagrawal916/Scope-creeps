@@ -75,7 +75,9 @@ export interface CreateNotificationParams {
  * Creates and saves a notification in the database.
  * Realtime architecture ready: SSE / WebSockets broadcast point.
  */
-export async function notifyUser(params: CreateNotificationParams): Promise<SerializedNotification> {
+export async function notifyUser(
+  params: CreateNotificationParams,
+): Promise<SerializedNotification> {
   await connectToDatabase();
 
   const notification = new Notification({
@@ -162,11 +164,7 @@ export const listNotifications = createServerFn({ method: "GET" })
     const skip = (page - 1) * limit;
 
     const [notifications, totalCount, unreadCount] = await Promise.all([
-      Notification.find(query)
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(limit)
-        .lean(),
+      Notification.find(query).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
       Notification.countDocuments(query),
       Notification.countDocuments({ userId: user._id, isRead: false }),
     ]);
@@ -183,14 +181,13 @@ export const listNotifications = createServerFn({ method: "GET" })
 /**
  * Returns fast unread notification count for the session user.
  */
-export const getUnreadNotificationCount = createServerFn({ method: "GET" })
-  .handler(async () => {
-    const user = await requireSession();
-    await connectToDatabase();
+export const getUnreadNotificationCount = createServerFn({ method: "GET" }).handler(async () => {
+  const user = await requireSession();
+  await connectToDatabase();
 
-    const count = await Notification.countDocuments({ userId: user._id, isRead: false });
-    return { count };
-  });
+  const count = await Notification.countDocuments({ userId: user._id, isRead: false });
+  return { count };
+});
 
 /**
  * Marks one or multiple notifications as read.

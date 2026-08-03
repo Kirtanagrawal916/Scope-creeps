@@ -15,7 +15,7 @@ export type ExportScope =
 
 export interface ExportDateRange {
   startDate?: string; // YYYY-MM-DD
-  endDate?: string;   // YYYY-MM-DD
+  endDate?: string; // YYYY-MM-DD
 }
 
 export interface ExportFilterOptions {

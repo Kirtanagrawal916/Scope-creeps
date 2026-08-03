@@ -4,11 +4,7 @@
 
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -137,7 +133,10 @@ export function NotificationBell() {
             <Bell className="h-4 w-4 text-primary" />
             <span className="text-xs font-bold text-foreground">Notifications</span>
             {unreadCount > 0 && (
-              <Badge variant="secondary" className="text-[10px] bg-primary/10 text-primary font-semibold">
+              <Badge
+                variant="secondary"
+                className="text-[10px] bg-primary/10 text-primary font-semibold"
+              >
                 {unreadCount} unread
               </Badge>
             )}
@@ -158,7 +157,8 @@ export function NotificationBell() {
         <div className="max-h-[340px] overflow-y-auto divide-y divide-border/40">
           {isLoading && notifications.length === 0 ? (
             <div className="flex items-center justify-center p-8 text-xs text-muted-foreground">
-              <Loader2 className="mr-2 h-4 w-4 animate-spin text-primary" /> Loading notifications...
+              <Loader2 className="mr-2 h-4 w-4 animate-spin text-primary" /> Loading
+              notifications...
             </div>
           ) : notifications.length === 0 ? (
             <div className="p-8 text-center text-xs text-muted-foreground">
@@ -180,14 +180,18 @@ export function NotificationBell() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-1 mb-1">
-                    <span className="text-xs font-semibold text-foreground truncate">{n.title}</span>
-                    <span className="text-[10px] text-muted-foreground shrink-0">{n.createdAt}</span>
+                    <span className="text-xs font-semibold text-foreground truncate">
+                      {n.title}
+                    </span>
+                    <span className="text-[10px] text-muted-foreground shrink-0">
+                      {n.createdAt}
+                    </span>
                   </div>
-                  <p className="text-[11px] text-muted-foreground line-clamp-2 leading-relaxed">{n.message}</p>
+                  <p className="text-[11px] text-muted-foreground line-clamp-2 leading-relaxed">
+                    {n.message}
+                  </p>
                 </div>
-                {!n.isRead && (
-                  <span className="h-2 w-2 rounded-full bg-primary shrink-0 mt-1.5" />
-                )}
+                {!n.isRead && <span className="h-2 w-2 rounded-full bg-primary shrink-0 mt-1.5" />}
               </button>
             ))
           )}

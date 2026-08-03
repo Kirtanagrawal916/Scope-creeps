@@ -233,7 +233,12 @@ export function AppShell({
           <div className="flex shrink-0 items-center gap-2">
             <ThemeToggle className="hidden lg:flex" compact />
             <NotificationBell />
-            <ExportButton defaultScope="workspace" label="Export" variant="outline" className="h-8 text-xs font-medium hidden sm:flex" />
+            <ExportButton
+              defaultScope="workspace"
+              label="Export"
+              variant="outline"
+              className="h-8 text-xs font-medium hidden sm:flex"
+            />
             <div className="hidden sm:block">{action}</div>
             <Button size="sm" className="gap-1.5" asChild>
               <Link to="/app/projects/new">
