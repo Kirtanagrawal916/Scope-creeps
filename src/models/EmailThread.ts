@@ -55,6 +55,8 @@ EmailThreadSchema.index({ owner: 1, _id: 1 });
 EmailThreadSchema.index({ owner: 1, projectId: 1 });
 // For inbox alert queries: unanalyzed high-risk emails
 EmailThreadSchema.index({ owner: 1, analyzed: 1, risk: 1 });
+EmailThreadSchema.index({ owner: 1, subject: 1 });
+EmailThreadSchema.index({ owner: 1, from: 1 });
 
 export const EmailThread =
   mongoose.models.EmailThread || mongoose.model<IEmailThread>("EmailThread", EmailThreadSchema);

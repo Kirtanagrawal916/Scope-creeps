@@ -259,11 +259,11 @@ export function AppShell({
               variant="outline"
               size="sm"
               onClick={() => setSearchOpen(true)}
-              className="h-8 gap-1.5 px-2.5 text-xs text-muted-foreground hidden md:flex"
-              aria-label="Search"
+              className="h-8 gap-1.5 px-2.5 text-xs text-muted-foreground flex"
+              aria-label="Search Workspace (⌘K)"
             >
               <Search className="h-3.5 w-3.5 text-primary" />
-              <span className="hidden lg:inline">Search...</span>
+              <span className="hidden sm:inline">Search...</span>
               <kbd className="ml-1 rounded border border-border bg-background/60 px-1 py-[1px] font-mono text-[9px]">
                 ⌘K
               </kbd>

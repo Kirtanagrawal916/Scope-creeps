@@ -153,6 +153,8 @@ AnalysisSchema.index({ owner: 1, bookmarked: -1, createdAt: -1 });
 AnalysisSchema.index({ userId: 1, bookmarked: -1, createdAt: -1 });
 AnalysisSchema.index({ owner: 1, archived: 1, createdAt: -1 });
 AnalysisSchema.index({ userId: 1, archived: 1, createdAt: -1 });
+AnalysisSchema.index({ owner: 1, verdict: 1, priority: 1, riskLevel: 1 });
+AnalysisSchema.index({ owner: 1, confidence: -1 });
 
 export const Analysis =
   mongoose.models.Analysis || mongoose.model<IAnalysis>("Analysis", AnalysisSchema);

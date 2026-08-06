@@ -63,6 +63,10 @@ const ProjectSchema = new Schema<IProject>(
 // All DB lookups MUST include { owner: userId } to prevent IDOR.
 ProjectSchema.index({ owner: 1, _id: 1 });
 ProjectSchema.index({ owner: 1, archived: 1, updatedAt: -1 });
+ProjectSchema.index({ owner: 1, name: 1 });
+ProjectSchema.index({ owner: 1, client: 1 });
+ProjectSchema.index({ owner: 1, status: 1, risk: 1 });
+ProjectSchema.index({ owner: 1, name: "text", client: "text", contract: "text" });
 
 export const Project =
   mongoose.models.Project || mongoose.model<IProject>("Project", ProjectSchema);
