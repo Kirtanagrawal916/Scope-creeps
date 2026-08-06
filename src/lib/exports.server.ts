@@ -7,6 +7,7 @@
 
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import type { IUser } from "../models/User";
 import type {
   DashboardExportData,
   ProjectReportData,
@@ -56,8 +57,322 @@ const bulkExportSchema = z.object({
 });
 
 // ---------------------------------------------------------------------------
-// Server Functions
+// Server Functions & Internal Data Builders
 // ---------------------------------------------------------------------------
+
+async function buildDashboardExportPayload(
+  user: IUser,
+  filters?: z.infer<typeof exportFilterSchema>,
+): Promise<ExportPayload> {
+  const { connectToDatabase } = await import("./db");
+  const { Project } = await import("../models/Project");
+  const { Analysis } = await import("../models/Analysis");
+  await connectToDatabase();
+
+  const [projects, analyses] = await Promise.all([
+    Project.find({ owner: user._id }).lean(),
+    Analysis.find({ owner: user._id }).sort({ createdAt: -1 }).lean(),
+  ]);
+
+  const totalProjects = projects.length;
+  const totalAnalyses = analyses.length;
+
+  const scopeCreepAnalyses = analyses.filter(
+    (a) =>
+      a.verdict === "out_of_scope" ||
+      a.verdict === "confirmed_scope_creep" ||
+      a.verdict === "possible_scope_creep",
+  );
+  const scopeCreepCount = scopeCreepAnalyses.length;
+
+  const revenueProtected = scopeCreepAnalyses.reduce((acc, a) => acc + (a.suggestedCost ?? 0), 0);
+  const hoursSaved = scopeCreepAnalyses.reduce((acc, a) => acc + (a.additionalHours ?? 0), 0);
+
+  const avgConfidence =
+    totalAnalyses > 0
+      ? Math.round(analyses.reduce((acc, a) => acc + (a.confidence ?? 0), 0) / totalAnalyses)
+      : 100;
+
+  const highRiskProjects = projects
+    .filter((p) => p.risk === "high" || p.status === "at_risk" || p.status === "scope_creep")
+    .map((p) => ({
+      id: String(p._id),
+      name: p.name,
+      client: p.client,
+      budget: p.budget,
+      hoursUsed: p.hoursUsed,
+      hoursAllocated: p.hoursAllocated,
+      risk: p.risk,
+      status: p.status,
+    }));
+
+  const projectMap = new Map(projects.map((p) => [String(p._id), p.name]));
+
+  const recentScopeChanges = analyses.slice(0, 10).map((a) => ({
+    id: String(a._id),
+    projectName: projectMap.get(String(a.projectId)) ?? "Unassigned Project",
+    originalRequirement: a.originalRequirement || "Initial Specification",
+    changedRequirement: a.changedRequirement || a.aiSummary,
+    verdict: a.verdict,
+    riskLevel: a.riskLevel,
+    additionalHours: a.additionalHours ?? 0,
+    suggestedCost: a.suggestedCost ?? 0,
+    createdAt: new Date(a.createdAt).toISOString().slice(0, 10),
+  }));
+
+  const exportData: DashboardExportData = {
+    meta: {
+      workspaceName: user.workspaceName || `${user.firstName || "User"}'s Workspace`,
+      userEmail: user.email,
+      generatedAt: new Date().toISOString(),
+    },
+    stats: {
+      totalProjects,
+      totalAnalyses,
+      scopeCreepCount,
+      revenueProtected,
+      hoursSaved,
+      avgConfidence,
+      highRiskProjectsCount: highRiskProjects.length,
+    },
+    highRiskProjects,
+    recentScopeChanges,
+  };
+
+  return { type: "dashboard", data: exportData };
+}
+
+async function buildProjectExportPayload(user: IUser, projectId: string): Promise<ExportPayload> {
+  const { connectToDatabase } = await import("./db");
+  const { Project } = await import("../models/Project");
+  const { Analysis } = await import("../models/Analysis");
+  await connectToDatabase();
+
+  const project = await Project.findOne({ _id: projectId, owner: user._id }).lean();
+  if (!project) throw new Error("Project not found or unauthorized.");
+
+  const analyses = await Analysis.find({ projectId: project._id, owner: user._id })
+    .sort({ createdAt: -1 })
+    .lean();
+
+  const scopeCreepAnalyses = analyses.filter(
+    (a) =>
+      a.verdict === "out_of_scope" ||
+      a.verdict === "confirmed_scope_creep" ||
+      a.verdict === "possible_scope_creep",
+  );
+
+  const totalEstimatedHours = analyses.reduce((acc, a) => acc + (a.additionalHours ?? 0), 0);
+  const totalEstimatedCost = analyses.reduce((acc, a) => acc + (a.suggestedCost ?? 0), 0);
+
+  const projectReport: ProjectReportData = {
+    id: String(project._id),
+    name: project.name,
+    client: project.client,
+    clientInitials: project.clientInitials,
+    budget: project.budget,
+    hourlyRate: project.hourlyRate,
+    hoursAllocated: project.hoursAllocated,
+    hoursUsed: project.hoursUsed,
+    progress: project.progress,
+    status: project.status,
+    risk: project.risk,
+    contract: project.contract || "Standard Terms",
+    scopeItems: project.scopeItems || [],
+    outOfScope: project.outOfScope || [],
+    createdAt: new Date(project.createdAt).toISOString().slice(0, 10),
+    updatedAt: new Date(project.updatedAt).toISOString().slice(0, 10),
+    analyses: analyses.map((a) => ({
+      id: String(a._id),
+      originalRequirement: a.originalRequirement,
+      changedRequirement: a.changedRequirement,
+      aiSummary: a.aiSummary || "Analysis completed",
+      explanation: a.explanation || a.aiExplanation,
+      verdict: a.verdict,
+      confidence: a.confidence,
+      riskLevel: a.riskLevel,
+      additionalHours: a.additionalHours ?? 0,
+      suggestedCost: a.suggestedCost ?? 0,
+      priority: a.priority,
+      status: a.status,
+      suggestedReply: a.suggestedReply,
+      createdAt: new Date(a.createdAt).toISOString().slice(0, 10),
+    })),
+    summary: {
+      totalAnalysesCount: analyses.length,
+      scopeCreepAnalysesCount: scopeCreepAnalyses.length,
+      totalEstimatedHours,
+      totalEstimatedCost,
+      riskScore: project.risk === "high" ? 85 : project.risk === "medium" ? 50 : 15,
+    },
+  };
+
+  return { type: "project", data: projectReport };
+}
+
+async function buildAnalysisExportPayload(user: IUser, analysisId: string): Promise<ExportPayload> {
+  const { connectToDatabase } = await import("./db");
+  const { Analysis } = await import("../models/Analysis");
+  const { Project } = await import("../models/Project");
+  await connectToDatabase();
+
+  const analysis = await Analysis.findOne({ _id: analysisId, owner: user._id }).lean();
+  if (!analysis) throw new Error("Analysis not found or unauthorized.");
+
+  const project = await Project.findOne({ _id: analysis.projectId, owner: user._id }).lean();
+
+  const analysisReport: AnalysisReportData = {
+    id: String(analysis._id),
+    projectId: String(analysis.projectId),
+    projectName: project?.name ?? "Unknown Project",
+    clientName: project?.client ?? "Unknown Client",
+    emailId: analysis.emailId ? String(analysis.emailId) : undefined,
+    originalRequirement: analysis.originalRequirement,
+    changedRequirement: analysis.changedRequirement,
+    aiSummary: analysis.aiSummary || "Scope Analysis Report",
+    aiExplanation: analysis.aiExplanation,
+    explanation: analysis.explanation || analysis.aiExplanation,
+    verdict: analysis.verdict,
+    confidence: analysis.confidence,
+    riskLevel: analysis.riskLevel,
+    additionalHours: analysis.additionalHours ?? 0,
+    timelineImpactDays: analysis.timelineImpactDays ?? 0,
+    suggestedCost: analysis.suggestedCost ?? 0,
+    includedFeatures: analysis.includedFeatures || [],
+    outOfScopeFeatures: analysis.outOfScopeFeatures || [],
+    detectedFeatures: analysis.detectedFeatures || [],
+    missingRequirements: analysis.missingRequirements || [],
+    reasoning: analysis.reasoning || "",
+    suggestedReply: analysis.suggestedReply || "",
+    priority: analysis.priority,
+    status: analysis.status,
+    pinned: analysis.pinned,
+    bookmarked: analysis.bookmarked,
+    createdAt: new Date(analysis.createdAt).toISOString().slice(0, 10),
+    updatedAt: new Date(analysis.updatedAt).toISOString().slice(0, 10),
+  };
+
+  return { type: "analysis", data: analysisReport };
+}
+
+async function buildAnalyticsExportPayload(
+  user: IUser,
+  filters?: z.infer<typeof exportFilterSchema>,
+): Promise<ExportPayload> {
+  const { connectToDatabase } = await import("./db");
+  const { Project } = await import("../models/Project");
+  const { Analysis } = await import("../models/Analysis");
+  await connectToDatabase();
+
+  const [projects, analyses] = await Promise.all([
+    Project.find({ owner: user._id }).lean(),
+    Analysis.find({ owner: user._id }).sort({ createdAt: 1 }).lean(),
+  ]);
+
+  const totalAnalyses = analyses.length;
+  const scopeCreepAnalyses = analyses.filter(
+    (a) =>
+      a.verdict === "out_of_scope" ||
+      a.verdict === "confirmed_scope_creep" ||
+      a.verdict === "possible_scope_creep",
+  );
+
+  const totalRevenueProtected = scopeCreepAnalyses.reduce(
+    (acc, a) => acc + (a.suggestedCost ?? 0),
+    0,
+  );
+  const totalHoursSaved = scopeCreepAnalyses.reduce((acc, a) => acc + (a.additionalHours ?? 0), 0);
+  const avgConfidenceScore =
+    totalAnalyses > 0
+      ? Math.round(analyses.reduce((acc, a) => acc + (a.confidence ?? 0), 0) / totalAnalyses)
+      : 100;
+  const scopeCreepRatio =
+    totalAnalyses > 0 ? Math.round((scopeCreepAnalyses.length / totalAnalyses) * 100) : 0;
+
+  const riskDistribution = {
+    low: analyses.filter((a) => a.riskLevel === "low").length,
+    medium: analyses.filter((a) => a.riskLevel === "medium").length,
+    high: analyses.filter((a) => a.riskLevel === "high").length,
+  };
+
+  const confidenceDistribution = {
+    high: analyses.filter((a) => a.confidence >= 80).length,
+    medium: analyses.filter((a) => a.confidence >= 50 && a.confidence < 80).length,
+    low: analyses.filter((a) => a.confidence < 50).length,
+  };
+
+  // Monthly trends aggregation
+  const monthlyMap = new Map<string, { total: number; creep: number; revenue: number }>();
+  analyses.forEach((a) => {
+    const monthKey = new Date(a.createdAt).toLocaleString("en-US", {
+      month: "short",
+      year: "numeric",
+    });
+    const current = monthlyMap.get(monthKey) || { total: 0, creep: 0, revenue: 0 };
+    current.total += 1;
+    if (
+      a.verdict === "out_of_scope" ||
+      a.verdict === "confirmed_scope_creep" ||
+      a.verdict === "possible_scope_creep"
+    ) {
+      current.creep += 1;
+      current.revenue += a.suggestedCost ?? 0;
+    }
+    monthlyMap.set(monthKey, current);
+  });
+
+  const monthlyActivity = Array.from(monthlyMap.entries()).map(([month, stats]) => ({
+    month,
+    totalAnalyses: stats.total,
+    scopeCreepCount: stats.creep,
+    revenueProtected: stats.revenue,
+  }));
+
+  const topRiskyProjects = projects
+    .map((p) => {
+      const pAnalyses = analyses.filter((a) => String(a.projectId) === String(p._id));
+      const creepCount = pAnalyses.filter(
+        (a) => a.verdict === "out_of_scope" || a.verdict === "confirmed_scope_creep",
+      ).length;
+      const estCost = pAnalyses.reduce((acc, a) => acc + (a.suggestedCost ?? 0), 0);
+      return {
+        id: String(p._id),
+        name: p.name,
+        client: p.client,
+        risk: p.risk,
+        scopeCreepCount: creepCount,
+        estimatedCostImpact: estCost,
+      };
+    })
+    .sort((a, b) => b.estimatedCostImpact - a.estimatedCostImpact)
+    .slice(0, 5);
+
+  const analyticsReport: AnalyticsReportData = {
+    meta: {
+      workspaceName: user.workspaceName || `${user.firstName || "User"}'s Workspace`,
+      userEmail: user.email,
+      generatedAt: new Date().toISOString(),
+    },
+    kpis: {
+      totalRevenueProtected,
+      totalHoursSaved,
+      avgConfidenceScore,
+      totalAnalysesPerformed: totalAnalyses,
+      scopeCreepRatio,
+    },
+    riskDistribution,
+    confidenceDistribution,
+    monthlyActivity,
+    topRiskyProjects,
+    recommendations: [
+      "Enforce formal change order approvals for all High Risk flagged requests.",
+      "Implement milestone budget checks for projects exceeding 70% allocated hours.",
+      "Use automated client reply templates to communicate scope boundaries promptly.",
+    ],
+  };
+
+  return { type: "analytics", data: analyticsReport };
+}
 
 /**
  * Generates export payload for Dashboard scope.
@@ -66,83 +381,8 @@ export const getDashboardExport = createServerFn({ method: "POST" })
   .validator((data: unknown) => exportFilterSchema.parse(data))
   .handler(async ({ data }): Promise<ExportPayload> => {
     const { requireSession } = await import("./authorize.server");
-    const { connectToDatabase } = await import("./db");
-    const { Project } = await import("../models/Project");
-    const { Analysis } = await import("../models/Analysis");
     const user = await requireSession();
-    await connectToDatabase();
-
-    const [projects, analyses] = await Promise.all([
-      Project.find({ owner: user._id }).lean(),
-      Analysis.find({ owner: user._id }).sort({ createdAt: -1 }).lean(),
-    ]);
-
-    const totalProjects = projects.length;
-    const totalAnalyses = analyses.length;
-
-    const scopeCreepAnalyses = analyses.filter(
-      (a) =>
-        a.verdict === "out_of_scope" ||
-        a.verdict === "confirmed_scope_creep" ||
-        a.verdict === "possible_scope_creep",
-    );
-    const scopeCreepCount = scopeCreepAnalyses.length;
-
-    const revenueProtected = scopeCreepAnalyses.reduce((acc, a) => acc + (a.suggestedCost ?? 0), 0);
-    const hoursSaved = scopeCreepAnalyses.reduce((acc, a) => acc + (a.additionalHours ?? 0), 0);
-
-    const avgConfidence =
-      totalAnalyses > 0
-        ? Math.round(analyses.reduce((acc, a) => acc + (a.confidence ?? 0), 0) / totalAnalyses)
-        : 100;
-
-    const highRiskProjects = projects
-      .filter((p) => p.risk === "high" || p.status === "at_risk" || p.status === "scope_creep")
-      .map((p) => ({
-        id: String(p._id),
-        name: p.name,
-        client: p.client,
-        budget: p.budget,
-        hoursUsed: p.hoursUsed,
-        hoursAllocated: p.hoursAllocated,
-        risk: p.risk,
-        status: p.status,
-      }));
-
-    const projectMap = new Map(projects.map((p) => [String(p._id), p.name]));
-
-    const recentScopeChanges = analyses.slice(0, 10).map((a) => ({
-      id: String(a._id),
-      projectName: projectMap.get(String(a.projectId)) ?? "Unassigned Project",
-      originalRequirement: a.originalRequirement || "Initial Specification",
-      changedRequirement: a.changedRequirement || a.aiSummary,
-      verdict: a.verdict,
-      riskLevel: a.riskLevel,
-      additionalHours: a.additionalHours ?? 0,
-      suggestedCost: a.suggestedCost ?? 0,
-      createdAt: new Date(a.createdAt).toISOString().slice(0, 10),
-    }));
-
-    const exportData: DashboardExportData = {
-      meta: {
-        workspaceName: user.workspaceName || `${user.firstName || "User"}'s Workspace`,
-        userEmail: user.email,
-        generatedAt: new Date().toISOString(),
-      },
-      stats: {
-        totalProjects,
-        totalAnalyses,
-        scopeCreepCount,
-        revenueProtected,
-        hoursSaved,
-        avgConfidence,
-        highRiskProjectsCount: highRiskProjects.length,
-      },
-      highRiskProjects,
-      recentScopeChanges,
-    };
-
-    return { type: "dashboard", data: exportData };
+    return buildDashboardExportPayload(user, data);
   });
 
 /**
@@ -152,72 +392,8 @@ export const getProjectExport = createServerFn({ method: "POST" })
   .validator((data: unknown) => singleTargetSchema.parse(data))
   .handler(async ({ data }): Promise<ExportPayload> => {
     const { requireSession } = await import("./authorize.server");
-    const { connectToDatabase } = await import("./db");
-    const { Project } = await import("../models/Project");
-    const { Analysis } = await import("../models/Analysis");
     const user = await requireSession();
-    await connectToDatabase();
-
-    const project = await Project.findOne({ _id: data.id, owner: user._id }).lean();
-    if (!project) throw new Error("Project not found or unauthorized.");
-
-    const analyses = await Analysis.find({ projectId: project._id, owner: user._id })
-      .sort({ createdAt: -1 })
-      .lean();
-
-    const scopeCreepAnalyses = analyses.filter(
-      (a) =>
-        a.verdict === "out_of_scope" ||
-        a.verdict === "confirmed_scope_creep" ||
-        a.verdict === "possible_scope_creep",
-    );
-
-    const totalEstimatedHours = analyses.reduce((acc, a) => acc + (a.additionalHours ?? 0), 0);
-    const totalEstimatedCost = analyses.reduce((acc, a) => acc + (a.suggestedCost ?? 0), 0);
-
-    const projectReport: ProjectReportData = {
-      id: String(project._id),
-      name: project.name,
-      client: project.client,
-      clientInitials: project.clientInitials,
-      budget: project.budget,
-      hourlyRate: project.hourlyRate,
-      hoursAllocated: project.hoursAllocated,
-      hoursUsed: project.hoursUsed,
-      progress: project.progress,
-      status: project.status,
-      risk: project.risk,
-      contract: project.contract || "Standard Terms",
-      scopeItems: project.scopeItems || [],
-      outOfScope: project.outOfScope || [],
-      createdAt: new Date(project.createdAt).toISOString().slice(0, 10),
-      updatedAt: new Date(project.updatedAt).toISOString().slice(0, 10),
-      analyses: analyses.map((a) => ({
-        id: String(a._id),
-        originalRequirement: a.originalRequirement,
-        changedRequirement: a.changedRequirement,
-        aiSummary: a.aiSummary || "Analysis completed",
-        explanation: a.explanation || a.aiExplanation,
-        verdict: a.verdict,
-        confidence: a.confidence,
-        riskLevel: a.riskLevel,
-        additionalHours: a.additionalHours ?? 0,
-        suggestedCost: a.suggestedCost ?? 0,
-        priority: a.priority,
-        status: a.status,
-        suggestedReply: a.suggestedReply,
-        createdAt: new Date(a.createdAt).toISOString().slice(0, 10),
-      })),
-      summary: {
-        totalAnalysesCount: analyses.length,
-        scopeCreepAnalysesCount: scopeCreepAnalyses.length,
-        totalEstimatedHours,
-        totalEstimatedCost,
-        riskScore: project.risk === "high" ? 85 : project.risk === "medium" ? 50 : 15,
-      },
-    };
-
-    return { type: "project", data: projectReport };
+    return buildProjectExportPayload(user, data.id);
   });
 
 /**
@@ -227,49 +403,8 @@ export const getAnalysisExport = createServerFn({ method: "POST" })
   .validator((data: unknown) => singleTargetSchema.parse(data))
   .handler(async ({ data }): Promise<ExportPayload> => {
     const { requireSession } = await import("./authorize.server");
-    const { connectToDatabase } = await import("./db");
-    const { Analysis } = await import("../models/Analysis");
-    const { Project } = await import("../models/Project");
     const user = await requireSession();
-    await connectToDatabase();
-
-    const analysis = await Analysis.findOne({ _id: data.id, owner: user._id }).lean();
-    if (!analysis) throw new Error("Analysis not found or unauthorized.");
-
-    const project = await Project.findOne({ _id: analysis.projectId, owner: user._id }).lean();
-
-    const analysisReport: AnalysisReportData = {
-      id: String(analysis._id),
-      projectId: String(analysis.projectId),
-      projectName: project?.name ?? "Unknown Project",
-      clientName: project?.client ?? "Unknown Client",
-      emailId: analysis.emailId ? String(analysis.emailId) : undefined,
-      originalRequirement: analysis.originalRequirement,
-      changedRequirement: analysis.changedRequirement,
-      aiSummary: analysis.aiSummary || "Scope Analysis Report",
-      aiExplanation: analysis.aiExplanation,
-      explanation: analysis.explanation || analysis.aiExplanation,
-      verdict: analysis.verdict,
-      confidence: analysis.confidence,
-      riskLevel: analysis.riskLevel,
-      additionalHours: analysis.additionalHours ?? 0,
-      timelineImpactDays: analysis.timelineImpactDays ?? 0,
-      suggestedCost: analysis.suggestedCost ?? 0,
-      includedFeatures: analysis.includedFeatures || [],
-      outOfScopeFeatures: analysis.outOfScopeFeatures || [],
-      detectedFeatures: analysis.detectedFeatures || [],
-      missingRequirements: analysis.missingRequirements || [],
-      reasoning: analysis.reasoning || "",
-      suggestedReply: analysis.suggestedReply || "",
-      priority: analysis.priority,
-      status: analysis.status,
-      pinned: analysis.pinned,
-      bookmarked: analysis.bookmarked,
-      createdAt: new Date(analysis.createdAt).toISOString().slice(0, 10),
-      updatedAt: new Date(analysis.updatedAt).toISOString().slice(0, 10),
-    };
-
-    return { type: "analysis", data: analysisReport };
+    return buildAnalysisExportPayload(user, data.id);
   });
 
 /**
@@ -279,123 +414,8 @@ export const getAnalyticsExport = createServerFn({ method: "POST" })
   .validator((data: unknown) => exportFilterSchema.parse(data))
   .handler(async ({ data }): Promise<ExportPayload> => {
     const { requireSession } = await import("./authorize.server");
-    const { connectToDatabase } = await import("./db");
-    const { Project } = await import("../models/Project");
-    const { Analysis } = await import("../models/Analysis");
     const user = await requireSession();
-    await connectToDatabase();
-
-    const [projects, analyses] = await Promise.all([
-      Project.find({ owner: user._id }).lean(),
-      Analysis.find({ owner: user._id }).sort({ createdAt: 1 }).lean(),
-    ]);
-
-    const totalAnalyses = analyses.length;
-    const scopeCreepAnalyses = analyses.filter(
-      (a) =>
-        a.verdict === "out_of_scope" ||
-        a.verdict === "confirmed_scope_creep" ||
-        a.verdict === "possible_scope_creep",
-    );
-
-    const totalRevenueProtected = scopeCreepAnalyses.reduce(
-      (acc, a) => acc + (a.suggestedCost ?? 0),
-      0,
-    );
-    const totalHoursSaved = scopeCreepAnalyses.reduce(
-      (acc, a) => acc + (a.additionalHours ?? 0),
-      0,
-    );
-    const avgConfidenceScore =
-      totalAnalyses > 0
-        ? Math.round(analyses.reduce((acc, a) => acc + (a.confidence ?? 0), 0) / totalAnalyses)
-        : 100;
-    const scopeCreepRatio =
-      totalAnalyses > 0 ? Math.round((scopeCreepAnalyses.length / totalAnalyses) * 100) : 0;
-
-    const riskDistribution = {
-      low: analyses.filter((a) => a.riskLevel === "low").length,
-      medium: analyses.filter((a) => a.riskLevel === "medium").length,
-      high: analyses.filter((a) => a.riskLevel === "high").length,
-    };
-
-    const confidenceDistribution = {
-      high: analyses.filter((a) => a.confidence >= 80).length,
-      medium: analyses.filter((a) => a.confidence >= 50 && a.confidence < 80).length,
-      low: analyses.filter((a) => a.confidence < 50).length,
-    };
-
-    // Monthly trends aggregation
-    const monthlyMap = new Map<string, { total: number; creep: number; revenue: number }>();
-    analyses.forEach((a) => {
-      const monthKey = new Date(a.createdAt).toLocaleString("en-US", {
-        month: "short",
-        year: "numeric",
-      });
-      const current = monthlyMap.get(monthKey) || { total: 0, creep: 0, revenue: 0 };
-      current.total += 1;
-      if (
-        a.verdict === "out_of_scope" ||
-        a.verdict === "confirmed_scope_creep" ||
-        a.verdict === "possible_scope_creep"
-      ) {
-        current.creep += 1;
-        current.revenue += a.suggestedCost ?? 0;
-      }
-      monthlyMap.set(monthKey, current);
-    });
-
-    const monthlyActivity = Array.from(monthlyMap.entries()).map(([month, stats]) => ({
-      month,
-      totalAnalyses: stats.total,
-      scopeCreepCount: stats.creep,
-      revenueProtected: stats.revenue,
-    }));
-
-    const topRiskyProjects = projects
-      .map((p) => {
-        const pAnalyses = analyses.filter((a) => String(a.projectId) === String(p._id));
-        const creepCount = pAnalyses.filter(
-          (a) => a.verdict === "out_of_scope" || a.verdict === "confirmed_scope_creep",
-        ).length;
-        const estCost = pAnalyses.reduce((acc, a) => acc + (a.suggestedCost ?? 0), 0);
-        return {
-          id: String(p._id),
-          name: p.name,
-          client: p.client,
-          risk: p.risk,
-          scopeCreepCount: creepCount,
-          estimatedCostImpact: estCost,
-        };
-      })
-      .sort((a, b) => b.estimatedCostImpact - a.estimatedCostImpact)
-      .slice(0, 5);
-
-    const analyticsReport: AnalyticsReportData = {
-      meta: {
-        workspaceName: user.workspaceName || `${user.firstName || "User"}'s Workspace`,
-        userEmail: user.email,
-        generatedAt: new Date().toISOString(),
-      },
-      kpis: {
-        totalRevenueProtected,
-        totalHoursSaved,
-        avgConfidenceScore,
-        totalAnalysesPerformed: totalAnalyses,
-        scopeCreepRatio,
-      },
-      riskDistribution,
-      confidenceDistribution,
-      monthlyActivity,
-      topRiskyProjects,
-      recommendations: [
-        "Enforce formal change order approvals for all High Risk flagged requests.",
-        "Implement milestone budget checks for projects exceeding 70% allocated hours.",
-        "Use automated client reply templates to communicate scope boundaries promptly.",
-      ],
-    };
-
-    return { type: "analytics", data: analyticsReport };
+    return buildAnalyticsExportPayload(user, data);
   });
 
 /**
@@ -417,13 +437,15 @@ export const getBulkExport = createServerFn({ method: "POST" })
     let payload: ExportPayload;
 
     if (scope === "dashboard") {
-      payload = await getDashboardExport({ data: filters });
-    } else if (scope === "project" && targetId) {
-      payload = await getProjectExport({ data: { id: targetId } });
-    } else if (scope === "analysis" && targetId) {
-      payload = await getAnalysisExport({ data: { id: targetId } });
+      payload = await buildDashboardExportPayload(user, filters);
+    } else if (scope === "project") {
+      if (!targetId) throw new Error("Target project ID is required for project export.");
+      payload = await buildProjectExportPayload(user, targetId);
+    } else if (scope === "analysis") {
+      if (!targetId) throw new Error("Target analysis ID is required for analysis export.");
+      payload = await buildAnalysisExportPayload(user, targetId);
     } else if (scope === "analytics") {
-      payload = await getAnalyticsExport({ data: filters });
+      payload = await buildAnalyticsExportPayload(user, filters);
     } else if (scope === "projects_bulk") {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const query: any = { owner: user._id };
@@ -540,8 +562,8 @@ export const getBulkExport = createServerFn({ method: "POST" })
       payload = { type: "analyses_bulk", data: analysesData };
     } else if (scope === "workspace") {
       const [dashPayload, analyticsPayload] = await Promise.all([
-        getDashboardExport({ data: filters }),
-        getAnalyticsExport({ data: filters }),
+        buildDashboardExportPayload(user, filters),
+        buildAnalyticsExportPayload(user, filters),
       ]);
 
       const workspaceData: WorkspaceExportData = {

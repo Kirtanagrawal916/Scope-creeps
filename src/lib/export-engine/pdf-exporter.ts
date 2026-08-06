@@ -1,439 +1,438 @@
 /**
- * export-engine/pdf-exporter.ts — Professional PDF Report Generator & Print Renderer.
+ * export-engine/pdf-exporter.ts — True Binary PDF Report Generator & PDF Validator.
  *
- * Provides printable PDF documents with header, company logo placeholder,
- * metadata header, Executive Summary, Table of Contents, KPI cards, paginated tables,
- * dark mode / print friendliness, and header/footer page numbers.
+ * Uses jsPDF and jspdf-autotable to produce valid Adobe Acrobat compliant
+ * binary PDF documents (%PDF-1.4...%%EOF).
  */
 
+import { jsPDF } from "jspdf";
+import autoTable from "jspdf-autotable";
 import type { ExportPayload } from "./types";
 
-export function generatePdfHtml(payload: ExportPayload): string {
+/**
+ * Validates that a byte buffer represents a valid, uncorrupted binary PDF document.
+ * Throws an Error if header magic bytes (%PDF-) or EOF marker (%%EOF) are missing.
+ */
+export function validatePdfBinary(buffer: Uint8Array): boolean {
+  if (!buffer || buffer.byteLength < 100) {
+    throw new Error("PDF Validation Failed: Output file buffer is empty or truncated.");
+  }
+
+  // Check PDF Header magic bytes (%PDF-)
+  const headerStr = String.fromCharCode(...buffer.slice(0, 5));
+  if (headerStr !== "%PDF-") {
+    throw new Error(
+      `PDF Validation Failed: Invalid magic header "${headerStr}". Expected "%PDF-".`,
+    );
+  }
+
+  // Check PDF Trailer (%%EOF) near end of file
+  const tailSlice = buffer.slice(-1024);
+  const tailStr = String.fromCharCode(...tailSlice);
+  if (!tailStr.includes("%%EOF")) {
+    throw new Error("PDF Validation Failed: Missing PDF EOF marker (%%EOF).");
+  }
+
+  return true;
+}
+
+/**
+ * Generates a valid binary PDF document as a Uint8Array.
+ */
+export function generatePdfBinary(payload: ExportPayload): Uint8Array {
+  const doc = new jsPDF({
+    orientation: "portrait",
+    unit: "mm",
+    format: "a4",
+  });
+
   const generatedAt = new Date().toLocaleString("en-US", {
     dateStyle: "medium",
     timeStyle: "short",
   });
 
-  const baseStyles = `
-    <style>
-      @page {
-        size: A4 portrait;
-        margin: 20mm 15mm 20mm 15mm;
-      }
-      * {
-        box-sizing: border-box;
-        margin: 0;
-        padding: 0;
-      }
-      body {
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-        color: #1e293b;
-        background-color: #ffffff;
-        font-size: 13px;
-        line-height: 1.5;
-        padding: 0;
-      }
-      .header-container {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        border-bottom: 2px solid #6366f1;
-        padding-bottom: 12px;
-        margin-bottom: 24px;
-      }
-      .brand-logo {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-      }
-      .logo-icon {
-        width: 32px;
-        height: 32px;
-        background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
-        border-radius: 8px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: #ffffff;
-        font-weight: bold;
-        font-size: 16px;
-      }
-      .brand-name {
-        font-size: 20px;
-        font-weight: 700;
-        color: #0f172a;
-        letter-spacing: -0.5px;
-      }
-      .report-meta {
-        text-align: right;
-        font-size: 11px;
-        color: #64748b;
-      }
-      .report-title {
-        font-size: 22px;
-        font-weight: 800;
-        color: #0f172a;
-        margin-bottom: 6px;
-      }
-      .report-subtitle {
-        font-size: 13px;
-        color: #64748b;
-        margin-bottom: 20px;
-      }
-      .toc-box {
-        background: #f8fafc;
-        border: 1px solid #e2e8f0;
-        border-radius: 8px;
-        padding: 14px 18px;
-        margin-bottom: 24px;
-      }
-      .toc-title {
-        font-size: 12px;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        color: #475569;
-        margin-bottom: 8px;
-      }
-      .toc-list {
-        display: flex;
-        gap: 20px;
-        list-style: none;
-        font-size: 12px;
-      }
-      .toc-list a {
-        color: #4f46e5;
-        text-decoration: none;
-        font-weight: 500;
-      }
-      .kpi-grid {
-        display: grid;
-        grid-template-columns: repeat(4, 1fr);
-        gap: 12px;
-        margin-bottom: 24px;
-      }
-      .kpi-card {
-        background: #f8fafc;
-        border: 1px solid #e2e8f0;
-        border-radius: 8px;
-        padding: 12px;
-        text-align: left;
-      }
-      .kpi-label {
-        font-size: 11px;
-        font-weight: 600;
-        color: #64748b;
-        text-transform: uppercase;
-        margin-bottom: 4px;
-      }
-      .kpi-value {
-        font-size: 18px;
-        font-weight: 800;
-        color: #0f172a;
-      }
-      .section-title {
-        font-size: 16px;
-        font-weight: 700;
-        color: #0f172a;
-        margin: 24px 0 12px 0;
-        padding-bottom: 6px;
-        border-bottom: 1px solid #e2e8f0;
-      }
-      table {
-        width: 100%;
-        border-collapse: collapse;
-        margin-bottom: 24px;
-        font-size: 12px;
-      }
-      th {
-        background: #f1f5f9;
-        color: #334155;
-        font-weight: 700;
-        text-align: left;
-        padding: 8px 12px;
-        border: 1px solid #cbd5e1;
-      }
-      td {
-        padding: 8px 12px;
-        border: 1px solid #e2e8f0;
-        color: #1e293b;
-        vertical-align: top;
-      }
-      tr:nth-child(even) td {
-        background: #fafafa;
-      }
-      .badge {
-        display: inline-block;
-        padding: 2px 8px;
-        border-radius: 9999px;
-        font-size: 10px;
-        font-weight: 700;
-        text-transform: uppercase;
-      }
-      .badge-low { background: #dcfce7; color: #15803d; }
-      .badge-medium { background: #fef9c3; color: #a16207; }
-      .badge-high { background: #fee2e2; color: #b91c1c; }
-      .badge-in_scope { background: #dcfce7; color: #15803d; }
-      .badge-scope_creep { background: #fee2e2; color: #b91c1c; }
-      .footer {
-        position: fixed;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        font-size: 10px;
-        color: #94a3b8;
-        display: flex;
-        justify-content: space-between;
-        border-top: 1px solid #e2e8f0;
-        padding-top: 8px;
-      }
-      .page-break {
-        page-break-after: always;
-      }
-      @media print {
-        .no-print { display: none !important; }
-        body { padding: 0; background: white; }
-      }
-    </style>
-  `;
+  // Theme colors
+  const primaryColor: [number, number, number] = [79, 70, 229]; // #4f46e5 Indigo
+  const textDark: [number, number, number] = [15, 23, 42]; // #0f172a Slate 900
+  const textMuted: [number, number, number] = [100, 116, 139]; // #64748b Slate 500
+  const bgCard: [number, number, number] = [248, 250, 252]; // #f8fafc
+  const borderColor: [number, number, number] = [226, 232, 240]; // #e2e8f0
 
-  let contentHtml = "";
+  const drawHeader = () => {
+    // Logo Icon Box
+    doc.setFillColor(...primaryColor);
+    doc.roundedRect(15, 12, 10, 10, 2, 2, "F");
+    doc.setTextColor(255, 255, 255);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    doc.text("SG", 20, 18.5, { align: "center" });
+
+    // Brand Name
+    doc.setTextColor(...textDark);
+    doc.setFontSize(15);
+    doc.setFont("helvetica", "bold");
+    doc.text("ScopeGuard AI", 28, 19);
+
+    // Meta Right Header
+    doc.setTextColor(...textMuted);
+    doc.setFontSize(8.5);
+    doc.setFont("helvetica", "normal");
+    doc.text("ScopeGuard Production Reports", 195, 16, { align: "right" });
+    doc.text(`Generated: ${generatedAt}`, 195, 20.5, { align: "right" });
+
+    // Divider Line
+    doc.setDrawColor(...primaryColor);
+    doc.setLineWidth(0.5);
+    doc.line(15, 25, 195, 25);
+  };
+
+  drawHeader();
+  let y = 33;
+
+  const drawKpiCards = (cards: Array<{ label: string; value: string }>) => {
+    const cardWidth = 41;
+    const cardHeight = 16;
+    const gap = 4;
+
+    cards.forEach((card, idx) => {
+      const x = 15 + idx * (cardWidth + gap);
+      doc.setFillColor(...bgCard);
+      doc.setDrawColor(...borderColor);
+      doc.setLineWidth(0.3);
+      doc.roundedRect(x, y, cardWidth, cardHeight, 2, 2, "FD");
+
+      doc.setFontSize(7.5);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(...textMuted);
+      doc.text(card.label.toUpperCase(), x + 3, y + 5);
+
+      doc.setFontSize(11);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(...textDark);
+      doc.text(card.value, x + 3, y + 12);
+    });
+
+    y += cardHeight + 8;
+  };
 
   switch (payload.type) {
     case "dashboard": {
       const d = payload.data;
-      contentHtml = `
-        <h1 class="report-title">Workspace Dashboard Report</h1>
-        <p class="report-subtitle">Executive summary for <strong>${d.meta.workspaceName}</strong> as of ${generatedAt}</p>
-        
-        <div class="toc-box">
-          <div class="toc-title">Table of Contents</div>
-          <ul class="toc-list">
-            <li><a href="#kpis">1. Key Metrics</a></li>
-            <li><a href="#high-risk">2. High Risk Projects</a></li>
-            <li><a href="#recent-changes">3. Scope Changes</a></li>
-          </ul>
-        </div>
 
-        <div id="kpis" class="kpi-grid">
-          <div class="kpi-card">
-            <div class="kpi-label">Active Projects</div>
-            <div class="kpi-value">${d.stats.totalProjects}</div>
-          </div>
-          <div class="kpi-card">
-            <div class="kpi-label">Total Analyses</div>
-            <div class="kpi-value">${d.stats.totalAnalyses}</div>
-          </div>
-          <div class="kpi-card">
-            <div class="kpi-label">Revenue Protected</div>
-            <div class="kpi-value">$${d.stats.revenueProtected.toLocaleString()}</div>
-          </div>
-          <div class="kpi-card">
-            <div class="kpi-label">Hours Saved</div>
-            <div class="kpi-value">${d.stats.hoursSaved} hrs</div>
-          </div>
-        </div>
+      // Title & Subtitle
+      doc.setFontSize(16);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(...textDark);
+      doc.text("Workspace Dashboard Report", 15, y);
+      y += 5;
 
-        <div id="high-risk">
-          <h2 class="section-title">High Risk Projects</h2>
-          <table>
-            <thead>
-              <tr>
-                <th>Project Name</th>
-                <th>Client</th>
-                <th>Budget</th>
-                <th>Hours Used / Alloc</th>
-                <th>Risk Rating</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${d.highRiskProjects
-                .map(
-                  (p) => `
-                <tr>
-                  <td><strong>${p.name}</strong></td>
-                  <td>${p.client}</td>
-                  <td>$${p.budget.toLocaleString()}</td>
-                  <td>${p.hoursUsed} / ${p.hoursAllocated} hrs</td>
-                  <td><span class="badge badge-${p.risk}">${p.risk}</span></td>
-                  <td>${p.status}</td>
-                </tr>
-              `,
-                )
-                .join("")}
-            </tbody>
-          </table>
-        </div>
+      doc.setFontSize(9.5);
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(...textMuted);
+      doc.text(`Executive summary for ${d.meta.workspaceName}`, 15, y);
+      y += 8;
 
-        <div id="recent-changes">
-          <h2 class="section-title">Recent Scope Changes</h2>
-          <table>
-            <thead>
-              <tr>
-                <th>Project</th>
-                <th>Original Requirement</th>
-                <th>Changed Requirement</th>
-                <th>Verdict</th>
-                <th>Est. Cost</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${d.recentScopeChanges
-                .map(
-                  (c) => `
-                <tr>
-                  <td><strong>${c.projectName}</strong></td>
-                  <td>${c.originalRequirement}</td>
-                  <td>${c.changedRequirement}</td>
-                  <td><span class="badge badge-${c.riskLevel}">${c.verdict}</span></td>
-                  <td>$${c.suggestedCost.toLocaleString()}</td>
-                </tr>
-              `,
-                )
-                .join("")}
-            </tbody>
-          </table>
-        </div>
-      `;
+      // KPI Cards
+      drawKpiCards([
+        { label: "Active Projects", value: String(d.stats.totalProjects) },
+        { label: "Total Analyses", value: String(d.stats.totalAnalyses) },
+        { label: "Revenue Protected", value: `$${d.stats.revenueProtected.toLocaleString()}` },
+        { label: "Hours Saved", value: `${d.stats.hoursSaved} hrs` },
+      ]);
+
+      // Table 1: High Risk Projects
+      doc.setFontSize(12);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(...textDark);
+      doc.text("High Risk Projects", 15, y);
+      y += 4;
+
+      autoTable(doc, {
+        startY: y,
+        head: [["Project Name", "Client", "Budget", "Hours (Used/Alloc)", "Risk", "Status"]],
+        body: d.highRiskProjects.map((p) => [
+          p.name,
+          p.client,
+          `$${p.budget.toLocaleString()}`,
+          `${p.hoursUsed} / ${p.hoursAllocated} hrs`,
+          p.risk.toUpperCase(),
+          p.status.toUpperCase(),
+        ]),
+        theme: "striped",
+        headStyles: { fillColor: primaryColor, textColor: [255, 255, 255], fontStyle: "bold" },
+        styles: { fontSize: 8.5, cellPadding: 2.5 },
+        margin: { left: 15, right: 15 },
+      });
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      y = (doc as any).lastAutoTable.finalY + 8;
+
+      // Table 2: Recent Scope Changes
+      doc.setFontSize(12);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(...textDark);
+      doc.text("Recent Scope Changes", 15, y);
+      y += 4;
+
+      autoTable(doc, {
+        startY: y,
+        head: [["Project", "Original Requirement", "Changed Requirement", "Verdict", "Est. Cost"]],
+        body: d.recentScopeChanges.map((c) => [
+          c.projectName,
+          c.originalRequirement,
+          c.changedRequirement,
+          c.verdict.replace(/_/g, " ").toUpperCase(),
+          `$${c.suggestedCost.toLocaleString()}`,
+        ]),
+        theme: "striped",
+        headStyles: { fillColor: [71, 85, 105], textColor: [255, 255, 255], fontStyle: "bold" },
+        styles: { fontSize: 8.5, cellPadding: 2.5 },
+        margin: { left: 15, right: 15 },
+      });
       break;
     }
 
     case "project": {
       const p = payload.data;
-      contentHtml = `
-        <h1 class="report-title">Project Scope Report: ${p.name}</h1>
-        <p class="report-subtitle">Client: <strong>${p.client}</strong> | Status: ${p.status.toUpperCase()} | Generated: ${generatedAt}</p>
-        
-        <div class="kpi-grid">
-          <div class="kpi-card">
-            <div class="kpi-label">Project Budget</div>
-            <div class="kpi-value">$${p.budget.toLocaleString()}</div>
-          </div>
-          <div class="kpi-card">
-            <div class="kpi-label">Hourly Rate</div>
-            <div class="kpi-value">$${p.hourlyRate}/hr</div>
-          </div>
-          <div class="kpi-card">
-            <div class="kpi-label">Hours Used</div>
-            <div class="kpi-value">${p.hoursUsed} / ${p.hoursAllocated} hrs</div>
-          </div>
-          <div class="kpi-card">
-            <div class="kpi-label">Risk Rating</div>
-            <div class="kpi-value"><span class="badge badge-${p.risk}">${p.risk}</span></div>
-          </div>
-        </div>
 
-        <h2 class="section-title">Scope Analyses History (${p.analyses.length})</h2>
-        <table>
-          <thead>
-            <tr>
-              <th>Analysis ID</th>
-              <th>AI Summary</th>
-              <th>Verdict</th>
-              <th>Est. Hours</th>
-              <th>Est. Cost</th>
-              <th>Date</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${p.analyses
-              .map(
-                (a) => `
-              <tr>
-                <td><code>${a.id}</code></td>
-                <td>${a.aiSummary}</td>
-                <td><span class="badge badge-${a.riskLevel}">${a.verdict}</span></td>
-                <td>+${a.additionalHours} hrs</td>
-                <td>$${a.suggestedCost.toLocaleString()}</td>
-                <td>${a.createdAt}</td>
-              </tr>
-            `,
-              )
-              .join("")}
-          </tbody>
-        </table>
-      `;
+      doc.setFontSize(16);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(...textDark);
+      doc.text(`Project Scope Report: ${p.name}`, 15, y);
+      y += 5;
+
+      doc.setFontSize(9.5);
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(...textMuted);
+      doc.text(`Client: ${p.client} | Status: ${p.status.toUpperCase()}`, 15, y);
+      y += 8;
+
+      drawKpiCards([
+        { label: "Project Budget", value: `$${p.budget.toLocaleString()}` },
+        { label: "Hourly Rate", value: `$${p.hourlyRate}/hr` },
+        { label: "Hours Used", value: `${p.hoursUsed} / ${p.hoursAllocated} hrs` },
+        { label: "Risk Rating", value: p.risk.toUpperCase() },
+      ]);
+
+      doc.setFontSize(12);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(...textDark);
+      doc.text(`Scope Analyses History (${p.analyses.length})`, 15, y);
+      y += 4;
+
+      autoTable(doc, {
+        startY: y,
+        head: [["Analysis ID", "AI Summary", "Verdict", "Est. Hours", "Est. Cost", "Date"]],
+        body: p.analyses.map((a) => [
+          a.id.slice(-8),
+          a.aiSummary,
+          a.verdict.replace(/_/g, " ").toUpperCase(),
+          `+${a.additionalHours} hrs`,
+          `$${a.suggestedCost.toLocaleString()}`,
+          a.createdAt,
+        ]),
+        theme: "striped",
+        headStyles: { fillColor: primaryColor, textColor: [255, 255, 255], fontStyle: "bold" },
+        styles: { fontSize: 8.5, cellPadding: 2.5 },
+        margin: { left: 15, right: 15 },
+      });
       break;
     }
 
     case "analysis": {
       const a = payload.data;
-      contentHtml = `
-        <h1 class="report-title">Scope Analysis Report</h1>
-        <p class="report-subtitle">Analysis ID: <code>${a.id}</code> | Project: <strong>${a.projectName}</strong> (${a.clientName})</p>
 
-        <div class="kpi-grid">
-          <div class="kpi-card">
-            <div class="kpi-label">Verdict</div>
-            <div class="kpi-value"><span class="badge badge-${a.riskLevel}">${a.verdict}</span></div>
-          </div>
-          <div class="kpi-card">
-            <div class="kpi-label">AI Confidence</div>
-            <div class="kpi-value">${a.confidence}%</div>
-          </div>
-          <div class="kpi-card">
-            <div class="kpi-label">Est. Additional Hours</div>
-            <div class="kpi-value">+${a.additionalHours} hrs</div>
-          </div>
-          <div class="kpi-card">
-            <div class="kpi-label">Est. Suggested Cost</div>
-            <div class="kpi-value">$${a.suggestedCost.toLocaleString()}</div>
-          </div>
-        </div>
+      doc.setFontSize(16);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(...textDark);
+      doc.text("Scope Analysis Report", 15, y);
+      y += 5;
 
-        <h2 class="section-title">AI Summary & Risk Assessment</h2>
-        <div class="toc-box">
-          <p><strong>AI Model:</strong> ${a.aiModel || "gemini-2.5-flash"} ${a.isFallback ? "(Rule-Based Fallback Engine Active)" : ""}</p>
-          <p style="margin-top: 6px;"><strong>Summary:</strong> ${a.executiveSummary || a.aiSummary}</p>
-          <p style="margin-top: 6px;"><strong>Technical Details:</strong> ${a.technicalExplanation || a.explanation || a.aiExplanation}</p>
-          ${
-            a.potentialRisks && a.potentialRisks.length > 0
-              ? `<p style="margin-top: 8px;"><strong>Potential Risks:</strong> ${a.potentialRisks.join("; ")}</p>`
-              : ""
-          }
-          ${
-            a.recommendations && a.recommendations.length > 0
-              ? `<p style="margin-top: 6px;"><strong>AI Recommendations:</strong> ${a.recommendations.join("; ")}</p>`
-              : ""
-          }
-        </div>
+      doc.setFontSize(9.5);
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(...textMuted);
+      doc.text(`Analysis ID: ${a.id} | Project: ${a.projectName} (${a.clientName})`, 15, y);
+      y += 8;
 
-        <h2 class="section-title">Requirement Comparison</h2>
-        <table>
-          <thead>
-            <tr>
-              <th style="width: 50%;">Original Requirement</th>
-              <th style="width: 50%;">Changed / New Request</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td>${a.originalRequirement || "N/A"}</td>
-              <td>${a.changedRequirement || "N/A"}</td>
-            </tr>
-          </tbody>
-        </table>
+      drawKpiCards([
+        { label: "Verdict", value: a.verdict.replace(/_/g, " ").toUpperCase() },
+        { label: "AI Confidence", value: `${a.confidence}%` },
+        { label: "Est. Additional Hours", value: `+${a.additionalHours} hrs` },
+        { label: "Est. Suggested Cost", value: `$${a.suggestedCost.toLocaleString()}` },
+      ]);
 
-        ${
-          a.suggestedReply
-            ? `
-          <h2 class="section-title">Suggested Client Communication</h2>
-          <div class="toc-box" style="background: #f1f5f9; border-color: #cbd5e1;">
-            <pre style="white-space: pre-wrap; font-family: inherit;">${a.suggestedReply}</pre>
-          </div>
-        `
-            : ""
-        }
-      `;
+      // Summary Box
+      doc.setFillColor(...bgCard);
+      doc.setDrawColor(...borderColor);
+      doc.roundedRect(15, y, 180, 22, 2, 2, "FD");
+
+      doc.setFontSize(9);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(...textDark);
+      doc.text("AI Summary & Assessment:", 18, y + 6);
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(8.5);
+      doc.setTextColor(...textMuted);
+      const splitSummary = doc.splitTextToSize(a.executiveSummary || a.aiSummary, 174);
+      doc.text(splitSummary, 18, y + 12);
+      y += 28;
+
+      // Table: Requirement Comparison
+      doc.setFontSize(12);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(...textDark);
+      doc.text("Requirement Comparison", 15, y);
+      y += 4;
+
+      autoTable(doc, {
+        startY: y,
+        head: [["Original Scope Requirement", "Changed / New Request"]],
+        body: [[a.originalRequirement || "N/A", a.changedRequirement || "N/A"]],
+        theme: "plain",
+        headStyles: { fillColor: [241, 245, 249], textColor: [51, 65, 85], fontStyle: "bold" },
+        styles: { fontSize: 8.5, cellPadding: 3, overflow: "linebreak" },
+        columnStyles: { 0: { cellWidth: 90 }, 1: { cellWidth: 90 } },
+        margin: { left: 15, right: 15 },
+      });
       break;
     }
 
-    default: {
-      contentHtml = `<h1 class="report-title">ScopeGuard Report</h1><p class="report-subtitle">Generated: ${generatedAt}</p>`;
+    case "projects_bulk": {
+      const projects = payload.data;
+
+      doc.setFontSize(16);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(...textDark);
+      doc.text("Projects Master Export", 15, y);
+      y += 8;
+
+      autoTable(doc, {
+        startY: y,
+        head: [["Project Name", "Client", "Status", "Risk", "Budget", "Hours Used / Alloc"]],
+        body: projects.map((p) => [
+          p.name,
+          p.client,
+          p.status.toUpperCase(),
+          p.risk.toUpperCase(),
+          `$${p.budget.toLocaleString()}`,
+          `${p.hoursUsed} / ${p.hoursAllocated} hrs`,
+        ]),
+        theme: "striped",
+        headStyles: { fillColor: primaryColor, textColor: [255, 255, 255], fontStyle: "bold" },
+        styles: { fontSize: 8.5, cellPadding: 2.5 },
+        margin: { left: 15, right: 15 },
+      });
       break;
+    }
+
+    case "analyses_bulk": {
+      const items = payload.data;
+
+      doc.setFontSize(16);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(...textDark);
+      doc.text("Scope Analyses Master Export", 15, y);
+      y += 8;
+
+      autoTable(doc, {
+        startY: y,
+        head: [["Project", "Client", "Verdict", "Confidence", "Est. Hours", "Est. Cost"]],
+        body: items.map((a) => [
+          a.projectName,
+          a.clientName,
+          a.verdict.replace(/_/g, " ").toUpperCase(),
+          `${a.confidence}%`,
+          `+${a.additionalHours} hrs`,
+          `$${a.suggestedCost.toLocaleString()}`,
+        ]),
+        theme: "striped",
+        headStyles: { fillColor: primaryColor, textColor: [255, 255, 255], fontStyle: "bold" },
+        styles: { fontSize: 8.5, cellPadding: 2.5 },
+        margin: { left: 15, right: 15 },
+      });
+      break;
+    }
+
+    case "analytics": {
+      const d = payload.data;
+
+      doc.setFontSize(16);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(...textDark);
+      doc.text("ScopeGuard Analytics Report", 15, y);
+      y += 8;
+
+      drawKpiCards([
+        { label: "Revenue Protected", value: `$${d.kpis.totalRevenueProtected.toLocaleString()}` },
+        { label: "Hours Saved", value: `${d.kpis.totalHoursSaved} hrs` },
+        { label: "Avg Confidence", value: `${d.kpis.avgConfidenceScore}%` },
+        { label: "Creep Ratio", value: `${d.kpis.scopeCreepRatio}%` },
+      ]);
+
+      doc.setFontSize(12);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(...textDark);
+      doc.text("Monthly Activity", 15, y);
+      y += 4;
+
+      autoTable(doc, {
+        startY: y,
+        head: [["Month", "Total Analyses", "Scope Creep Count", "Revenue Protected"]],
+        body: d.monthlyActivity.map((m) => [
+          m.month,
+          String(m.totalAnalyses),
+          String(m.scopeCreepCount),
+          `$${m.revenueProtected.toLocaleString()}`,
+        ]),
+        theme: "striped",
+        headStyles: { fillColor: primaryColor, textColor: [255, 255, 255], fontStyle: "bold" },
+        styles: { fontSize: 8.5, cellPadding: 2.5 },
+        margin: { left: 15, right: 15 },
+      });
+      break;
+    }
+
+    case "workspace": {
+      const ws = payload.data;
+      return generatePdfBinary({ type: "dashboard", data: ws.dashboard });
     }
   }
+
+  // Add Page Footer & Numbers
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const totalPages = (doc as any).internal.getNumberOfPages();
+  for (let i = 1; i <= totalPages; i++) {
+    doc.setPage(i);
+    doc.setDrawColor(...borderColor);
+    doc.setLineWidth(0.3);
+    doc.line(15, 282, 195, 282);
+
+    doc.setFontSize(8);
+    doc.setTextColor(...textMuted);
+    doc.setFont("helvetica", "normal");
+    doc.text("Confidential — Internal Use Only | ScopeGuard AI Risk Management Engine", 15, 287);
+    doc.text(`Page ${i} of ${totalPages}`, 195, 287, { align: "right" });
+  }
+
+  // Get raw binary ArrayBuffer output
+  const arrayBuffer = doc.output("arraybuffer");
+  const pdfBytes = new Uint8Array(arrayBuffer);
+
+  // Validate PDF magic header and trailer
+  validatePdfBinary(pdfBytes);
+
+  return pdfBytes;
+}
+
+/**
+ * Legacy HTML printable fallback export function.
+ */
+export function generatePdfHtml(payload: ExportPayload): string {
+  const generatedAt = new Date().toLocaleString("en-US", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  });
 
   return `
     <!DOCTYPE html>
@@ -441,33 +440,15 @@ export function generatePdfHtml(payload: ExportPayload): string {
       <head>
         <meta charset="utf-8" />
         <title>ScopeGuard Report</title>
-        ${baseStyles}
+        <style>
+          body { font-family: sans-serif; padding: 20px; color: #1e293b; }
+          h1 { color: #4f46e5; }
+        </style>
       </head>
       <body>
-        <div class="header-container">
-          <div class="brand-logo">
-            <div class="logo-icon">SG</div>
-            <span class="brand-name">ScopeGuard AI</span>
-          </div>
-          <div class="report-meta">
-            <div><strong>ScopeGuard Production Reports</strong></div>
-            <div>Generated: ${generatedAt}</div>
-          </div>
-        </div>
-
-        ${contentHtml}
-
-        <div class="footer">
-          <span>Confidential — Internal Use Only</span>
-          <span>ScopeGuard AI Risk Management Engine</span>
-        </div>
-
-        <script>
-          // Auto trigger window print dialog if requested
-          if (window.location.search.includes('print=true')) {
-            window.addEventListener('load', () => window.print());
-          }
-        </script>
+        <h1>ScopeGuard Report</h1>
+        <p>Generated: ${generatedAt}</p>
+        <pre>${JSON.stringify(payload.data, null, 2)}</pre>
       </body>
     </html>
   `;

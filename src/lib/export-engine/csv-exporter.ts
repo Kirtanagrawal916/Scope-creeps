@@ -25,13 +25,14 @@ export function escapeCsvField(val: unknown): string {
 export function recordsToCsv<T extends Record<string, unknown>>(
   headers: { key: keyof T; label: string }[],
   records: T[],
+  addBom = false,
 ): string {
   const headerRow = headers.map((h) => escapeCsvField(h.label)).join(",");
   const dataRows = records.map((record) =>
     headers.map((h) => escapeCsvField(record[h.key])).join(","),
   );
-  // Add UTF-8 BOM prefix for Excel compatibility
-  return "\uFEFF" + [headerRow, ...dataRows].join("\r\n");
+  const content = [headerRow, ...dataRows].join("\r\n");
+  return addBom ? "\uFEFF" + content : content;
 }
 
 /**
