@@ -297,64 +297,7 @@ export async function registerUserImpl(data: {
   }
 }
 
-export async function updateWorkspaceSettingsImpl(data: {
-  workspaceName: string;
-  defaultRate?: number;
-}) {
-  const user = await getSessionUser();
-  if (!user) {
-    throw new Error("Unauthorized");
-  }
 
-  if (!data.workspaceName || data.workspaceName.trim() === "") {
-    throw new Error("Workspace name is required.");
-  }
-
-  await connectToDatabase();
-  user.workspaceName = data.workspaceName.trim();
-  if (typeof data.defaultRate === "number") {
-    user.defaultRate = data.defaultRate;
-  }
-  await user.save();
-
-  return {
-    success: true,
-    message: "Workspace settings updated successfully.",
-    user: {
-      id: String(user._id),
-      workspaceName: user.workspaceName,
-      defaultRate: user.defaultRate,
-    },
-  };
-}
-
-export async function updateProfileImpl(data: { firstName?: string; lastName?: string }) {
-  const user = await getSessionUser();
-  if (!user) {
-    throw new Error("Unauthorized");
-  }
-
-  await connectToDatabase();
-  if (typeof data.firstName === "string") {
-    user.firstName = data.firstName.trim();
-  }
-  if (typeof data.lastName === "string") {
-    user.lastName = data.lastName.trim();
-  }
-  await user.save();
-
-  return {
-    success: true,
-    message: "Profile updated successfully.",
-    user: {
-      id: String(user._id),
-      firstName: user.firstName,
-      lastName: user.lastName,
-      email: user.email,
-      workspaceName: user.workspaceName,
-    },
-  };
-}
 
 export async function getGoogleAuthUrlImpl() {
   const { setCookie } = await import("@tanstack/react-start/server");
@@ -744,5 +687,74 @@ export async function unlinkProviderImpl(data: { provider: "google" | "github" }
   return {
     success: true,
     message: `Successfully disconnected ${data.provider} account.`,
+  };
+}
+
+
+
+export async function updateWorkspaceSettingsImpl(data: {
+  workspaceName?: string;
+  defaultRate?: number;
+  currency?: string;
+  currencySymbol?: string;
+  locale?: string;
+  timezone?: string;
+  language?: string;
+  dateFormat?: string;
+}) {
+  const user = await getSessionUser();
+  if (!user) throw new Error("Unauthorized");
+
+  await connectToDatabase();
+  const userDoc = await User.findById(user._id);
+  if (!userDoc) throw new Error("User not found");
+
+  if (data.workspaceName !== undefined) userDoc.workspaceName = data.workspaceName;
+  if (data.defaultRate !== undefined) userDoc.defaultRate = data.defaultRate;
+  if (data.currency !== undefined) userDoc.currency = data.currency;
+  if (data.currencySymbol !== undefined) userDoc.currencySymbol = data.currencySymbol;
+  if (data.locale !== undefined) userDoc.locale = data.locale;
+  if (data.timezone !== undefined) userDoc.timezone = data.timezone;
+  if (data.language !== undefined) userDoc.language = data.language;
+  if (data.dateFormat !== undefined) userDoc.dateFormat = data.dateFormat;
+
+  await userDoc.save();
+
+  return {
+    success: true,
+    message: "Workspace settings updated successfully",
+    user: {
+      workspaceName: userDoc.workspaceName,
+      defaultRate: userDoc.defaultRate,
+      currency: userDoc.currency,
+      currencySymbol: userDoc.currencySymbol,
+      locale: userDoc.locale,
+      timezone: userDoc.timezone,
+      language: userDoc.language,
+      dateFormat: userDoc.dateFormat,
+    },
+  };
+}
+
+export async function updateProfileImpl(data: { firstName?: string; lastName?: string }) {
+  const user = await getSessionUser();
+  if (!user) throw new Error("Unauthorized");
+
+  await connectToDatabase();
+  const userDoc = await User.findById(user._id);
+  if (!userDoc) throw new Error("User not found");
+
+  if (data.firstName !== undefined) userDoc.firstName = data.firstName;
+  if (data.lastName !== undefined) userDoc.lastName = data.lastName;
+
+  await userDoc.save();
+
+  return {
+    success: true,
+    message: "Profile updated successfully",
+    user: {
+      firstName: userDoc.firstName,
+      lastName: userDoc.lastName,
+    },
   };
 }

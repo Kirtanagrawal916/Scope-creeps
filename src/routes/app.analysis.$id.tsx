@@ -1,4 +1,4 @@
-import { createFileRoute, Link, notFound, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, notFound, useNavigate, useRouteContext } from "@tanstack/react-router";
 import {
   ArrowLeft,
   ShieldCheck,
@@ -20,6 +20,7 @@ import { ExportButton } from "@/components/export/export-button";
 import { RiskChip, StatusPill } from "@/components/status-pill";
 import { Button } from "@/components/ui/button";
 import { getAnalysisDetails, updateAnalysis, runScopeAnalysis } from "@/lib/analyses.server";
+import { formatCurrency } from "@/lib/formatters";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -74,6 +75,14 @@ const verdictConfig = {
 } as const;
 
 function AnalysisPage() {
+  const { user } = useRouteContext({ from: "/app" }) as {
+    user: {
+      currencySymbol?: string;
+      locale?: string;
+    } | null;
+  };
+  const currencySymbol = user?.currencySymbol || "$";
+  const locale = user?.locale || "en-US";
   const { analysis, project, email } = Route.useLoaderData();
   const [copied, setCopied] = useState(false);
   const navigate = useNavigate({ from: Route.fullPath });
@@ -334,10 +343,7 @@ function AnalysisPage() {
           {
             icon: DollarSign,
             l: "Suggested Cost Impact",
-            v:
-              analysis.suggestedCost > 0
-                ? `₹${analysis.suggestedCost.toLocaleString("en-IN")}`
-                : "₹0",
+            v: formatCurrency(analysis.suggestedCost, currencySymbol, locale),
           },
         ].map((s) => {
           const Icon = s.icon;

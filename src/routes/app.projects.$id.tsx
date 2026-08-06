@@ -1,4 +1,4 @@
-import { createFileRoute, Link, notFound, useNavigate, useRouter } from "@tanstack/react-router";
+import { createFileRoute, Link, notFound, useNavigate, useRouter, useRouteContext } from "@tanstack/react-router";
 import {
   ArrowLeft,
   FileText,
@@ -20,6 +20,7 @@ import { AppShell } from "@/components/app-shell";
 import { ExportButton } from "@/components/export/export-button";
 import { StatusPill, RiskChip } from "@/components/status-pill";
 import { Button } from "@/components/ui/button";
+import { formatCurrency } from "@/lib/formatters";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   getProject,
@@ -81,6 +82,14 @@ export const Route = createFileRoute("/app/projects/$id")({
 });
 
 function ProjectDetail() {
+  const { user } = useRouteContext({ from: "/app" }) as {
+    user: {
+      currencySymbol?: string;
+      locale?: string;
+    } | null;
+  };
+  const currencySymbol = user?.currencySymbol || "$";
+  const locale = user?.locale || "en-US";
   const { project, projectEmails, projectAnalyses } = Route.useLoaderData();
   const nav = useNavigate();
   const router = useRouter();
@@ -113,16 +122,16 @@ function ProjectDetail() {
       await updateProject({
         data: {
           id: project.id,
-          name: String(form.get("name") ?? "").trim(),
-          client: String(form.get("client") ?? "").trim(),
+          name: String(form.get("name") ?? ""),
+          client: String(form.get("client") ?? ""),
           budget: Number(form.get("budget") ?? 0),
           hourlyRate: Number(form.get("hourlyRate") ?? 0),
           hoursAllocated: Number(form.get("hoursAllocated") ?? 0),
           hoursUsed: Number(form.get("hoursUsed") ?? 0),
           progress: Number(form.get("progress") ?? 0),
-          status: form.get("status") as ProjectStatus,
-          risk: form.get("risk") as RiskLevel,
-          contract: String(form.get("contract") ?? "").trim(),
+          status: form.get("status") as any,
+          risk: form.get("risk") as any,
+          contract: String(form.get("contract") ?? ""),
           scopeItems: String(form.get("scopeItems") ?? "")
             .split("\n")
             .map((s) => s.trim())
@@ -177,12 +186,12 @@ function ProjectDetail() {
     }
   };
 
-  const handleManualAnalysis = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!changedReq.trim()) {
-      toast.error("Please enter the client's request/changed requirement.");
+  const handleRunManualScopeAnalysis = async () => {
+    if (!originalReq.trim() || !changedReq.trim()) {
+      toast.error("Please enter both baseline and changed scope requirements.");
       return;
     }
+
     setIsAnalyzing(true);
     try {
       const analysis = await runScopeAnalysis({
@@ -192,9 +201,9 @@ function ProjectDetail() {
           changedRequirement: changedReq,
         },
       });
-      toast.success("Analysis complete.");
+      toast.success("Scope analysis completed!");
       setIsAnalyzeOpen(false);
-      setChangedReq("");
+      router.invalidate();
       nav({ to: "/app/analysis/$id", params: { id: analysis.id } });
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Failed to analyze scope.";
@@ -219,38 +228,40 @@ function ProjectDetail() {
   };
 
   return (
-    <AppShell>
-      <div className="flex items-center justify-between mb-4">
-        <Button variant="ghost" size="sm" asChild>
-          <Link to="/app/projects">
-            <ArrowLeft className="mr-1.5 h-3.5 w-3.5" /> Projects
-          </Link>
-        </Button>
-        {project.archived && (
-          <span className="rounded-full bg-amber-500/10 px-2.5 py-0.5 text-[11px] font-medium text-amber-500 flex items-center gap-1.5 animate-pulse">
-            <Archive className="h-3 w-3" /> Archived Project
-          </span>
-        )}
-      </div>
-
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-accent text-[13px] font-semibold">
+    <AppShell title={project.name} subtitle={`Client: ${project.client}`}>
+      {/* Header Bar */}
+      <div className="flex flex-col gap-4 border-b border-border pb-6 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-3">
+          <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
+            <Link to="/app/projects">
+              <ArrowLeft className="h-4 w-4" />
+            </Link>
+          </Button>
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-sm font-semibold text-primary">
             {project.clientInitials}
           </div>
           <div>
-            <h1 className="font-display text-3xl font-semibold tracking-tight">{project.name}</h1>
-            <div className="mt-1 flex items-center gap-2 text-[13px] text-muted-foreground">
-              <span>{project.client}</span>
-              <span>·</span>
-              <StatusPill status={project.status} />
-              <span>·</span>
-              <RiskChip level={project.risk} />
+            <div className="flex items-center gap-2">
+              <h1 className="text-[18px] font-semibold tracking-tight">{project.name}</h1>
+              {project.archived && (
+                <span className="rounded bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+                  Archived
+                </span>
+              )}
             </div>
+            <p className="text-[13px] text-muted-foreground">{project.client}</p>
           </div>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <ExportButton defaultScope="project" defaultTargetId={project.id} label="Export Report" />
+
+        <div className="flex flex-wrap items-center gap-2">
+          <StatusPill status={project.status} />
+          <RiskChip level={project.risk} />
+          <ExportButton defaultScope="project" defaultTargetId={project.id} label="Export Project" />
+
+          <Button variant="outline" size="sm" onClick={() => setIsEditOpen(true)}>
+            <Edit className="mr-1.5 h-3.5 w-3.5" /> Edit
+          </Button>
+
           {project.archived ? (
             <Button
               variant="outline"
@@ -258,13 +269,10 @@ function ProjectDetail() {
               onClick={handleArchiveToggle}
               disabled={isArchiving}
             >
-              <RefreshCw className="mr-1.5 h-3.5 w-3.5" /> Restore Project
+              <RefreshCw className="mr-1.5 h-3.5 w-3.5" /> Restore
             </Button>
           ) : (
             <>
-              <Button variant="outline" size="sm" onClick={() => setIsEditOpen(true)}>
-                <Edit className="mr-1.5 h-3.5 w-3.5" /> Edit Details
-              </Button>
               <Button
                 variant="outline"
                 size="sm"
@@ -284,7 +292,7 @@ function ProjectDetail() {
       {/* KPI Stats */}
       <div className="mt-6 grid gap-3 md:grid-cols-4">
         {[
-          { icon: DollarSign, l: "Budget", v: `₹${project.budget.toLocaleString("en-IN")}` },
+          { icon: DollarSign, l: "Budget", v: formatCurrency(project.budget, currencySymbol, locale) },
           {
             icon: Clock,
             l: "Hours logged",
@@ -337,7 +345,7 @@ function ProjectDetail() {
               <div className="mt-4 space-y-2 text-[13px]">
                 <div className="flex justify-between border-b border-border/40 pb-2">
                   <span className="text-muted-foreground">Hourly Rate</span>
-                  <span className="font-medium font-mono">₹{project.hourlyRate}/h</span>
+                  <span className="font-medium font-mono">{currencySymbol}{project.hourlyRate}/h</span>
                 </div>
                 <div className="flex justify-between border-b border-border/40 pb-2">
                   <span className="text-muted-foreground">Hours Used</span>
@@ -346,7 +354,7 @@ function ProjectDetail() {
                 <div className="flex justify-between border-b border-border/40 pb-2">
                   <span className="text-muted-foreground">Budget Utilization</span>
                   <span className="font-medium font-mono">
-                    ₹{(project.hoursUsed * project.hourlyRate).toLocaleString("en-IN")} (
+                    {formatCurrency(project.hoursUsed * project.hourlyRate, currencySymbol, locale)} (
                     {project.budget > 0
                       ? Math.round(
                           ((project.hoursUsed * project.hourlyRate) / project.budget) * 100,
@@ -563,7 +571,7 @@ function ProjectDetail() {
                     <div>
                       <span className="text-muted-foreground">Cost: </span>
                       <span className="font-semibold text-foreground">
-                        ₹{a.suggestedCost.toLocaleString("en-IN")}
+                        {formatCurrency(a.suggestedCost, currencySymbol, locale)}
                       </span>
                     </div>
                     <div>
@@ -665,7 +673,7 @@ function ProjectDetail() {
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="budget" className="text-[12px]">
-                  Budget ($)
+                  Budget ({currencySymbol})
                 </Label>
                 <Input
                   id="budget"
@@ -677,7 +685,7 @@ function ProjectDetail() {
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="hourlyRate" className="text-[12px]">
-                  Hourly Rate (₹/h)
+                  Hourly Rate ({currencySymbol}/h)
                 </Label>
                 <Input
                   id="hourlyRate"
@@ -826,7 +834,13 @@ function ProjectDetail() {
       {/* Manual Scope Analysis Dialog */}
       <Dialog open={isAnalyzeOpen} onOpenChange={setIsAnalyzeOpen}>
         <DialogContent className="max-w-xl bg-background border border-border">
-          <form onSubmit={handleManualAnalysis} className="space-y-4">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleRunManualScopeAnalysis();
+            }}
+            className="space-y-4"
+          >
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <Sparkles className="h-5 w-5 text-primary" /> Analyze Custom Scope Request

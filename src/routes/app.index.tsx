@@ -20,7 +20,9 @@ import {
   Plus,
   Search,
 } from "lucide-react";
-import { AppShell, Section } from "@/components/app-shell";
+import { Section } from "@/components/app-shell";
+import { AppShell } from "@/components/app-shell";
+import { formatCurrency, formatCompactNumber } from "@/lib/formatters";
 import { ExportButton } from "@/components/export/export-button";
 import { StatCard } from "@/components/stat-card";
 import { StatusPill } from "@/components/status-pill";
@@ -97,8 +99,12 @@ function Dashboard() {
       firstName?: string;
       lastName?: string;
       workspaceName?: string;
+      currencySymbol?: string;
+      locale?: string;
     } | null;
   };
+  const currencySymbol = user?.currencySymbol || "$";
+  const locale = user?.locale || "en-US";
   const { projects, emails, analyses, notifications } = Route.useLoaderData();
 
   const greetingName = user?.firstName || user?.email?.split("@")[0] || "there";
@@ -217,7 +223,7 @@ function Dashboard() {
             p.status === "completed"
               ? `${p.name} marked as completed`
               : `New project created: ${p.name}`,
-          meta: `₹${p.budget.toLocaleString("en-IN")} budget`,
+          meta: `${formatCurrency(p.budget, currencySymbol, locale)} budget`,
           time: p.updatedAt,
           rawDate: new Date(p.createdAt),
         })),
@@ -233,7 +239,7 @@ function Dashboard() {
             meta:
               a.verdict === "in_scope"
                 ? "In scope"
-                : `₹${a.suggestedCost.toLocaleString("en-IN")} impact`,
+                : `${formatCurrency(a.suggestedCost, currencySymbol, locale)} impact`,
             time: a.createdAt,
             rawDate: new Date(a.createdAtIso),
           };
@@ -314,7 +320,7 @@ function Dashboard() {
           <StatCard
             label="Revenue protected"
             value={kpis.revenueProtected}
-            prefix="₹"
+            prefix={currencySymbol}
             icon={ShieldCheck}
             delta={kpis.revenueProtected > 0 ? "Blocked invoice leakage" : "No scope creep yet"}
             trend={kpis.revenueProtected > 0 ? "up" : "neutral"}
@@ -393,10 +399,10 @@ function Dashboard() {
                 </div>
                 <div className="mt-1 flex items-baseline gap-2">
                   <span className="font-display text-2xl font-semibold tabular-nums">
-                    ₹{totalInvoicedInChart.toLocaleString("en-IN")}
+                    {formatCurrency(totalInvoicedInChart, currencySymbol, locale)}
                   </span>
                   <span className="text-[12px] text-[color:var(--success)]">
-                    +₹{totalProtectedInChart.toLocaleString("en-IN")} protected
+                    +{formatCurrency(totalProtectedInChart, currencySymbol, locale)} protected
                   </span>
                 </div>
               </div>
@@ -428,7 +434,7 @@ function Dashboard() {
                     tick={{ fill: "var(--muted-foreground)", fontSize: 11 }}
                     axisLine={false}
                     tickLine={false}
-                    tickFormatter={(v: number) => `₹${v.toLocaleString("en-IN")}`}
+                    tickFormatter={(v: number) => formatCompactNumber(v, currencySymbol)}
                   />
                   <Tooltip
                     contentStyle={{
@@ -462,15 +468,21 @@ function Dashboard() {
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="panel p-6 bg-background/50 backdrop-blur"
+            className="panel p-6 bg-background/50 backdrop-blur flex flex-col justify-between"
           >
-            <div className="flex items-center justify-between border-b border-border/40 pb-2 mb-4">
-              <div className="text-[12px] font-medium text-muted-foreground flex items-center gap-1.5">
-                <Sparkles className="h-3.5 w-3.5 text-primary" />
-                Latest Scope Changes
+            <div>
+              <div className="flex items-center justify-between">
+                <div className="text-[12px] font-medium text-muted-foreground">
+                  Latest Scope Changes
+                </div>
+                <Sparkles className="h-4 w-4 text-primary" />
               </div>
+              <p className="mt-1 text-[12px] text-muted-foreground">
+                Out-of-scope features recently detected across client emails.
+              </p>
             </div>
-            <div className="space-y-4 max-h-[300px] overflow-y-auto pr-1">
+
+            <div className="mt-4 space-y-2 flex-1 overflow-y-auto max-h-56">
               {latestScopeChanges.length === 0 ? (
                 <div className="text-center py-12 text-[12px] text-muted-foreground italic">
                   No out-of-scope feature changes logged yet.
@@ -489,7 +501,7 @@ function Dashboard() {
                     <div className="mt-1 flex items-baseline justify-between text-[10.5px] text-muted-foreground">
                       <span>{sc.projectName}</span>
                       <span className="font-semibold text-destructive/95">
-                        +₹{sc.cost.toLocaleString("en-IN")} (+{sc.hours}h)
+                        +{formatCurrency(sc.cost, currencySymbol, locale)} (+{sc.hours}h)
                       </span>
                     </div>
                   </Link>
@@ -731,7 +743,7 @@ function Dashboard() {
                           <div>
                             <div className="text-muted-foreground text-[10px]">Cost</div>
                             <div className="mt-0.5 font-display text-[14px] font-semibold tabular-nums">
-                              ₹{a.suggestedCost.toLocaleString("en-IN")}
+                              {formatCurrency(a.suggestedCost, currencySymbol, locale)}
                             </div>
                           </div>
                           <div>

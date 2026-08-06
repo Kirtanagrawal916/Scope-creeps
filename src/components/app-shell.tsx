@@ -26,6 +26,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { ExportButton } from "@/components/export/export-button";
 import { NotificationBell } from "@/components/notifications/notification-bell";
 import { CommandPalette } from "@/components/command-palette";
+import { getInitials } from "@/lib/formatters";
 
 interface NavItem {
   to: string;
@@ -36,8 +37,8 @@ interface NavItem {
 
 const primary: NavItem[] = [
   { to: "/app", label: "Dashboard", icon: LayoutDashboard },
-  { to: "/app/projects", label: "Projects", icon: FolderKanban, badge: "5" },
-  { to: "/app/inbox", label: "Email monitoring", icon: Mail, badge: "3" },
+  { to: "/app/projects", label: "Projects", icon: FolderKanban },
+  { to: "/app/inbox", label: "Email Monitoring", icon: Mail },
   { to: "/app/history", label: "Analysis History", icon: Sparkles },
   { to: "/app/analytics", label: "Analytics", icon: BarChart3 },
 ];
@@ -161,9 +162,7 @@ function SidebarContent({
         <div className="flex items-center gap-2.5 rounded-lg p-1.5 hover:bg-sidebar-accent">
           <Avatar className="h-7 w-7">
             <AvatarFallback className="bg-primary/20 text-[11px] font-medium text-primary">
-              {user?.firstName
-                ? `${user.firstName[0]}${user.lastName ? user.lastName[0] : ""}`.toUpperCase()
-                : "U"}
+              {getInitials(user?.firstName, user?.lastName, user?.email)}
             </AvatarFallback>
           </Avatar>
           <div className="min-w-0 flex-1 overflow-hidden">

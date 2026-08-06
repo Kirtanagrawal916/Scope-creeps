@@ -5,6 +5,15 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { updateWorkspaceSettings } from "@/lib/auth";
+import { APP_CONFIG } from "@/config/app.config";
+import { toast } from "sonner";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { type FormEvent, useState } from "react";
 
 export const Route = createFileRoute("/app/settings")({
@@ -34,6 +43,7 @@ function Row({
 
 function SettingsPage() {
   const router = useRouter();
+  const [isLoading, setIsLoading] = useState(false);
   const { user } = useRouteContext({ from: "/app" }) as {
     user: {
       id: string;
@@ -42,6 +52,9 @@ function SettingsPage() {
       lastName?: string;
       workspaceName?: string;
       defaultRate?: number;
+      currency?: string;
+      currencySymbol?: string;
+      locale?: string;
       provider?: string;
       googleId?: string;
       githubId?: string;
@@ -51,35 +64,45 @@ function SettingsPage() {
     } | null;
   };
 
-  const [isLoading, setIsLoading] = useState(false);
-  const [successMessage, setSuccessMessage] = useState("");
-  const [errorMessage, setErrorMessage] = useState("");
+  const [selectedCurrency, setSelectedCurrency] = useState(
+    user?.currency || APP_CONFIG.defaultCurrency,
+  );
+
+  const connectedProviders =
+    user?.authMethod && user.authMethod.length > 0
+      ? user.authMethod
+      : [user?.provider || "email"];
 
   async function handleSaveSettings(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setIsLoading(true);
-    setSuccessMessage("");
-    setErrorMessage("");
 
     const form = new FormData(event.currentTarget);
     const workspaceName = String(form.get("workspaceName") ?? "");
-    const rateRaw = String(form.get("defaultRate") ?? "").replace(/[^0-9]/g, "");
-    const defaultRate = rateRaw ? parseInt(rateRaw, 10) : undefined;
+    const rateRaw = String(form.get("defaultRate") ?? "").replace(/[^0-9.]/g, "");
+    const defaultRate = rateRaw ? parseFloat(rateRaw) : undefined;
+    const currencyObj = APP_CONFIG.supportedCurrencies.find((c) => c.code === selectedCurrency);
 
     try {
       const response = await updateWorkspaceSettings({
-        data: { workspaceName, defaultRate },
+        data: {
+          workspaceName,
+          defaultRate,
+          currency: selectedCurrency,
+          currencySymbol: currencyObj?.symbol || "$",
+          locale: currencyObj?.locale || "en-US",
+        },
       });
 
       if (response.success) {
-        setSuccessMessage(response.message);
+        toast.success("Workspace settings updated successfully");
         router.invalidate();
       } else {
-        setErrorMessage(response.message || "Failed to update settings.");
+        toast.error(response.message || "Failed to update settings.");
       }
     } catch (err) {
       const error = err as Error;
-      setErrorMessage(error.message || "An error occurred while saving.");
+      toast.error(error.message || "An error occurred while saving.");
     } finally {
       setIsLoading(false);
     }
@@ -92,52 +115,50 @@ function SettingsPage() {
       })
     : "Active session";
 
-  const connectedProviders = [
-    "Email / Password",
-    user?.googleId ? "Google OAuth" : null,
-    user?.githubId ? `GitHub OAuth (@${user.githubUsername || "connected"})` : null,
-  ].filter(Boolean);
-
   return (
     <AppShell title="Settings" subtitle="Configure your workspace.">
       <div className="mx-auto max-w-3xl space-y-8">
         <form onSubmit={handleSaveSettings} className="space-y-6">
           <section className="panel p-6">
             <div className="text-[12px] font-medium uppercase tracking-wider text-muted-foreground">
-              Workspace
+              Workspace Configuration
             </div>
             <Separator className="my-4" />
             <div className="divide-y divide-border">
-              <Row label="Workspace name" desc="Displayed to your team.">
+              <Row label="Workspace name" desc="Displayed to your team and client reports.">
                 <Input
                   name="workspaceName"
-                  defaultValue={user?.workspaceName || "Laurent Studio"}
+                  defaultValue={user?.workspaceName || "My Workspace"}
                   className="w-64"
                   required
                 />
               </Row>
-              <Row label="Default hourly rate" desc="Used for scope creep cost estimates.">
+              <Row label="Default hourly rate" desc="Used for scope creep cost impact estimates.">
                 <Input
                   name="defaultRate"
-                  defaultValue={user?.defaultRate !== undefined ? `₹${user.defaultRate}` : "₹150"}
+                  defaultValue={user?.defaultRate !== undefined ? user.defaultRate : APP_CONFIG.defaultHourlyRate}
                   className="w-32"
+                  type="number"
+                  min={0}
                 />
               </Row>
-              <Row label="Currency" desc="Format for money everywhere.">
-                <Input defaultValue="INR" className="w-32" disabled />
+              <Row label="Currency" desc="Format for all monetary calculations & exports.">
+                <Select value={selectedCurrency} onValueChange={setSelectedCurrency}>
+                  <SelectTrigger className="w-64">
+                    <SelectValue placeholder="Select currency" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {APP_CONFIG.supportedCurrencies.map((c) => (
+                      <SelectItem key={c.code} value={c.code}>
+                        {c.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </Row>
             </div>
 
-            {successMessage && (
-              <div className="mt-4 text-center text-[13px] text-[color:var(--success)] font-medium">
-                {successMessage}
-              </div>
-            )}
-            {errorMessage && (
-              <div className="mt-4 text-center text-[13px] text-destructive font-medium">
-                {errorMessage}
-              </div>
-            )}
+
 
             <div className="mt-6 flex justify-end">
               <Button type="submit" disabled={isLoading}>

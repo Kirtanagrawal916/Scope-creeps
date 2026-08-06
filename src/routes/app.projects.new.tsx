@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate, useRouteContext } from "@tanstack/react-router";
 import { ArrowLeft, Upload, FileText } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,13 @@ export const Route = createFileRoute("/app/projects/new")({
 });
 
 function NewProjectPage() {
+  const { user } = useRouteContext({ from: "/app" }) as {
+    user: {
+      defaultRate?: number;
+      currencySymbol?: string;
+    } | null;
+  };
+  const currencySymbol = user?.currencySymbol || "$";
   const nav = useNavigate();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -81,15 +88,15 @@ function NewProjectPage() {
               </div>
               <div className="space-y-1.5">
                 <Label className="text-[12px]" htmlFor="budget">
-                  Budget (₹)
+                  Budget ({currencySymbol})
                 </Label>
                 <Input id="budget" name="budget" type="number" min={0} placeholder="48000" />
               </div>
               <div className="space-y-1.5">
                 <Label className="text-[12px]" htmlFor="hourlyRate">
-                  Hourly rate (₹/h)
+                  Hourly rate ({currencySymbol}/h)
                 </Label>
-                <Input id="hourlyRate" name="hourlyRate" type="number" min={0} placeholder="150" />
+                <Input id="hourlyRate" name="hourlyRate" type="number" min={0} defaultValue={user?.defaultRate ?? 150} placeholder="150" />
               </div>
               <div className="space-y-1.5 md:col-span-2">
                 <Label className="text-[12px]" htmlFor="hoursAllocated">

@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate, useRouteContext } from "@tanstack/react-router";
 import {
   Search,
   Sparkles,
@@ -34,6 +34,7 @@ import {
 } from "@/lib/analyses.server";
 import { toast } from "sonner";
 import { RiskChip } from "@/components/status-pill";
+import { formatCurrency } from "@/lib/formatters";
 
 interface HistorySearch {
   search?: string;
@@ -126,6 +127,14 @@ const verdictColors = {
 } as const;
 
 function HistoryPage() {
+  const { user } = useRouteContext({ from: "/app" }) as {
+    user: {
+      currencySymbol?: string;
+      locale?: string;
+    } | null;
+  };
+  const currencySymbol = user?.currencySymbol || "$";
+  const locale = user?.locale || "en-US";
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { projects, queryResult } = Route.useLoaderData() as any;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -368,7 +377,7 @@ function HistoryPage() {
           { label: "Total Scans Shown", value: queryResult.totalCount, suffix: "" },
           {
             label: "Suggested Revenue Protected",
-            value: `₹${sumCostProtected.toLocaleString("en-IN")}`,
+            value: formatCurrency(sumCostProtected, currencySymbol, locale),
             suffix: "",
           },
           { label: "Billable Hours Flagged", value: `${sumHoursSuggested}h`, suffix: "" },
@@ -821,7 +830,7 @@ function HistoryPage() {
                         <div>
                           <span className="text-muted-foreground">Cost: </span>
                           <span className="font-semibold text-primary">
-                            ₹{a.suggestedCost.toLocaleString("en-IN")}
+                            {formatCurrency(a.suggestedCost, currencySymbol, locale)}
                           </span>
                         </div>
                       </div>
@@ -952,7 +961,7 @@ function HistoryPage() {
                         </td>
                         <td className="px-4 py-3 font-semibold text-foreground">{a.confidence}%</td>
                         <td className="px-4 py-3 font-semibold text-primary tabular-nums">
-                          ₹{a.suggestedCost.toLocaleString("en-IN")}
+                          {formatCurrency(a.suggestedCost, currencySymbol, locale)}
                         </td>
                         <td className="px-4 py-3 font-medium text-foreground tabular-nums">
                           +{a.additionalHours}h

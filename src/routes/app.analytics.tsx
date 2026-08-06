@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useRouteContext } from "@tanstack/react-router";
 import {
   ResponsiveContainer,
   AreaChart,
@@ -14,7 +14,7 @@ import {
   Tooltip,
   Legend,
 } from "recharts";
-import { ShieldCheck, Clock, FolderKanban, TrendingUp, Download, Sparkles } from "lucide-react";
+import { ShieldCheck, Clock, FolderKanban, TrendingUp, Download, Sparkles, Calendar } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { ExportButton } from "@/components/export/export-button";
 import { StatCard } from "@/components/stat-card";
@@ -22,8 +22,8 @@ import { Button } from "@/components/ui/button";
 import { listProjects } from "@/lib/projects.server";
 import { listAllUserEmails } from "@/lib/emails.server";
 import { listAllUserAnalyses } from "@/lib/analyses.server";
-
-import { useMemo } from "react";
+import { formatCurrency, formatCompactNumber } from "@/lib/formatters";
+import { useMemo, useState } from "react";
 
 export const Route = createFileRoute("/app/analytics")({
   loader: async () => {
@@ -39,7 +39,21 @@ export const Route = createFileRoute("/app/analytics")({
 });
 
 function Analytics() {
+  const { user } = useRouteContext({ from: "/app" }) as {
+    user: {
+      id: string;
+      email: string;
+      firstName?: string;
+      lastName?: string;
+      workspaceName?: string;
+      currencySymbol?: string;
+      locale?: string;
+    } | null;
+  };
+  const currencySymbol = user?.currencySymbol || "$";
+  const locale = user?.locale || "en-US";
   const { projects, emails, analyses } = Route.useLoaderData();
+  const [timeframe, setTimeframe] = useState<"daily" | "weekly" | "monthly" | "yearly">("monthly");
 
   // Compute live KPIs from database (memoized for chart performance)
   const revenueProtected = useMemo(
@@ -197,14 +211,34 @@ function Analytics() {
     <AppShell
       title="Analytics"
       subtitle="How much your discipline is actually worth."
-      action={<ExportButton defaultScope="analytics" label="Export Report" />}
+      action={
+        <div className="flex items-center gap-2">
+          <div className="hidden sm:flex items-center gap-1 rounded-lg border border-border/60 bg-muted/30 p-1 text-[11px]">
+            {(["daily", "weekly", "monthly", "yearly"] as const).map((tf) => (
+              <button
+                key={tf}
+                type="button"
+                onClick={() => setTimeframe(tf)}
+                className={`rounded px-2 py-0.5 font-medium capitalize transition-colors ${
+                  timeframe === tf
+                    ? "bg-primary text-primary-foreground shadow-xs"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {tf}
+              </button>
+            ))}
+          </div>
+          <ExportButton defaultScope="analytics" label="Export Report" />
+        </div>
+      }
     >
       <div className="space-y-8">
         <div className="grid gap-3 md:grid-cols-4">
           <StatCard
             label="Revenue protected"
             value={revenueProtected}
-            prefix="₹"
+            prefix={currencySymbol}
             icon={ShieldCheck}
             delta={revenueProtected > 0 ? "from scope creep blocked" : "No creep blocked yet"}
             trend={revenueProtected > 0 ? "up" : "neutral"}
@@ -236,8 +270,10 @@ function Analytics() {
 
         <div className="grid gap-4 lg:grid-cols-[1.6fr_1fr]">
           <div className="panel p-6">
-            <div className="text-[12px] font-medium uppercase tracking-wider text-muted-foreground">
-              Revenue protected vs. invoiced
+            <div className="flex items-center justify-between">
+              <div className="text-[12px] font-medium uppercase tracking-wider text-muted-foreground">
+                Revenue protected vs. invoiced ({timeframe})
+              </div>
             </div>
             <div className="mt-6 h-72">
               <ResponsiveContainer width="100%" height="100%">
@@ -266,7 +302,7 @@ function Analytics() {
                     tick={{ fill: "var(--muted-foreground)", fontSize: 11 }}
                     axisLine={false}
                     tickLine={false}
-                    tickFormatter={(v: number) => `₹${v / 1000}k`}
+                    tickFormatter={(v: number) => formatCompactNumber(v, currencySymbol)}
                   />
                   <Tooltip
                     contentStyle={{

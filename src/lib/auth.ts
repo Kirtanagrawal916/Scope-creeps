@@ -36,9 +36,19 @@ export const registerUser = createServerFn({ method: "POST" })
     return registerUserImpl(data);
   });
 
-/** Update workspace-level settings for the current session user. */
 export const updateWorkspaceSettings = createServerFn({ method: "POST" })
-  .validator((data: { workspaceName: string; defaultRate?: number }) => data)
+  .validator(
+    (data: {
+      workspaceName?: string;
+      defaultRate?: number;
+      currency?: string;
+      currencySymbol?: string;
+      locale?: string;
+      timezone?: string;
+      language?: string;
+      dateFormat?: string;
+    }) => data,
+  )
   .handler(async ({ data }) => {
     const { updateWorkspaceSettingsImpl } = await import("./auth.server");
     return updateWorkspaceSettingsImpl(data);

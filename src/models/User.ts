@@ -8,6 +8,12 @@ export interface IUser extends Document {
   password?: string;
   workspaceName?: string;
   defaultRate?: number;
+  currency?: string;
+  currencySymbol?: string;
+  locale?: string;
+  timezone?: string;
+  language?: string;
+  dateFormat?: string;
   provider?: string;
   providerId?: string;
   googleId?: string;
@@ -57,6 +63,31 @@ const UserSchema = new Schema<IUser>(
     defaultRate: {
       type: Number,
       required: false,
+      default: 150,
+    },
+    currency: {
+      type: String,
+      default: "USD",
+    },
+    currencySymbol: {
+      type: String,
+      default: "$",
+    },
+    locale: {
+      type: String,
+      default: "en-US",
+    },
+    timezone: {
+      type: String,
+      default: "UTC",
+    },
+    language: {
+      type: String,
+      default: "en",
+    },
+    dateFormat: {
+      type: String,
+      default: "MMM d, yyyy",
     },
     provider: {
       type: String,

@@ -1,9 +1,10 @@
-import { createFileRoute, Link, notFound } from "@tanstack/react-router";
+import { createFileRoute, Link, notFound, useRouteContext } from "@tanstack/react-router";
 import { Search, Filter, ArrowUpRight, FolderOpen, Archive, CheckCircle2 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { ExportButton } from "@/components/export/export-button";
 import { StatusPill, RiskChip } from "@/components/status-pill";
 import { listProjects } from "@/lib/projects.server";
+import { formatCurrency } from "@/lib/formatters";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -32,6 +33,14 @@ export const Route = createFileRoute("/app/projects/")({
 });
 
 function ProjectsPage() {
+  const { user } = useRouteContext({ from: "/app" }) as {
+    user: {
+      currencySymbol?: string;
+      locale?: string;
+    } | null;
+  };
+  const currencySymbol = user?.currencySymbol || "$";
+  const locale = user?.locale || "en-US";
   const { activeProjects, archivedProjects } = Route.useLoaderData();
   const [currentTab, setCurrentTab] = useState<"active" | "archived">("active");
 
@@ -255,8 +264,8 @@ function ProjectsPage() {
                   </div>
                   <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-[12px] md:contents">
                     <div className="text-[13px] tabular-nums">
-                      <span className="text-muted-foreground md:hidden">Budget: </span>₹
-                      {p.budget.toLocaleString("en-IN")}
+                      <span className="text-muted-foreground md:hidden">Budget: </span>
+                      {formatCurrency(p.budget, currencySymbol, locale)}
                     </div>
                     <div className="text-[13px] tabular-nums text-muted-foreground">
                       {p.hoursUsed}h{" "}

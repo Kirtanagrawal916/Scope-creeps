@@ -28,7 +28,14 @@ const checkAuth = createServerFn({ method: "GET" }).handler(async () => {
       email: user.email,
       firstName: user.firstName,
       lastName: user.lastName,
-      workspaceName: user.workspaceName,
+      workspaceName: user.workspaceName || "Workspace",
+      defaultRate: user.defaultRate ?? 150,
+      currency: user.currency || "USD",
+      currencySymbol: user.currencySymbol || "$",
+      locale: user.locale || "en-US",
+      timezone: user.timezone || "UTC",
+      language: user.language || "en",
+      dateFormat: user.dateFormat || "MMM d, yyyy",
     },
   };
 });

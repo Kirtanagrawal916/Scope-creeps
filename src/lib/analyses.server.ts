@@ -8,6 +8,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { AppError } from "./app-error";
 import { formatRelativeDate } from "./utils";
+import { formatCurrency } from "./formatters";
 import { z } from "zod";
 import type { AnalysisVerdict } from "../models/Analysis";
 import type { ProjectStatus, RiskLevel } from "../models/Project";
@@ -157,6 +158,7 @@ function performAnalysis(
   },
   changedRequirement: string,
   subject: string,
+  currencySymbol: string = "$",
 ) {
   const content = (subject + " " + changedRequirement).toLowerCase();
 
@@ -286,7 +288,7 @@ function performAnalysis(
     explanation = `The requested adjustments fit within the original contract scope items (${project.scopeItems.slice(0, 2).join(", ") || "defined deliverables"}). No budget or timeline adjustments are needed.`;
   } else {
     aiSummary = `Scope creep warning: ${addedFeatures.length} addition(s) and ${modifiedFeatures.length} modification(s) detected.`;
-    explanation = `The request introduces new features outside the Statement of Work: ${addedFeatures.join(", ")}. Incorporating this will require an estimated ${additionalHours} hours of development, costing an extra ₹${suggestedCost.toLocaleString("en-IN")} and adding approximately ${timelineImpactDays} days to the timeline.`;
+    explanation = `The request introduces new features outside the Statement of Work: ${addedFeatures.join(", ")}. Incorporating this will require an estimated ${additionalHours} hours of development, costing an extra ${formatCurrency(suggestedCost, currencySymbol)} and adding approximately ${timelineImpactDays} days to the timeline.`;
   }
 
   const clientName = project.client.split(" ")[0] || "Client";
@@ -297,7 +299,7 @@ function performAnalysis(
     suggestedReply =
       `Hi ${clientName},\n\nThanks — glad the progress is landing well.\n\nRegarding the additions of ${addedFeatures.join(" and ")}: these fall outside our current statement of work. I'm happy to take them on, but I want to be upfront about the project impact so there are no surprises:\n\n` +
       `• Combined effort: +${additionalHours} hours\n` +
-      `• Budget impact: +₹${suggestedCost.toLocaleString("en-IN")}\n` +
+      `• Budget impact: +${formatCurrency(suggestedCost, currencySymbol)}\n` +
       `• Timeline: adds approximately ${timelineImpactDays} days\n\n` +
       `If you'd like, I can draft a short change order covering these, or we can phase them for a post-launch v1.1. Let me know what you prefer!\n\nBest,\nAlex`;
   }
