@@ -37,7 +37,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 
 export const Route = createFileRoute("/app/")({
   loader: async () => {
@@ -103,116 +103,146 @@ function Dashboard() {
 
   const greetingName = user?.firstName || user?.email?.split("@")[0] || "there";
 
-  // Compute live KPIs from real user data
-  const kpis = {
-    revenueProtected: analyses.reduce(
-      (sum, a) => sum + (a.verdict !== "in_scope" ? a.suggestedCost : 0),
-      0,
-    ),
-    hoursSaved: analyses.reduce((sum, a) => sum + a.additionalHours, 0),
-    emailsAnalyzed: analyses.length,
-    activeAlerts: emails.filter((e) => e.risk !== "low" && !e.analyzed).length,
-  };
+  // Compute live KPIs from real user data (memoized for zero re-computation on render)
+  const kpis = useMemo(
+    () => ({
+      revenueProtected: analyses.reduce(
+        (sum, a) => sum + (a.verdict !== "in_scope" ? a.suggestedCost : 0),
+        0,
+      ),
+      hoursSaved: analyses.reduce((sum, a) => sum + a.additionalHours, 0),
+      emailsAnalyzed: analyses.length,
+      activeAlerts: emails.filter((e) => e.risk !== "low" && !e.analyzed).length,
+    }),
+    [analyses, emails],
+  );
 
-  const avgConfidence =
-    analyses.length > 0
-      ? Math.round(analyses.reduce((sum, a) => sum + a.confidence, 0) / analyses.length)
-      : 100;
+  const avgConfidence = useMemo(
+    () =>
+      analyses.length > 0
+        ? Math.round(analyses.reduce((sum, a) => sum + a.confidence, 0) / analyses.length)
+        : 100,
+    [analyses],
+  );
 
-  const scopeCreepCount = analyses.filter((a) => a.verdict !== "in_scope").length;
+  const scopeCreepCount = useMemo(
+    () => analyses.filter((a) => a.verdict !== "in_scope").length,
+    [analyses],
+  );
 
-  const highRiskProjects = projects.filter((p) => p.risk === "high" || p.status === "scope_creep");
+  const highRiskProjects = useMemo(
+    () => projects.filter((p) => p.risk === "high" || p.status === "scope_creep"),
+    [projects],
+  );
 
   // Build a project name map for the analyses section
-  const projectNameById = new Map(projects.map((p) => [p.id, p.name]));
+  const projectNameById = useMemo(() => new Map(projects.map((p) => [p.id, p.name])), [projects]);
 
-  const latestScopeChanges = analyses
-    .filter(
-      (a) => a.verdict !== "in_scope" && a.outOfScopeFeatures && a.outOfScopeFeatures.length > 0,
-    )
-    .flatMap((a) =>
-      a.outOfScopeFeatures.map((f) => ({
-        id: a.id,
-        feature: f,
-        projectName: projectNameById.get(a.projectId) || "Project",
-        cost: a.suggestedCost,
-        hours: a.additionalHours,
-        time: a.createdAt,
-      })),
-    )
-    .slice(0, 4);
+  const latestScopeChanges = useMemo(
+    () =>
+      analyses
+        .filter(
+          (a) =>
+            a.verdict !== "in_scope" && a.outOfScopeFeatures && a.outOfScopeFeatures.length > 0,
+        )
+        .flatMap((a) =>
+          a.outOfScopeFeatures.map((f) => ({
+            id: a.id,
+            feature: f,
+            projectName: projectNameById.get(a.projectId) || "Project",
+            cost: a.suggestedCost,
+            hours: a.additionalHours,
+            time: a.createdAt,
+          })),
+        )
+        .slice(0, 4),
+    [analyses, projectNameById],
+  );
+
   // Total invoiced across the user's own projects, for the revenue overview panel
-  const totalInvoiced = projects.reduce((sum, p) => sum + p.budget, 0);
+  const totalInvoiced = useMemo(() => projects.reduce((sum, p) => sum + p.budget, 0), [projects]);
 
-  // 1. Dynamic Chart: Protected vs Invoiced rolling 6 months (based purely on DB data)
-  const dynamicRevenueChart = Array.from({ length: 6 }).map((_, idx) => {
-    const d = new Date();
-    d.setMonth(d.getMonth() - (5 - idx));
-    const mName = d.toLocaleString("default", { month: "short" });
-    const year = d.getFullYear();
-    const rawMonth = d.getMonth();
+  // 1. Dynamic Chart: Protected vs Invoiced rolling 6 months (memoized for chart performance)
+  const dynamicRevenueChart = useMemo(() => {
+    return Array.from({ length: 6 }).map((_, idx) => {
+      const d = new Date();
+      d.setMonth(d.getMonth() - (5 - idx));
+      const mName = d.toLocaleString("default", { month: "short" });
+      const year = d.getFullYear();
+      const rawMonth = d.getMonth();
 
-    // Sum user's project budgets created in this specific month/year
-    const invoiced = projects
-      .filter((p) => {
-        const pDate = new Date(p.createdAt);
-        return pDate.getMonth() === rawMonth && pDate.getFullYear() === year;
-      })
-      .reduce((sum, p) => sum + p.budget, 0);
+      const invoiced = projects
+        .filter((p) => {
+          const pDate = new Date(p.createdAt);
+          return pDate.getMonth() === rawMonth && pDate.getFullYear() === year;
+        })
+        .reduce((sum, p) => sum + p.budget, 0);
 
-    // Sum user's suggested costs created in this specific month/year
-    const protectedAmt = analyses
-      .filter((a) => {
-        const aDate = new Date(a.createdAtIso);
-        return (
-          aDate.getMonth() === rawMonth && aDate.getFullYear() === year && a.verdict !== "in_scope"
-        );
-      })
-      .reduce((sum, a) => sum + a.suggestedCost, 0);
+      const protectedAmt = analyses
+        .filter((a) => {
+          const aDate = new Date(a.createdAtIso);
+          return (
+            aDate.getMonth() === rawMonth &&
+            aDate.getFullYear() === year &&
+            a.verdict !== "in_scope"
+          );
+        })
+        .reduce((sum, a) => sum + a.suggestedCost, 0);
 
-    return {
-      month: mName,
-      invoiced,
-      protected: protectedAmt,
-    };
-  });
-
-  const totalInvoicedInChart = dynamicRevenueChart.reduce((sum, item) => sum + item.invoiced, 0);
-  const totalProtectedInChart = dynamicRevenueChart.reduce((sum, item) => sum + item.protected, 0);
-
-  // 2. Dynamic Activity Feed from DB actions
-  const dynamicActivity = [
-    ...projects.map((p) => ({
-      id: `p-${p.id}`,
-      type: "project" as const,
-      text:
-        p.status === "completed"
-          ? `${p.name} marked as completed`
-          : `New project created: ${p.name}`,
-      meta: `₹${p.budget.toLocaleString("en-IN")} budget`,
-      time: p.updatedAt,
-      rawDate: new Date(p.createdAt),
-    })),
-    ...analyses.map((a) => {
-      const pName = projectNameById.get(a.projectId) ?? "Project";
       return {
-        id: `a-${a.id}`,
-        type: a.verdict === "in_scope" ? ("reply" as const) : ("analysis" as const),
-        text:
-          a.verdict === "in_scope"
-            ? `Scope check cleared: ${pName}`
-            : `Scope creep detected: ${pName}`,
-        meta:
-          a.verdict === "in_scope"
-            ? "In scope"
-            : `₹${a.suggestedCost.toLocaleString("en-IN")} impact`,
-        time: a.createdAt,
-        rawDate: new Date(a.createdAtIso),
+        month: mName,
+        invoiced,
+        protected: protectedAmt,
       };
-    }),
-  ]
-    .sort((a, b) => b.rawDate.getTime() - a.rawDate.getTime())
-    .slice(0, 5);
+    });
+  }, [projects, analyses]);
+
+  const totalInvoicedInChart = useMemo(
+    () => dynamicRevenueChart.reduce((sum, item) => sum + item.invoiced, 0),
+    [dynamicRevenueChart],
+  );
+  const totalProtectedInChart = useMemo(
+    () => dynamicRevenueChart.reduce((sum, item) => sum + item.protected, 0),
+    [dynamicRevenueChart],
+  );
+
+  // 2. Dynamic Activity Feed from DB actions (memoized)
+  const dynamicActivity = useMemo(
+    () =>
+      [
+        ...projects.map((p) => ({
+          id: `p-${p.id}`,
+          type: "project" as const,
+          text:
+            p.status === "completed"
+              ? `${p.name} marked as completed`
+              : `New project created: ${p.name}`,
+          meta: `₹${p.budget.toLocaleString("en-IN")} budget`,
+          time: p.updatedAt,
+          rawDate: new Date(p.createdAt),
+        })),
+        ...analyses.map((a) => {
+          const pName = projectNameById.get(a.projectId) ?? "Project";
+          return {
+            id: `a-${a.id}`,
+            type: a.verdict === "in_scope" ? ("reply" as const) : ("analysis" as const),
+            text:
+              a.verdict === "in_scope"
+                ? `Scope check cleared: ${pName}`
+                : `Scope creep detected: ${pName}`,
+            meta:
+              a.verdict === "in_scope"
+                ? "In scope"
+                : `₹${a.suggestedCost.toLocaleString("en-IN")} impact`,
+            time: a.createdAt,
+            rawDate: new Date(a.createdAtIso),
+          };
+        }),
+      ]
+        .sort((a, b) => b.rawDate.getTime() - a.rawDate.getTime())
+        .slice(0, 5),
+    [projects, analyses, projectNameById],
+  );
 
   // 3. Search, Filter, Sort, Pagination states for analyses
   const [searchQuery, setSearchQuery] = useState("");
@@ -222,38 +252,46 @@ function Dashboard() {
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [currentPage, setCurrentPage] = useState(1);
 
-  const filteredAnalyses = analyses.filter((a) => {
-    const pName = projectNameById.get(a.projectId) ?? "";
-    const matchesSearch =
-      pName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      a.changedRequirement.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      a.aiExplanation.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesVerdict = verdictFilter === "all" || a.verdict === verdictFilter;
-    const matchesRisk = riskFilter === "all" || a.riskLevel === riskFilter;
-    return matchesSearch && matchesVerdict && matchesRisk;
-  });
+  const filteredAnalyses = useMemo(
+    () =>
+      analyses.filter((a) => {
+        const pName = projectNameById.get(a.projectId) ?? "";
+        const matchesSearch =
+          pName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          a.changedRequirement.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          a.aiExplanation.toLowerCase().includes(searchQuery.toLowerCase());
+        const matchesVerdict = verdictFilter === "all" || a.verdict === verdictFilter;
+        const matchesRisk = riskFilter === "all" || a.riskLevel === riskFilter;
+        return matchesSearch && matchesVerdict && matchesRisk;
+      }),
+    [analyses, projectNameById, searchQuery, verdictFilter, riskFilter],
+  );
 
-  const sortedAnalyses = [...filteredAnalyses].sort((a, b) => {
-    let aVal = 0;
-    let bVal = 0;
+  const sortedAnalyses = useMemo(
+    () =>
+      [...filteredAnalyses].sort((a, b) => {
+        let aVal = 0;
+        let bVal = 0;
 
-    if (sortBy === "cost") {
-      aVal = a.suggestedCost;
-      bVal = b.suggestedCost;
-    } else if (sortBy === "hours") {
-      aVal = a.additionalHours;
-      bVal = b.additionalHours;
-    } else if (sortBy === "confidence") {
-      aVal = a.confidence;
-      bVal = b.confidence;
-    } else {
-      const aTime = new Date(a.createdAtIso).getTime();
-      const bTime = new Date(b.createdAtIso).getTime();
-      return sortOrder === "asc" ? aTime - bTime : bTime - aTime;
-    }
+        if (sortBy === "cost") {
+          aVal = a.suggestedCost;
+          bVal = b.suggestedCost;
+        } else if (sortBy === "hours") {
+          aVal = a.additionalHours;
+          bVal = b.additionalHours;
+        } else if (sortBy === "confidence") {
+          aVal = a.confidence;
+          bVal = b.confidence;
+        } else {
+          const aTime = new Date(a.createdAtIso).getTime();
+          const bTime = new Date(b.createdAtIso).getTime();
+          return sortOrder === "asc" ? aTime - bTime : bTime - aTime;
+        }
 
-    return sortOrder === "asc" ? aVal - bVal : bVal - aVal;
-  });
+        return sortOrder === "asc" ? aVal - bVal : bVal - aVal;
+      }),
+    [filteredAnalyses, sortBy, sortOrder],
+  );
 
   const itemsPerPage = 3;
   const totalPages = Math.ceil(sortedAnalyses.length / itemsPerPage);

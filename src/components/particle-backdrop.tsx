@@ -62,8 +62,6 @@ export function ParticleBackdrop() {
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
         ctx.fillStyle = `rgba(${colorRGB}, ${p.alpha})`;
-        ctx.shadowBlur = isDark ? 6 : 2;
-        ctx.shadowColor = `rgba(${colorRGB}, ${p.alpha * 0.6})`;
         ctx.fill();
       });
 

@@ -291,13 +291,13 @@
 
 @utility panel {
   position: relative;
-  background-color: color-mix(in oklab, var(--card) 90%, transparent);
   border: 1px solid var(--border);
-  border-radius: var(--radius-2xl);
-  box-shadow:
-    0 1px 0 0 color-mix(in oklab, white 4%, transparent) inset,
-    0 20px 40px -20px oklch(0 0 0 / 40%);
+  border-radius: var(--radius-xl);
+  background: var(--card);
+  box-shadow: 0 1px 0 0 color-mix(in oklab, white 6%, transparent) inset;
   backdrop-filter: blur(20px);
+  transform: translateZ(0);
+  will-change: transform;
   transition:
     transform 240ms ease,
     border-color 240ms ease,

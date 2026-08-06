@@ -23,6 +23,8 @@ import { listProjects } from "@/lib/projects.server";
 import { listAllUserEmails } from "@/lib/emails.server";
 import { listAllUserAnalyses } from "@/lib/analyses.server";
 
+import { useMemo } from "react";
+
 export const Route = createFileRoute("/app/analytics")({
   loader: async () => {
     const [projects, emails, analyses] = await Promise.all([
@@ -39,26 +41,35 @@ export const Route = createFileRoute("/app/analytics")({
 function Analytics() {
   const { projects, emails, analyses } = Route.useLoaderData();
 
-  // Compute live KPIs from database
-  const revenueProtected = analyses.reduce(
-    (sum, a) => sum + (a.verdict !== "in_scope" ? a.suggestedCost : 0),
-    0,
+  // Compute live KPIs from database (memoized for chart performance)
+  const revenueProtected = useMemo(
+    () => analyses.reduce((sum, a) => sum + (a.verdict !== "in_scope" ? a.suggestedCost : 0), 0),
+    [analyses],
   );
-  const hoursReclaimed = analyses.reduce((sum, a) => sum + a.additionalHours, 0);
+
+  const hoursReclaimed = useMemo(
+    () => analyses.reduce((sum, a) => sum + a.additionalHours, 0),
+    [analyses],
+  );
+
   const projectsCount = projects.length;
-  const avgAccuracy =
-    analyses.length > 0
-      ? Math.round(analyses.reduce((sum, a) => sum + a.confidence, 0) / analyses.length)
-      : 0;
+
+  const avgAccuracy = useMemo(
+    () =>
+      analyses.length > 0
+        ? Math.round(analyses.reduce((sum, a) => sum + a.confidence, 0) / analyses.length)
+        : 0,
+    [analyses],
+  );
 
   // 1. Dynamic Risk Distribution based on projects' risk levels
-  const totalProjects = projects.length;
-  const lowCount = projects.filter((p) => p.risk === "low").length;
-  const mediumCount = projects.filter((p) => p.risk === "medium").length;
-  const highCount = projects.filter((p) => p.risk === "high").length;
+  const dynamicRiskDistribution = useMemo(() => {
+    const totalProjects = projects.length;
+    const lowCount = projects.filter((p) => p.risk === "low").length;
+    const mediumCount = projects.filter((p) => p.risk === "medium").length;
+    const highCount = projects.filter((p) => p.risk === "high").length;
 
-  const dynamicRiskDistribution =
-    totalProjects > 0
+    return totalProjects > 0
       ? [
           {
             name: "In scope",
@@ -81,63 +92,74 @@ function Analytics() {
           { name: "Minor scope creep", value: 0, color: "var(--warning)" },
           { name: "Major scope creep", value: 0, color: "var(--destructive)" },
         ];
+  }, [projects]);
 
-  // 2. Revenue Chart (rolling last 6 months) — built entirely from the user's own data
-  const dynamicRevenueChart = Array.from({ length: 6 }).map((_, idx) => {
-    const d = new Date();
-    d.setMonth(d.getMonth() - (5 - idx));
-    const mName = d.toLocaleString("default", { month: "short" });
-    const year = d.getFullYear();
-    const rawMonth = d.getMonth();
+  // 2. Revenue Chart (rolling last 6 months)
+  const dynamicRevenueChart = useMemo(() => {
+    return Array.from({ length: 6 }).map((_, idx) => {
+      const d = new Date();
+      d.setMonth(d.getMonth() - (5 - idx));
+      const mName = d.toLocaleString("default", { month: "short" });
+      const year = d.getFullYear();
+      const rawMonth = d.getMonth();
 
-    // Sum user's project budgets created in this specific month/year
-    const userInvoiced = projects
-      .filter((p) => {
-        const pDate = new Date(p.createdAt);
-        return pDate.getMonth() === rawMonth && pDate.getFullYear() === year;
-      })
-      .reduce((sum, p) => sum + p.budget, 0);
+      const userInvoiced = projects
+        .filter((p) => {
+          const pDate = new Date(p.createdAt);
+          return pDate.getMonth() === rawMonth && pDate.getFullYear() === year;
+        })
+        .reduce((sum, p) => sum + p.budget, 0);
 
-    // Sum user's suggested costs created in this specific month/year
-    const userProtected = analyses
-      .filter((a) => {
+      const userProtected = analyses
+        .filter((a) => {
+          const aDate = new Date(a.createdAtIso);
+          return (
+            aDate.getMonth() === rawMonth &&
+            aDate.getFullYear() === year &&
+            a.verdict !== "in_scope"
+          );
+        })
+        .reduce((sum, a) => sum + a.suggestedCost, 0);
+
+      return {
+        month: mName,
+        invoiced: userInvoiced,
+        protected: userProtected,
+      };
+    });
+  }, [projects, analyses]);
+
+  // 3. Scope Trend (rolling last 8 weeks)
+  const dynamicScopeTrend = useMemo(() => {
+    return Array.from({ length: 8 }).map((_, idx) => {
+      const weekStart = new Date();
+      weekStart.setDate(weekStart.getDate() - (7 - idx) * 7);
+      const weekEnd = new Date(weekStart);
+      weekEnd.setDate(weekEnd.getDate() + 7);
+
+      const userCreeps = analyses.filter((a) => {
         const aDate = new Date(a.createdAtIso);
-        return (
-          aDate.getMonth() === rawMonth && aDate.getFullYear() === year && a.verdict !== "in_scope"
-        );
-      })
-      .reduce((sum, a) => sum + a.suggestedCost, 0);
+        return aDate >= weekStart && aDate < weekEnd && a.verdict !== "in_scope";
+      }).length;
 
-    return {
-      month: mName,
-      invoiced: userInvoiced,
-      protected: userProtected,
-    };
-  });
-
-  // 3. Scope Trend (rolling last 8 weeks) — built entirely from the user's own data
-  const dynamicScopeTrend = Array.from({ length: 8 }).map((_, idx) => {
-    const weekStart = new Date();
-    weekStart.setDate(weekStart.getDate() - (7 - idx) * 7);
-    const weekEnd = new Date(weekStart);
-    weekEnd.setDate(weekEnd.getDate() + 7);
-
-    const userCreeps = analyses.filter((a) => {
-      const aDate = new Date(a.createdAtIso);
-      return aDate >= weekStart && aDate < weekEnd && a.verdict !== "in_scope";
-    }).length;
-
-    return {
-      week: `W${idx + 1}`,
-      detected: userCreeps,
-    };
-  });
+      return {
+        week: `W${idx + 1}`,
+        detected: userCreeps,
+      };
+    });
+  }, [analyses]);
 
   // 4. Confidence Score Distribution
-  const bin95 = analyses.filter((a) => a.confidence >= 95).length;
-  const bin90 = analyses.filter((a) => a.confidence >= 90 && a.confidence < 95).length;
-  const bin80 = analyses.filter((a) => a.confidence >= 80 && a.confidence < 90).length;
-  const binUnder80 = analyses.filter((a) => a.confidence < 80).length;
+  const bin95 = useMemo(() => analyses.filter((a) => a.confidence >= 95).length, [analyses]);
+  const bin90 = useMemo(
+    () => analyses.filter((a) => a.confidence >= 90 && a.confidence < 95).length,
+    [analyses],
+  );
+  const bin80 = useMemo(
+    () => analyses.filter((a) => a.confidence >= 80 && a.confidence < 90).length,
+    [analyses],
+  );
+  const binUnder80 = useMemo(() => analyses.filter((a) => a.confidence < 80).length, [analyses]);
 
   const confidenceChartData = [
     { name: "95-100% (High)", value: bin95, color: "var(--success)" },
