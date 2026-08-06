@@ -12,6 +12,7 @@ import { useEffect, type ReactNode } from "react";
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { ThemeProvider } from "@/components/theme-toggle";
+import { ParticleBackdrop } from "@/components/particle-backdrop";
 
 function NotFoundComponent() {
   return (
@@ -151,6 +152,7 @@ function RootComponent() {
       <ThemeProvider>
         <div className="theme-root relative min-h-screen overflow-x-hidden bg-background text-foreground transition-colors duration-700">
           <div className="site-atmosphere" aria-hidden="true" />
+          <ParticleBackdrop />
           <Outlet />
         </div>
       </ThemeProvider>

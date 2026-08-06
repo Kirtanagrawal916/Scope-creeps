@@ -40,16 +40,24 @@ function loadEnvFile() {
 // Load env file on module evaluation
 loadEnvFile();
 
-const MONGODB_URI = process.env.MONGODB_URI;
+function applyDnsOverrideIfNeeded() {
+  const uri = process.env.MONGODB_URI;
+  const shouldOverride =
+    process.env.MONGODB_OVERRIDE_DNS === "true" ||
+    (process.env.MONGODB_OVERRIDE_DNS !== "false" && uri?.startsWith("mongodb+srv://"));
 
-if (process.env.MONGODB_OVERRIDE_DNS === "true" && MONGODB_URI?.startsWith("mongodb+srv://")) {
-  try {
-    logger.log("Applying Google/Cloudflare public DNS override for MongoDB Atlas resolution...");
-    dns.setServers(["8.8.8.8", "1.1.1.1"]);
-  } catch (err) {
-    logger.warn("Failed to set public DNS servers for MongoDB Atlas resolution:", err);
+  if (shouldOverride && uri?.startsWith("mongodb+srv://")) {
+    try {
+      logger.log("Applying Google/Cloudflare public DNS override for MongoDB Atlas resolution...");
+      dns.setServers(["8.8.8.8", "1.1.1.1"]);
+    } catch (err) {
+      logger.warn("Failed to set public DNS servers for MongoDB Atlas resolution:", err);
+    }
   }
 }
+
+// Apply DNS override at module load
+applyDnsOverrideIfNeeded();
 
 interface MongooseCache {
   conn: typeof mongoose | null;
@@ -67,31 +75,54 @@ if (!globalThis.mongooseCache) {
 const cached = globalThis.mongooseCache;
 
 export async function connectToDatabase(): Promise<typeof mongoose> {
+  loadEnvFile();
+  applyDnsOverrideIfNeeded();
+
   const uri = process.env.MONGODB_URI;
   if (!uri) {
     throw new Error("Please define the MONGODB_URI environment variable inside .env");
   }
 
-  if (cached.conn) {
+  // Validate existing cached connection state (readyState: 1 = connected)
+  if (cached.conn && mongoose.connection.readyState === 1) {
     return cached.conn;
+  }
+
+  // Clear stale cached connection if state is disconnected/closed
+  if (cached.conn && mongoose.connection.readyState !== 1) {
+    logger.warn(
+      `Cached MongoDB connection readyState is ${mongoose.connection.readyState} (not connected). Re-establishing connection...`,
+    );
+    cached.conn = null;
+    cached.promise = null;
   }
 
   if (!cached.promise) {
     const opts = {
       bufferCommands: false,
+      serverSelectionTimeoutMS: 10000,
+      socketTimeoutMS: 45000,
     };
 
-    logger.log("Connecting to MongoDB...");
-    cached.promise = mongoose.connect(uri, opts).then((mongooseInstance) => {
-      logger.log("Successfully connected to MongoDB");
-      return mongooseInstance;
-    });
+    logger.log("Connecting to MongoDB Atlas...");
+    cached.promise = mongoose
+      .connect(uri, opts)
+      .then((mongooseInstance) => {
+        logger.log("Successfully connected to MongoDB");
+        return mongooseInstance;
+      })
+      .catch((err) => {
+        cached.promise = null;
+        cached.conn = null;
+        throw err;
+      });
   }
 
   try {
     cached.conn = await cached.promise;
   } catch (e) {
     cached.promise = null;
+    cached.conn = null;
     throw e;
   }
 

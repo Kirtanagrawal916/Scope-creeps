@@ -7,9 +7,6 @@
 
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { connectToDatabase } from "./db";
-import { Notification } from "../models/Notification";
-import { requireSession } from "./authorize.server";
 import { AppError } from "./app-error";
 import { formatRelativeDate } from "./utils";
 import type { NotificationType, NotificationPriority, EntityType } from "../models/Notification";
@@ -78,6 +75,8 @@ export interface CreateNotificationParams {
 export async function notifyUser(
   params: CreateNotificationParams,
 ): Promise<SerializedNotification> {
+  const { connectToDatabase } = await import("./db");
+  const { Notification } = await import("../models/Notification");
   await connectToDatabase();
 
   const notification = new Notification({
@@ -137,6 +136,9 @@ const bulkActionSchema = z.object({
 export const listNotifications = createServerFn({ method: "GET" })
   .validator((data: unknown) => listNotificationsSchema.parse(data))
   .handler(async ({ data }) => {
+    const { requireSession } = await import("./authorize.server");
+    const { connectToDatabase } = await import("./db");
+    const { Notification } = await import("../models/Notification");
     const user = await requireSession();
     await connectToDatabase();
 
@@ -182,6 +184,9 @@ export const listNotifications = createServerFn({ method: "GET" })
  * Returns fast unread notification count for the session user.
  */
 export const getUnreadNotificationCount = createServerFn({ method: "GET" }).handler(async () => {
+  const { requireSession } = await import("./authorize.server");
+  const { connectToDatabase } = await import("./db");
+  const { Notification } = await import("../models/Notification");
   const user = await requireSession();
   await connectToDatabase();
 
@@ -195,6 +200,9 @@ export const getUnreadNotificationCount = createServerFn({ method: "GET" }).hand
 export const markAsRead = createServerFn({ method: "POST" })
   .validator((data: unknown) => markAsReadSchema.parse(data))
   .handler(async ({ data }) => {
+    const { requireSession } = await import("./authorize.server");
+    const { connectToDatabase } = await import("./db");
+    const { Notification } = await import("../models/Notification");
     const user = await requireSession();
     await connectToDatabase();
 
@@ -216,6 +224,9 @@ export const markAsRead = createServerFn({ method: "POST" })
  * Marks ALL unread notifications as read for the session user.
  */
 export const markAllAsRead = createServerFn({ method: "POST" }).handler(async () => {
+  const { requireSession } = await import("./authorize.server");
+  const { connectToDatabase } = await import("./db");
+  const { Notification } = await import("../models/Notification");
   const user = await requireSession();
   await connectToDatabase();
 
@@ -230,6 +241,9 @@ export const markAllAsRead = createServerFn({ method: "POST" }).handler(async ()
 export const deleteNotification = createServerFn({ method: "POST" })
   .validator((data: unknown) => deleteNotificationSchema.parse(data))
   .handler(async ({ data }) => {
+    const { requireSession } = await import("./authorize.server");
+    const { connectToDatabase } = await import("./db");
+    const { Notification } = await import("../models/Notification");
     const user = await requireSession();
     await connectToDatabase();
 
@@ -248,6 +262,9 @@ export const deleteNotification = createServerFn({ method: "POST" })
  * Clears all notifications for the session user.
  */
 export const clearAllNotifications = createServerFn({ method: "POST" }).handler(async () => {
+  const { requireSession } = await import("./authorize.server");
+  const { connectToDatabase } = await import("./db");
+  const { Notification } = await import("../models/Notification");
   const user = await requireSession();
   await connectToDatabase();
 
@@ -261,6 +278,9 @@ export const clearAllNotifications = createServerFn({ method: "POST" }).handler(
 export const bulkNotificationAction = createServerFn({ method: "POST" })
   .validator((data: unknown) => bulkActionSchema.parse(data))
   .handler(async ({ data }) => {
+    const { requireSession } = await import("./authorize.server");
+    const { connectToDatabase } = await import("./db");
+    const { Notification } = await import("../models/Notification");
     const user = await requireSession();
     await connectToDatabase();
 

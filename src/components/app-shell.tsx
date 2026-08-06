@@ -25,6 +25,7 @@ import { cn } from "@/lib/utils";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { ExportButton } from "@/components/export/export-button";
 import { NotificationBell } from "@/components/notifications/notification-bell";
+import { CommandPalette } from "@/components/command-palette";
 
 interface NavItem {
   to: string;
@@ -79,7 +80,13 @@ function NavLink({ item, onNavigate }: { item: NavItem; onNavigate?: () => void 
   );
 }
 
-function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
+function SidebarContent({
+  onNavigate,
+  onSearchClick,
+}: {
+  onNavigate?: () => void;
+  onSearchClick?: () => void;
+}) {
   const nav = useNavigate();
   const { user } = useRouteContext({ from: "/app" }) as {
     user: {
@@ -106,16 +113,27 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   return (
     <>
       <div className="flex items-center justify-between px-4 pt-4 pb-2">
-        <button className="flex items-center gap-2 rounded-md px-1 py-1 hover:bg-sidebar-accent">
+        <button
+          className="flex items-center gap-2 rounded-md px-1 py-1 hover:bg-sidebar-accent"
+          aria-label="ScopeGuard workspace menu"
+        >
           <Logo />
           <ChevronsUpDown className="h-3.5 w-3.5 text-muted-foreground" />
         </button>
       </div>
 
       <div className="px-3 pt-2">
-        <button className="flex w-full items-center gap-2 rounded-lg border border-sidebar-border bg-background/40 px-2.5 py-1.5 text-[13px] text-muted-foreground hover:text-foreground">
-          <Search className="h-3.5 w-3.5" />
-          <span className="flex-1 text-left">Search</span>
+        <button
+          type="button"
+          onClick={() => {
+            onNavigate?.();
+            onSearchClick?.();
+          }}
+          className="flex w-full items-center gap-2 rounded-lg border border-sidebar-border bg-background/40 px-2.5 py-1.5 text-[13px] text-muted-foreground hover:text-foreground hover:border-sidebar-accent transition-colors"
+          aria-label="Search ScopeGuard (Cmd+K)"
+        >
+          <Search className="h-3.5 w-3.5 text-primary" />
+          <span className="flex-1 text-left font-medium">Search...</span>
           <kbd className="rounded border border-border bg-background/60 px-1.5 py-[1px] font-mono text-[10px]">
             ⌘K
           </kbd>
@@ -184,15 +202,18 @@ export function AppShell({
   action?: ReactNode;
 }) {
   const [open, setOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+
   useEffect(() => {
     setOpen(false);
   }, [pathname]);
 
   return (
     <div className="relative flex min-h-screen w-full bg-background/80">
+      <CommandPalette open={searchOpen} onOpenChange={setSearchOpen} />
       <aside className="sticky top-0 hidden h-screen w-[248px] shrink-0 flex-col border-r border-sidebar-border bg-sidebar/90 backdrop-blur-2xl lg:flex">
-        <SidebarContent />
+        <SidebarContent onSearchClick={() => setSearchOpen(true)} />
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
@@ -214,7 +235,10 @@ export function AppShell({
                 className="flex w-[280px] flex-col border-r border-sidebar-border bg-sidebar p-0"
               >
                 <SheetTitle className="sr-only">Navigation</SheetTitle>
-                <SidebarContent onNavigate={() => setOpen(false)} />
+                <SidebarContent
+                  onNavigate={() => setOpen(false)}
+                  onSearchClick={() => setSearchOpen(true)}
+                />
               </SheetContent>
             </Sheet>
             <div className="min-w-0 flex-1">
@@ -231,6 +255,19 @@ export function AppShell({
             </div>
           </div>
           <div className="flex shrink-0 items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setSearchOpen(true)}
+              className="h-8 gap-1.5 px-2.5 text-xs text-muted-foreground hidden md:flex"
+              aria-label="Search"
+            >
+              <Search className="h-3.5 w-3.5 text-primary" />
+              <span className="hidden lg:inline">Search...</span>
+              <kbd className="ml-1 rounded border border-border bg-background/60 px-1 py-[1px] font-mono text-[9px]">
+                ⌘K
+              </kbd>
+            </Button>
             <ThemeToggle className="hidden lg:flex" compact />
             <NotificationBell />
             <ExportButton

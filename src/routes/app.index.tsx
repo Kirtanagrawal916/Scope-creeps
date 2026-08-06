@@ -41,23 +41,55 @@ import { useState } from "react";
 
 export const Route = createFileRoute("/app/")({
   loader: async () => {
-    const [projects, emails, analyses, notificationsRes] = await Promise.all([
-      listProjects({ data: { archived: false } }),
-      listAllUserEmails(),
-      listAllUserAnalyses(),
-      listNotifications({ data: { limit: 5 } }) as Promise<{
-        notifications: SerializedNotification[];
-        totalCount: number;
-        unreadCount: number;
-      }>,
-    ]);
-    return { projects, emails, analyses, notifications: notificationsRes.notifications };
+    console.log("[DEBUG DASHBOARD] Dashboard loader started...");
+    try {
+      console.log("[DEBUG DASHBOARD] Fetching projects, emails, analyses, notifications...");
+      const [projects, emails, analyses, notificationsRes] = await Promise.all([
+        (async () => {
+          console.log("[DEBUG LOADERS] Project loader starting...");
+          const res = await listProjects({ data: { archived: false } });
+          console.log("[DEBUG LOADERS] Project loader done. Count:", res?.length);
+          return res;
+        })(),
+        (async () => {
+          console.log("[DEBUG LOADERS] Email loader starting...");
+          const res = await listAllUserEmails();
+          console.log("[DEBUG LOADERS] Email loader done. Count:", res?.length);
+          return res;
+        })(),
+        (async () => {
+          console.log("[DEBUG LOADERS] Analytics loader starting...");
+          const res = await listAllUserAnalyses();
+          console.log("[DEBUG LOADERS] Analytics loader done. Count:", res?.length);
+          return res;
+        })(),
+        (async () => {
+          console.log("[DEBUG LOADERS] Notification loader starting...");
+          const res = (await listNotifications({ data: { limit: 5 } })) as unknown as {
+            notifications: SerializedNotification[];
+            totalCount: number;
+            unreadCount: number;
+          };
+          console.log(
+            "[DEBUG LOADERS] Notification loader done. Count:",
+            res?.notifications?.length,
+          );
+          return res;
+        })(),
+      ]);
+      console.log("[DEBUG DASHBOARD] All loaders completed successfully.");
+      return { projects, emails, analyses, notifications: notificationsRes.notifications };
+    } catch (err) {
+      console.error("[DEBUG DASHBOARD] Error in dashboard loader:", err);
+      throw err;
+    }
   },
   component: Dashboard,
   head: () => ({ meta: [{ title: "Dashboard — ScopeGuard" }] }),
 });
 
 function Dashboard() {
+  console.log("[DEBUG DASHBOARD] Dashboard component rendering...");
   const { user } = useRouteContext({ from: "/app" }) as {
     user: {
       id: string;

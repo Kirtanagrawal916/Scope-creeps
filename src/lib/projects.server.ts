@@ -8,10 +8,6 @@
  * The SerializedProject type is safe to import from client route files.
  */
 import { createServerFn } from "@tanstack/react-start";
-import { connectToDatabase } from "./db";
-import { Project } from "../models/Project";
-import { requireSession } from "./authorize.server";
-import { notifyUser } from "./notifications.server";
 import { AppError } from "./app-error";
 import { formatRelativeDate } from "./utils";
 import type { ProjectStatus, RiskLevel } from "../models/Project";
@@ -132,6 +128,9 @@ const deleteProjectSchema = z.object({
 export const listProjects = createServerFn({ method: "GET" })
   .validator((data: unknown) => listProjectsSchema.parse(data))
   .handler(async ({ data }) => {
+    const { requireSession } = await import("./authorize.server");
+    const { connectToDatabase } = await import("./db");
+    const { Project } = await import("../models/Project");
     const user = await requireSession();
     await connectToDatabase();
 
@@ -150,6 +149,9 @@ export const listProjects = createServerFn({ method: "GET" })
 export const getProject = createServerFn({ method: "GET" })
   .validator((data: unknown) => getProjectSchema.parse(data))
   .handler(async ({ data }) => {
+    const { requireSession } = await import("./authorize.server");
+    const { connectToDatabase } = await import("./db");
+    const { Project } = await import("../models/Project");
     const user = await requireSession();
     await connectToDatabase();
 
@@ -164,6 +166,10 @@ export const getProject = createServerFn({ method: "GET" })
 export const createProject = createServerFn({ method: "POST" })
   .validator((data: unknown) => createProjectSchema.parse(data))
   .handler(async ({ data }) => {
+    const { requireSession } = await import("./authorize.server");
+    const { connectToDatabase } = await import("./db");
+    const { Project } = await import("../models/Project");
+    const { notifyUser } = await import("./notifications.server");
     const user = await requireSession();
 
     await connectToDatabase();
@@ -208,6 +214,10 @@ export const createProject = createServerFn({ method: "POST" })
 export const updateProject = createServerFn({ method: "POST" })
   .validator((data: unknown) => updateProjectSchema.parse(data))
   .handler(async ({ data }) => {
+    const { requireSession } = await import("./authorize.server");
+    const { connectToDatabase } = await import("./db");
+    const { Project } = await import("../models/Project");
+    const { notifyUser } = await import("./notifications.server");
     const user = await requireSession();
     await connectToDatabase();
 
@@ -253,6 +263,10 @@ export const updateProject = createServerFn({ method: "POST" })
 export const archiveProject = createServerFn({ method: "POST" })
   .validator((data: unknown) => deleteProjectSchema.parse(data))
   .handler(async ({ data }) => {
+    const { requireSession } = await import("./authorize.server");
+    const { connectToDatabase } = await import("./db");
+    const { Project } = await import("../models/Project");
+    const { notifyUser } = await import("./notifications.server");
     const user = await requireSession();
     await connectToDatabase();
 
@@ -283,6 +297,9 @@ export const archiveProject = createServerFn({ method: "POST" })
 export const restoreProject = createServerFn({ method: "POST" })
   .validator((data: unknown) => deleteProjectSchema.parse(data))
   .handler(async ({ data }) => {
+    const { requireSession } = await import("./authorize.server");
+    const { connectToDatabase } = await import("./db");
+    const { Project } = await import("../models/Project");
     const user = await requireSession();
     await connectToDatabase();
 
@@ -301,6 +318,9 @@ export const restoreProject = createServerFn({ method: "POST" })
 export const deleteProject = createServerFn({ method: "POST" })
   .validator((data: unknown) => deleteProjectSchema.parse(data))
   .handler(async ({ data }) => {
+    const { requireSession } = await import("./authorize.server");
+    const { connectToDatabase } = await import("./db");
+    const { Project } = await import("../models/Project");
     const user = await requireSession();
     await connectToDatabase();
 

@@ -42,6 +42,12 @@ function SettingsPage() {
       lastName?: string;
       workspaceName?: string;
       defaultRate?: number;
+      provider?: string;
+      googleId?: string;
+      githubId?: string;
+      githubUsername?: string;
+      lastLogin?: string | Date;
+      authMethod?: string[];
     } | null;
   };
 
@@ -78,6 +84,19 @@ function SettingsPage() {
       setIsLoading(false);
     }
   }
+
+  const lastLoginStr = user?.lastLogin
+    ? new Date(user.lastLogin).toLocaleString(undefined, {
+        dateStyle: "medium",
+        timeStyle: "short",
+      })
+    : "Active session";
+
+  const connectedProviders = [
+    "Email / Password",
+    user?.googleId ? "Google OAuth" : null,
+    user?.githubId ? `GitHub OAuth (@${user.githubUsername || "connected"})` : null,
+  ].filter(Boolean);
 
   return (
     <AppShell title="Settings" subtitle="Configure your workspace.">
@@ -127,6 +146,35 @@ function SettingsPage() {
             </div>
           </section>
         </form>
+
+        <section className="panel p-6">
+          <div className="text-[12px] font-medium uppercase tracking-wider text-muted-foreground">
+            Authentication & Security
+          </div>
+          <Separator className="my-4" />
+          <div className="divide-y divide-border">
+            <Row label="Primary Auth Provider" desc="Initial sign-up mechanism for this account.">
+              <div className="text-[13px] font-medium capitalize text-foreground bg-muted px-3 py-1 rounded-md">
+                {user?.provider || "Email"}
+              </div>
+            </Row>
+            <Row label="Connected Accounts" desc="Single Sign-On providers enabled for your email.">
+              <div className="flex flex-wrap justify-end gap-1.5 max-w-xs">
+                {connectedProviders.map((prov) => (
+                  <span
+                    key={prov}
+                    className="inline-flex items-center rounded-md bg-primary/10 px-2.5 py-1 text-[11px] font-medium text-primary"
+                  >
+                    {prov}
+                  </span>
+                ))}
+              </div>
+            </Row>
+            <Row label="Last Login" desc="Timestamp of most recent authenticated session.">
+              <div className="text-[13px] text-muted-foreground">{lastLoginStr}</div>
+            </Row>
+          </div>
+        </section>
 
         <section className="panel p-6">
           <div className="text-[12px] font-medium uppercase tracking-wider text-muted-foreground">

@@ -6,20 +6,11 @@
  * verified to belong to the session user — preventing ownership-chain attacks.
  */
 import { createServerFn } from "@tanstack/react-start";
-import { connectToDatabase } from "./db";
-import { Analysis } from "../models/Analysis";
-import { Project } from "../models/Project";
-import { EmailThread } from "../models/EmailThread";
-import { requireSession } from "./authorize.server";
-import { notifyUser } from "./notifications.server";
 import { AppError } from "./app-error";
 import { formatRelativeDate } from "./utils";
 import { z } from "zod";
-import mongoose from "mongoose";
 import type { AnalysisVerdict } from "../models/Analysis";
 import type { ProjectStatus, RiskLevel } from "../models/Project";
-
-import { analyzeScopeWithAI } from "./ai/service";
 
 // ---------------------------------------------------------------------------
 // Serialized types — safe for client consumption
@@ -350,6 +341,7 @@ async function performAiAnalysis(
   changedRequirement: string,
   subject: string,
 ) {
+  const { analyzeScopeWithAI } = await import("./ai/service");
   return analyzeScopeWithAI({
     projectName: project.name || "Software Project",
     clientName: project.client,
@@ -440,6 +432,10 @@ const deleteAnalysisSchema = z.object({
 export const listAnalysesForProject = createServerFn({ method: "GET" })
   .validator((data: unknown) => listAnalysesSchema.parse(data))
   .handler(async ({ data }) => {
+    const { requireSession } = await import("./authorize.server");
+    const { connectToDatabase } = await import("./db");
+    const { Analysis } = await import("../models/Analysis");
+    const { Project } = await import("../models/Project");
     const user = await requireSession();
     await connectToDatabase();
 
@@ -460,6 +456,9 @@ export const listAnalysesForProject = createServerFn({ method: "GET" })
  * Returns all analyses across all of the session user's projects.
  */
 export const listAllUserAnalyses = createServerFn({ method: "GET" }).handler(async () => {
+  const { requireSession } = await import("./authorize.server");
+  const { connectToDatabase } = await import("./db");
+  const { Analysis } = await import("../models/Analysis");
   const user = await requireSession();
   await connectToDatabase();
   const analyses = await Analysis.find({ owner: user._id }).sort({ createdAt: -1 }).lean();
@@ -472,6 +471,9 @@ export const listAllUserAnalyses = createServerFn({ method: "GET" }).handler(asy
 export const getAnalysis = createServerFn({ method: "GET" })
   .validator((data: unknown) => getAnalysisSchema.parse(data))
   .handler(async ({ data }) => {
+    const { requireSession } = await import("./authorize.server");
+    const { connectToDatabase } = await import("./db");
+    const { Analysis } = await import("../models/Analysis");
     const user = await requireSession();
     await connectToDatabase();
 
@@ -486,6 +488,11 @@ export const getAnalysis = createServerFn({ method: "GET" })
 export const getAnalysisDetails = createServerFn({ method: "GET" })
   .validator((data: unknown) => getAnalysisSchema.parse(data))
   .handler(async ({ data }) => {
+    const { requireSession } = await import("./authorize.server");
+    const { connectToDatabase } = await import("./db");
+    const { Analysis } = await import("../models/Analysis");
+    const { Project } = await import("../models/Project");
+    const { EmailThread } = await import("../models/EmailThread");
     const user = await requireSession();
     await connectToDatabase();
 
@@ -532,6 +539,11 @@ export const getAnalysisDetails = createServerFn({ method: "GET" })
 export const createAnalysis = createServerFn({ method: "POST" })
   .validator((data: unknown) => createAnalysisSchema.parse(data))
   .handler(async ({ data }) => {
+    const { requireSession } = await import("./authorize.server");
+    const { connectToDatabase } = await import("./db");
+    const { Analysis } = await import("../models/Analysis");
+    const { Project } = await import("../models/Project");
+    const { EmailThread } = await import("../models/EmailThread");
     const user = await requireSession();
     await connectToDatabase();
 
@@ -600,6 +612,9 @@ export const createAnalysis = createServerFn({ method: "POST" })
 export const updateAnalysis = createServerFn({ method: "POST" })
   .validator((data: unknown) => updateAnalysisSchema.parse(data))
   .handler(async ({ data }) => {
+    const { requireSession } = await import("./authorize.server");
+    const { connectToDatabase } = await import("./db");
+    const { Analysis } = await import("../models/Analysis");
     const user = await requireSession();
     await connectToDatabase();
 
@@ -625,6 +640,10 @@ export const updateAnalysis = createServerFn({ method: "POST" })
 export const deleteAnalysis = createServerFn({ method: "POST" })
   .validator((data: unknown) => deleteAnalysisSchema.parse(data))
   .handler(async ({ data }) => {
+    const { requireSession } = await import("./authorize.server");
+    const { connectToDatabase } = await import("./db");
+    const { Analysis } = await import("../models/Analysis");
+    const { EmailThread } = await import("../models/EmailThread");
     const user = await requireSession();
     await connectToDatabase();
 
@@ -648,6 +667,11 @@ export const deleteAnalysis = createServerFn({ method: "POST" })
 export const runScopeAnalysis = createServerFn({ method: "POST" })
   .validator((data: unknown) => runScopeAnalysisSchema.parse(data))
   .handler(async ({ data }) => {
+    const { requireSession } = await import("./authorize.server");
+    const { connectToDatabase } = await import("./db");
+    const { Analysis } = await import("../models/Analysis");
+    const { Project } = await import("../models/Project");
+    const { notifyUser } = await import("./notifications.server");
     const user = await requireSession();
     await connectToDatabase();
 
@@ -738,6 +762,12 @@ export const runScopeAnalysis = createServerFn({ method: "POST" })
 export const analyzeEmail = createServerFn({ method: "POST" })
   .validator((data: unknown) => analyzeEmailSchema.parse(data))
   .handler(async ({ data }) => {
+    const { requireSession } = await import("./authorize.server");
+    const { connectToDatabase } = await import("./db");
+    const { Analysis } = await import("../models/Analysis");
+    const { Project } = await import("../models/Project");
+    const { EmailThread } = await import("../models/EmailThread");
+    const { notifyUser } = await import("./notifications.server");
     const user = await requireSession();
     await connectToDatabase();
 
@@ -895,6 +925,11 @@ const bulkArchiveAnalysesSchema = z.object({
 export const queryAnalyses = createServerFn({ method: "POST" })
   .validator((data: unknown) => queryAnalysesSchema.parse(data))
   .handler(async ({ data }) => {
+    const { requireSession } = await import("./authorize.server");
+    const { connectToDatabase } = await import("./db");
+    const { Analysis } = await import("../models/Analysis");
+    const { Project } = await import("../models/Project");
+    const mongoose = (await import("mongoose")).default;
     const user = await requireSession();
     await connectToDatabase();
 
@@ -1040,6 +1075,11 @@ export const queryAnalyses = createServerFn({ method: "POST" })
 export const bulkDeleteAnalyses = createServerFn({ method: "POST" })
   .validator((data: unknown) => bulkDeleteAnalysesSchema.parse(data))
   .handler(async ({ data }) => {
+    const { requireSession } = await import("./authorize.server");
+    const { connectToDatabase } = await import("./db");
+    const { Analysis } = await import("../models/Analysis");
+    const { EmailThread } = await import("../models/EmailThread");
+    const mongoose = (await import("mongoose")).default;
     const user = await requireSession();
     await connectToDatabase();
 
@@ -1079,6 +1119,10 @@ export const bulkDeleteAnalyses = createServerFn({ method: "POST" })
 export const bulkChangeAnalysesStatus = createServerFn({ method: "POST" })
   .validator((data: unknown) => bulkChangeAnalysesStatusSchema.parse(data))
   .handler(async ({ data }) => {
+    const { requireSession } = await import("./authorize.server");
+    const { connectToDatabase } = await import("./db");
+    const { Analysis } = await import("../models/Analysis");
+    const mongoose = (await import("mongoose")).default;
     const user = await requireSession();
     await connectToDatabase();
 
@@ -1098,6 +1142,10 @@ export const bulkChangeAnalysesStatus = createServerFn({ method: "POST" })
 export const bulkArchiveAnalyses = createServerFn({ method: "POST" })
   .validator((data: unknown) => bulkArchiveAnalysesSchema.parse(data))
   .handler(async ({ data }) => {
+    const { requireSession } = await import("./authorize.server");
+    const { connectToDatabase } = await import("./db");
+    const { Analysis } = await import("../models/Analysis");
+    const mongoose = (await import("mongoose")).default;
     const user = await requireSession();
     await connectToDatabase();
 

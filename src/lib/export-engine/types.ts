@@ -134,6 +134,12 @@ export interface AnalysisReportData {
   aiSummary: string;
   aiExplanation: string;
   explanation: string;
+  executiveSummary?: string;
+  technicalExplanation?: string;
+  potentialRisks?: string[];
+  recommendations?: string[];
+  aiModel?: string;
+  isFallback?: boolean;
   verdict: string;
   confidence: number;
   riskLevel: string;

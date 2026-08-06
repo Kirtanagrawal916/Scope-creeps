@@ -6,10 +6,6 @@
  * returning any emails — this prevents accessing emails via a forged projectId.
  */
 import { createServerFn } from "@tanstack/react-start";
-import { connectToDatabase } from "./db";
-import { EmailThread } from "../models/EmailThread";
-import { Project } from "../models/Project";
-import { requireSession } from "./authorize.server";
 import { AppError } from "./app-error";
 import { formatRelativeDate } from "./utils";
 import type { RiskLevel } from "../models/Project";
@@ -69,6 +65,10 @@ function serialize(doc: any, projectName = ""): SerializedEmail {
 export const listEmailsForProject = createServerFn({ method: "GET" })
   .validator((data: { projectId: string }) => data)
   .handler(async ({ data }) => {
+    const { requireSession } = await import("./authorize.server");
+    const { connectToDatabase } = await import("./db");
+    const { EmailThread } = await import("../models/EmailThread");
+    const { Project } = await import("../models/Project");
     const user = await requireSession();
     await connectToDatabase();
     // ✅ Verify project ownership before returning any child resources
@@ -91,6 +91,10 @@ export const listEmailsForProject = createServerFn({ method: "GET" })
  * with project names populated.
  */
 export const listAllUserEmails = createServerFn({ method: "GET" }).handler(async () => {
+  const { requireSession } = await import("./authorize.server");
+  const { connectToDatabase } = await import("./db");
+  const { EmailThread } = await import("../models/EmailThread");
+  const { Project } = await import("../models/Project");
   const user = await requireSession();
   await connectToDatabase();
 
@@ -129,6 +133,10 @@ export const createEmailThread = createServerFn({ method: "POST" })
     }) => data,
   )
   .handler(async ({ data }) => {
+    const { requireSession } = await import("./authorize.server");
+    const { connectToDatabase } = await import("./db");
+    const { EmailThread } = await import("../models/EmailThread");
+    const { Project } = await import("../models/Project");
     const user = await requireSession();
     await connectToDatabase();
     // ✅ Verify project ownership first
@@ -160,6 +168,9 @@ export const createEmailThread = createServerFn({ method: "POST" })
 export const markEmailRead = createServerFn({ method: "POST" })
   .validator((data: { id: string }) => data)
   .handler(async ({ data }) => {
+    const { requireSession } = await import("./authorize.server");
+    const { connectToDatabase } = await import("./db");
+    const { EmailThread } = await import("../models/EmailThread");
     const user = await requireSession();
     await connectToDatabase();
     // ✅ Owner-scoped update — cannot mark another user's email as read

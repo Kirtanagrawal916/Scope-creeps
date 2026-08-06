@@ -12,12 +12,14 @@ import {
   Pin,
   Bookmark,
   Printer,
+  RefreshCw,
+  Cpu,
 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { ExportButton } from "@/components/export/export-button";
 import { RiskChip, StatusPill } from "@/components/status-pill";
 import { Button } from "@/components/ui/button";
-import { getAnalysisDetails, updateAnalysis } from "@/lib/analyses.server";
+import { getAnalysisDetails, updateAnalysis, runScopeAnalysis } from "@/lib/analyses.server";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -77,6 +79,7 @@ function AnalysisPage() {
   const navigate = useNavigate({ from: Route.fullPath });
   const [isPinning, setIsPinning] = useState(false);
   const [isBookmarking, setIsBookmarking] = useState(false);
+  const [isRegenerating, setIsRegenerating] = useState(false);
 
   const verdict = verdictConfig[analysis.verdict] || verdictConfig.possible_scope_creep;
   const VerdictIcon = verdict.icon;
@@ -85,6 +88,27 @@ function AnalysisPage() {
     navigator.clipboard.writeText(analysis.suggestedReply);
     setCopied(true);
     setTimeout(() => setCopied(false), 2500);
+  };
+
+  const handleRegenerate = async () => {
+    try {
+      setIsRegenerating(true);
+      toast.info("Running fresh Gemini AI analysis...");
+      const newAnalysis = await runScopeAnalysis({
+        data: {
+          projectId: project.id,
+          originalRequirement: analysis.originalRequirement || "Agreed deliverables list",
+          changedRequirement: analysis.changedRequirement,
+        },
+      });
+      toast.success("AI Analysis regenerated successfully.");
+      navigate({ to: "/app/analysis/$id", params: { id: newAnalysis.id } });
+    } catch (err) {
+      const error = err as Error;
+      toast.error(error.message || "Failed to regenerate AI analysis.");
+    } finally {
+      setIsRegenerating(false);
+    }
   };
 
   const handleTogglePin = async () => {
@@ -228,6 +252,18 @@ function AnalysisPage() {
                 fill={analysis.bookmarked ? "currentColor" : "none"}
               />
               {analysis.bookmarked ? "Bookmarked" : "Bookmark"}
+            </Button>
+
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={isRegenerating}
+              onClick={handleRegenerate}
+              className="text-primary border-primary/30 bg-primary/5 hover:bg-primary/10 h-8 text-[12px]"
+              title="Re-run Gemini AI analysis"
+            >
+              <RefreshCw className={`mr-1.5 h-3.5 w-3.5 ${isRegenerating ? "animate-spin" : ""}`} />
+              {isRegenerating ? "Analyzing..." : "Regenerate AI"}
             </Button>
 
             <ExportButton

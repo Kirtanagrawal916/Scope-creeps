@@ -384,8 +384,19 @@ export function generatePdfHtml(payload: ExportPayload): string {
 
         <h2 class="section-title">AI Summary & Risk Assessment</h2>
         <div class="toc-box">
-          <p><strong>Summary:</strong> ${a.aiSummary}</p>
-          <p style="margin-top: 8px;"><strong>Explanation:</strong> ${a.explanation || a.aiExplanation}</p>
+          <p><strong>AI Model:</strong> ${a.aiModel || "gemini-2.5-flash"} ${a.isFallback ? "(Rule-Based Fallback Engine Active)" : ""}</p>
+          <p style="margin-top: 6px;"><strong>Summary:</strong> ${a.executiveSummary || a.aiSummary}</p>
+          <p style="margin-top: 6px;"><strong>Technical Details:</strong> ${a.technicalExplanation || a.explanation || a.aiExplanation}</p>
+          ${
+            a.potentialRisks && a.potentialRisks.length > 0
+              ? `<p style="margin-top: 8px;"><strong>Potential Risks:</strong> ${a.potentialRisks.join("; ")}</p>`
+              : ""
+          }
+          ${
+            a.recommendations && a.recommendations.length > 0
+              ? `<p style="margin-top: 6px;"><strong>AI Recommendations:</strong> ${a.recommendations.join("; ")}</p>`
+              : ""
+          }
         </div>
 
         <h2 class="section-title">Requirement Comparison</h2>

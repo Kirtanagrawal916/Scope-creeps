@@ -58,6 +58,12 @@ export const getGoogleAuthUrl = createServerFn({ method: "GET" }).handler(async 
   return getGoogleAuthUrlImpl();
 });
 
+/** Build the GitHub OAuth redirect URL and set a CSRF state cookie. */
+export const getGithubAuthUrl = createServerFn({ method: "GET" }).handler(async () => {
+  const { getGithubAuthUrlImpl } = await import("./auth.server");
+  return getGithubAuthUrlImpl();
+});
+
 /** Deletes the session cookie. Called by the logout button. */
 export const logoutAction = createServerFn({ method: "POST" }).handler(async () => {
   const { logoutActionImpl } = await import("./auth.server");
@@ -73,4 +79,23 @@ export const handleGoogleCallback = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const { handleGoogleCallbackImpl } = await import("./auth.server");
     return handleGoogleCallbackImpl(data);
+  });
+
+/**
+ * Handles the GitHub OAuth callback: validates CSRF state, exchanges the
+ * authorization code for tokens, upserts/links the user, and sets the session cookie.
+ */
+export const handleGithubCallback = createServerFn({ method: "POST" })
+  .validator((data: { code: string; state: string }) => data)
+  .handler(async ({ data }) => {
+    const { handleGithubCallbackImpl } = await import("./auth.server");
+    return handleGithubCallbackImpl(data);
+  });
+
+/** Unlinks an OAuth provider from the current user account. */
+export const unlinkProvider = createServerFn({ method: "POST" })
+  .validator((data: { provider: "google" | "github" }) => data)
+  .handler(async ({ data }) => {
+    const { unlinkProviderImpl } = await import("./auth.server");
+    return unlinkProviderImpl(data);
   });

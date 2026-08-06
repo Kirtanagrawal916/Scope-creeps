@@ -5,12 +5,19 @@ export interface IUser extends Document {
   firstName?: string;
   lastName?: string;
   email: string;
-  password: string;
+  password?: string;
   workspaceName?: string;
   defaultRate?: number;
-  googleId?: string;
-  avatar?: string;
   provider?: string;
+  providerId?: string;
+  googleId?: string;
+  githubId?: string;
+  avatar?: string;
+  emailVerified?: boolean;
+  githubUsername?: string;
+  googleProfile?: Record<string, unknown>;
+  lastLogin?: Date;
+  authMethod?: string[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -40,7 +47,7 @@ const UserSchema = new Schema<IUser>(
     },
     password: {
       type: String,
-      required: [true, "Password is required"],
+      required: false,
     },
     workspaceName: {
       type: String,
@@ -51,7 +58,20 @@ const UserSchema = new Schema<IUser>(
       type: Number,
       required: false,
     },
+    provider: {
+      type: String,
+      required: false,
+      default: "email",
+    },
+    providerId: {
+      type: String,
+      required: false,
+    },
     googleId: {
+      type: String,
+      required: false,
+    },
+    githubId: {
       type: String,
       required: false,
     },
@@ -59,10 +79,27 @@ const UserSchema = new Schema<IUser>(
       type: String,
       required: false,
     },
-    provider: {
+    emailVerified: {
+      type: Boolean,
+      required: false,
+      default: false,
+    },
+    githubUsername: {
       type: String,
       required: false,
-      default: "local",
+    },
+    googleProfile: {
+      type: Schema.Types.Mixed,
+      required: false,
+    },
+    lastLogin: {
+      type: Date,
+      required: false,
+    },
+    authMethod: {
+      type: [String],
+      required: false,
+      default: ["email"],
     },
   },
   {
@@ -73,7 +110,7 @@ const UserSchema = new Schema<IUser>(
 
 // Pre-save hook to automatically hash password before storing
 UserSchema.pre("save", async function () {
-  if (!this.isModified("password")) {
+  if (!this.password || !this.isModified("password")) {
     return;
   }
   this.password = await hashPassword(this.password);

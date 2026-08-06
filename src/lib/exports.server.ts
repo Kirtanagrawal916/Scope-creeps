@@ -7,11 +7,6 @@
 
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { connectToDatabase } from "./db";
-import { Project } from "../models/Project";
-import { Analysis } from "../models/Analysis";
-import { requireSession } from "./authorize.server";
-import { notifyUser } from "./notifications.server";
 import type {
   DashboardExportData,
   ProjectReportData,
@@ -70,6 +65,10 @@ const bulkExportSchema = z.object({
 export const getDashboardExport = createServerFn({ method: "POST" })
   .validator((data: unknown) => exportFilterSchema.parse(data))
   .handler(async ({ data }): Promise<ExportPayload> => {
+    const { requireSession } = await import("./authorize.server");
+    const { connectToDatabase } = await import("./db");
+    const { Project } = await import("../models/Project");
+    const { Analysis } = await import("../models/Analysis");
     const user = await requireSession();
     await connectToDatabase();
 
@@ -152,6 +151,10 @@ export const getDashboardExport = createServerFn({ method: "POST" })
 export const getProjectExport = createServerFn({ method: "POST" })
   .validator((data: unknown) => singleTargetSchema.parse(data))
   .handler(async ({ data }): Promise<ExportPayload> => {
+    const { requireSession } = await import("./authorize.server");
+    const { connectToDatabase } = await import("./db");
+    const { Project } = await import("../models/Project");
+    const { Analysis } = await import("../models/Analysis");
     const user = await requireSession();
     await connectToDatabase();
 
@@ -223,6 +226,10 @@ export const getProjectExport = createServerFn({ method: "POST" })
 export const getAnalysisExport = createServerFn({ method: "POST" })
   .validator((data: unknown) => singleTargetSchema.parse(data))
   .handler(async ({ data }): Promise<ExportPayload> => {
+    const { requireSession } = await import("./authorize.server");
+    const { connectToDatabase } = await import("./db");
+    const { Analysis } = await import("../models/Analysis");
+    const { Project } = await import("../models/Project");
     const user = await requireSession();
     await connectToDatabase();
 
@@ -271,6 +278,10 @@ export const getAnalysisExport = createServerFn({ method: "POST" })
 export const getAnalyticsExport = createServerFn({ method: "POST" })
   .validator((data: unknown) => exportFilterSchema.parse(data))
   .handler(async ({ data }): Promise<ExportPayload> => {
+    const { requireSession } = await import("./authorize.server");
+    const { connectToDatabase } = await import("./db");
+    const { Project } = await import("../models/Project");
+    const { Analysis } = await import("../models/Analysis");
     const user = await requireSession();
     await connectToDatabase();
 
@@ -393,6 +404,11 @@ export const getAnalyticsExport = createServerFn({ method: "POST" })
 export const getBulkExport = createServerFn({ method: "POST" })
   .validator((data: unknown) => bulkExportSchema.parse(data))
   .handler(async ({ data }): Promise<ExportPayload> => {
+    const { requireSession } = await import("./authorize.server");
+    const { connectToDatabase } = await import("./db");
+    const { Project } = await import("../models/Project");
+    const { Analysis } = await import("../models/Analysis");
+    const { notifyUser } = await import("./notifications.server");
     const user = await requireSession();
     await connectToDatabase();
 

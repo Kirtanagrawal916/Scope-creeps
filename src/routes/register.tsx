@@ -1,12 +1,12 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { motion } from "framer-motion";
-import { Check } from "lucide-react";
+import { Check, Eye, EyeOff, Github } from "lucide-react";
 import { Logo } from "@/components/logo";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { registerUser } from "@/lib/auth";
+import { registerUser, getGoogleAuthUrl, getGithubAuthUrl } from "@/lib/auth";
 import type { FormEvent } from "react";
 import { useState } from "react";
 
@@ -20,12 +20,52 @@ export const Route = createFileRoute("/register")({
 function RegisterPage() {
   const nav = useNavigate();
   const [message, setMessage] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [isGithubLoading, setIsGithubLoading] = useState(false);
 
   const perks = [
     "14 days free, no credit card",
     "Analyze up to 200 emails per month",
     "Unlimited contracts on trial",
   ];
+
+  async function handleGoogleSignUp() {
+    setIsGoogleLoading(true);
+    setMessage("");
+    try {
+      const response = await getGoogleAuthUrl();
+      if (response && response.url) {
+        window.location.href = response.url;
+      } else {
+        setMessage("Google sign-up failed to initialize.");
+        setIsGoogleLoading(false);
+      }
+    } catch (err) {
+      console.error("Google authentication error:", err);
+      setMessage(err instanceof Error ? err.message : "Google sign-up is currently unavailable.");
+      setIsGoogleLoading(false);
+    }
+  }
+
+  async function handleGithubSignUp() {
+    setIsGithubLoading(true);
+    setMessage("");
+    try {
+      const response = await getGithubAuthUrl();
+      if (response && response.url) {
+        window.location.href = response.url;
+      } else {
+        setMessage("GitHub sign-up failed to initialize.");
+        setIsGithubLoading(false);
+      }
+    } catch (err) {
+      console.error("GitHub authentication error:", err);
+      setMessage(err instanceof Error ? err.message : "GitHub sign-up is currently unavailable.");
+      setIsGithubLoading(false);
+    }
+  }
 
   async function handleRegister(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -127,9 +167,50 @@ function RegisterPage() {
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="password" className="text-[12px]">
-                Password
+                Password <span className="text-destructive">*</span>
               </Label>
-              <Input id="password" name="password" type="password" placeholder="••••••••" />
+              <div className="relative">
+                <Input
+                  id="password"
+                  name="password"
+                  type={showPassword ? "text" : "password"}
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  className="pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-2.5 top-2.5 text-muted-foreground hover:text-foreground transition-colors"
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+              {password.length > 0 && (
+                <div className="mt-2 space-y-1">
+                  <div className="flex h-1.5 w-full overflow-hidden rounded-full bg-accent/60">
+                    <div
+                      className={`h-full transition-all duration-300 ${
+                        password.length < 6
+                          ? "w-1/3 bg-rose-500"
+                          : password.length < 10
+                            ? "w-2/3 bg-amber-500"
+                            : "w-full bg-emerald-500"
+                      }`}
+                    />
+                  </div>
+                  <div className="text-[10px] text-muted-foreground text-right font-medium">
+                    {password.length < 6
+                      ? "Weak password"
+                      : password.length < 10
+                        ? "Moderate password"
+                        : "Strong password"}
+                  </div>
+                </div>
+              )}
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="workspaceName" className="text-[12px]">
@@ -141,6 +222,52 @@ function RegisterPage() {
             <Button type="submit" className="w-full">
               Create workspace
             </Button>
+
+            <div className="my-4 flex items-center gap-3">
+              <div className="h-px flex-1 bg-border" />
+              <span className="text-[11px] uppercase text-muted-foreground">or sign up with</span>
+              <div className="h-px flex-1 bg-border" />
+            </div>
+
+            <div className="grid gap-2 sm:grid-cols-2">
+              <Button
+                type="button"
+                variant="outline"
+                className="h-10 rounded-lg bg-background/40 transition-all duration-300 hover:-translate-y-0.5"
+                onClick={handleGoogleSignUp}
+                disabled={isGoogleLoading || isGithubLoading}
+              >
+                <svg className="mr-1.5 h-4 w-4" viewBox="0 0 24 24">
+                  <path
+                    fill="#4285F4"
+                    d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                  />
+                  <path
+                    fill="#34A853"
+                    d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                  />
+                  <path
+                    fill="#FBBC05"
+                    d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
+                  />
+                  <path
+                    fill="#EA4335"
+                    d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
+                  />
+                </svg>
+                {isGoogleLoading ? "Connecting..." : "Google"}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                className="h-10 rounded-lg bg-background/40 transition-all duration-300 hover:-translate-y-0.5"
+                onClick={handleGithubSignUp}
+                disabled={isGoogleLoading || isGithubLoading}
+              >
+                <Github className="mr-1.5 h-4 w-4 text-foreground" />
+                {isGithubLoading ? "Connecting..." : "GitHub"}
+              </Button>
+            </div>
           </form>
           <p className="mt-4 text-center text-[11px] text-muted-foreground">
             By continuing you agree to our Terms & Privacy Policy.

@@ -337,7 +337,7 @@ function ProjectDetail() {
               <div className="mt-4 space-y-2 text-[13px]">
                 <div className="flex justify-between border-b border-border/40 pb-2">
                   <span className="text-muted-foreground">Hourly Rate</span>
-                  <span className="font-medium font-mono">${project.hourlyRate}/h</span>
+                  <span className="font-medium font-mono">₹{project.hourlyRate}/h</span>
                 </div>
                 <div className="flex justify-between border-b border-border/40 pb-2">
                   <span className="text-muted-foreground">Hours Used</span>
@@ -346,7 +346,7 @@ function ProjectDetail() {
                 <div className="flex justify-between border-b border-border/40 pb-2">
                   <span className="text-muted-foreground">Budget Utilization</span>
                   <span className="font-medium font-mono">
-                    ${(project.hoursUsed * project.hourlyRate).toLocaleString()} (
+                    ₹{(project.hoursUsed * project.hourlyRate).toLocaleString("en-IN")} (
                     {project.budget > 0
                       ? Math.round(
                           ((project.hoursUsed * project.hourlyRate) / project.budget) * 100,
@@ -562,7 +562,9 @@ function ProjectDetail() {
                     </div>
                     <div>
                       <span className="text-muted-foreground">Cost: </span>
-                      <span className="font-semibold text-foreground">${a.suggestedCost}</span>
+                      <span className="font-semibold text-foreground">
+                        ₹{a.suggestedCost.toLocaleString("en-IN")}
+                      </span>
                     </div>
                     <div>
                       <span className="text-muted-foreground">Hours: </span>
@@ -675,7 +677,7 @@ function ProjectDetail() {
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="hourlyRate" className="text-[12px]">
-                  Hourly Rate ($/h)
+                  Hourly Rate (₹/h)
                 </Label>
                 <Input
                   id="hourlyRate"

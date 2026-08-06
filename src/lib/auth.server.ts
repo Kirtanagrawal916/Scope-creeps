@@ -145,6 +145,9 @@ export async function checkLogin(email: string, password: string) {
   }
 
   logger.log("[AUTH SERVER] checkLogin: Password matched. Signing JWT token...");
+  foundUser.lastLogin = new Date();
+  await foundUser.save();
+
   const userId = foundUser._id.toString();
   const token = await signToken({ userId, email: foundUser.email });
   logger.log("[AUTH SERVER] checkLogin: JWT token signed successfully.");
@@ -201,32 +204,34 @@ export async function registerNewUser(data: {
     };
   }
 
-  logger.log("[AUTH SERVER] registerNewUser: Creating new user document...");
+  const firstName = data.firstName || "User";
+  const lastName = data.lastName || "";
+  const workspaceName = data.workspaceName || `${firstName}'s Workspace`;
+
+  logger.log("[AUTH SERVER] registerNewUser: Creating new User document...");
   const newUser = new User({
-    firstName: data.firstName,
-    lastName: data.lastName,
-    email: data.email,
-    password: data.password, // hashed in pre-save hook
-    workspaceName: data.workspaceName,
+    firstName,
+    lastName,
+    email: normalizedEmail,
+    password: data.password,
+    workspaceName,
+    provider: "email",
+    authMethod: ["email"],
+    lastLogin: new Date(),
   });
 
-  try {
-    await newUser.save();
-    logger.log("[AUTH SERVER] registerNewUser: User saved successfully in database.");
-  } catch (saveErr) {
-    logger.error("[AUTH SERVER] registerNewUser: Failed to save user in database:", saveErr);
-    throw saveErr;
-  }
+  await newUser.save();
+  logger.log("[AUTH SERVER] registerNewUser: User document saved successfully.");
 
   const userId = newUser._id.toString();
-  const token = await signToken({ userId, email: newUser.email });
-  logger.log("[AUTH SERVER] registerNewUser: JWT token signed successfully for new user.");
+  const token = await signToken({ userId, email: normalizedEmail });
 
   return {
     success: true,
+    message: "Registration successful",
     userId,
     token,
-    email: newUser.email,
+    email: normalizedEmail,
   };
 }
 
@@ -241,12 +246,12 @@ export async function loginUserImpl(data: { email: string; password: string }) {
 
     if (result.success && result.token) {
       logger.log(
-        `[AUTH SERVER] loginUserImpl: Login succeeded for ${data.email}. Setting session cookie...`,
+        `[AUTH SERVER] loginUserImpl: Authentication succeeded for ${data.email}. Setting session cookie...`,
       );
       await setSessionCookie(result.token);
       logger.log("[AUTH SERVER] loginUserImpl: Session cookie set completed.");
     } else {
-      logger.warn(`[AUTH SERVER] loginUserImpl: Login failed for ${data.email}.`);
+      logger.warn(`[AUTH SERVER] loginUserImpl: Authentication failed for ${data.email}.`);
     }
 
     return {
@@ -354,15 +359,19 @@ export async function updateProfileImpl(data: { firstName?: string; lastName?: s
 export async function getGoogleAuthUrlImpl() {
   const { setCookie } = await import("@tanstack/react-start/server");
   const clientId = process.env.GOOGLE_CLIENT_ID;
-  const callbackUrl = process.env.CALLBACK_URL;
+  const appUrl = process.env.APP_URL || "http://localhost:8080";
+  const callbackUrl =
+    process.env.GOOGLE_CALLBACK_URL ||
+    process.env.CALLBACK_URL ||
+    `${appUrl}/auth/callback?provider=google`;
 
-  if (!clientId || !callbackUrl) {
+  if (!clientId) {
     throw new Error(
-      "Google OAuth configuration is missing. Please define GOOGLE_CLIENT_ID and CALLBACK_URL in .env",
+      "Google OAuth configuration is missing. Please define GOOGLE_CLIENT_ID in your .env file.",
     );
   }
 
-  const state = Math.random().toString(36).substring(2, 15);
+  const state = "g_" + Math.random().toString(36).substring(2, 15);
 
   setCookie("oauth_state", state, {
     httpOnly: true,
@@ -385,6 +394,41 @@ export async function getGoogleAuthUrlImpl() {
   return { url: `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}` };
 }
 
+export async function getGithubAuthUrlImpl() {
+  const { setCookie } = await import("@tanstack/react-start/server");
+  const clientId = process.env.GITHUB_CLIENT_ID;
+  const appUrl = process.env.APP_URL || "http://localhost:8080";
+  const callbackUrl =
+    process.env.GITHUB_CALLBACK_URL ||
+    process.env.CALLBACK_URL ||
+    `${appUrl}/auth/callback?provider=github`;
+
+  if (!clientId) {
+    throw new Error(
+      "GitHub OAuth configuration is missing. Please define GITHUB_CLIENT_ID in your .env file.",
+    );
+  }
+
+  const state = "gh_" + Math.random().toString(36).substring(2, 15);
+
+  setCookie("oauth_state", state, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/",
+    maxAge: 60 * 10, // 10 minutes
+  });
+
+  const params = new URLSearchParams({
+    client_id: clientId,
+    redirect_uri: callbackUrl,
+    scope: "user:email read:user",
+    state,
+  });
+
+  return { url: `https://github.com/login/oauth/authorize?${params.toString()}` };
+}
+
 export async function logoutActionImpl() {
   await deleteSessionCookie();
   return { success: true };
@@ -392,19 +436,22 @@ export async function logoutActionImpl() {
 
 export async function handleGoogleCallbackImpl(data: { code: string; state: string }) {
   const { getCookie, deleteCookie } = await import("@tanstack/react-start/server");
-  // Verify CSRF state
   const savedState = getCookie("oauth_state");
   deleteCookie("oauth_state");
 
   if (!savedState || savedState !== data.state) {
-    throw new Error("CSRF state validation failed.");
+    throw new Error("CSRF state validation failed for Google OAuth.");
   }
 
   const clientId = process.env.GOOGLE_CLIENT_ID;
   const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
-  const callbackUrl = process.env.CALLBACK_URL;
+  const appUrl = process.env.APP_URL || "http://localhost:8080";
+  const callbackUrl =
+    process.env.GOOGLE_CALLBACK_URL ||
+    process.env.CALLBACK_URL ||
+    `${appUrl}/auth/callback?provider=google`;
 
-  if (!clientId || !clientSecret || !callbackUrl) {
+  if (!clientId || !clientSecret) {
     throw new Error("Google OAuth configuration is missing on the server.");
   }
 
@@ -451,39 +498,37 @@ export async function handleGoogleCallbackImpl(data: { code: string; state: stri
   }
 
   await connectToDatabase();
+  const normalizedEmail = googleUser.email.toLowerCase();
 
-  // Find or create user
-  let user = await User.findOne({ email: googleUser.email.toLowerCase() });
+  // Find existing user by email to perform account linking if already present
+  let user = await User.findOne({ email: normalizedEmail });
 
   if (user) {
-    // Link Google fields if not already populated
-    let updated = false;
-    if (!user.googleId) {
-      user.googleId = googleUser.sub;
-      updated = true;
-    }
+    user.googleId = googleUser.sub;
+    user.googleProfile = googleUser;
     if (!user.avatar && googleUser.picture) {
       user.avatar = googleUser.picture;
-      updated = true;
     }
-    if (user.provider !== "google") {
-      user.provider = "google";
-      updated = true;
+    user.emailVerified = true;
+    user.lastLogin = new Date();
+    if (!user.authMethod) user.authMethod = ["email"];
+    if (!user.authMethod.includes("google")) {
+      user.authMethod.push("google");
     }
-    if (updated) {
-      await user.save();
-    }
+    await user.save();
   } else {
-    const randomPassword =
-      Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
     user = new User({
       firstName: googleUser.given_name || "Google",
       lastName: googleUser.family_name || "User",
-      email: googleUser.email,
-      password: randomPassword,
+      email: normalizedEmail,
       googleId: googleUser.sub,
+      googleProfile: googleUser,
       avatar: googleUser.picture,
       provider: "google",
+      providerId: googleUser.sub,
+      emailVerified: true,
+      lastLogin: new Date(),
+      authMethod: ["google"],
       workspaceName: `${googleUser.given_name || "Google"}'s Workspace`,
     });
     await user.save();
@@ -498,4 +543,206 @@ export async function handleGoogleCallbackImpl(data: { code: string; state: stri
   await setSessionCookie(sessionToken);
 
   return { success: true, token: sessionToken };
+}
+
+export async function handleGithubCallbackImpl(data: { code: string; state: string }) {
+  const { getCookie, deleteCookie } = await import("@tanstack/react-start/server");
+  const savedState = getCookie("oauth_state");
+  deleteCookie("oauth_state");
+
+  if (!savedState || savedState !== data.state) {
+    throw new Error("CSRF state validation failed for GitHub OAuth.");
+  }
+
+  const clientId = process.env.GITHUB_CLIENT_ID;
+  const clientSecret = process.env.GITHUB_CLIENT_SECRET;
+  const appUrl = process.env.APP_URL || "http://localhost:8080";
+  const callbackUrl =
+    process.env.GITHUB_CALLBACK_URL ||
+    process.env.CALLBACK_URL ||
+    `${appUrl}/auth/callback?provider=github`;
+
+  if (!clientId || !clientSecret) {
+    throw new Error("GitHub OAuth configuration is missing on the server.");
+  }
+
+  // Exchange code for token
+  const tokenResponse = await fetch("https://github.com/login/oauth/access_token", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+      "User-Agent": "ScopeGuard-App",
+    },
+    body: JSON.stringify({
+      client_id: clientId,
+      client_secret: clientSecret,
+      code: data.code,
+      redirect_uri: callbackUrl,
+    }),
+  });
+
+  if (!tokenResponse.ok) {
+    const errText = await tokenResponse.text();
+    logger.error("GitHub token exchange failed:", errText);
+    throw new Error("Failed to exchange authorization code with GitHub.");
+  }
+
+  const tokenData = (await tokenResponse.json()) as {
+    access_token?: string;
+    error?: string;
+    error_description?: string;
+  };
+
+  if (tokenData.error || !tokenData.access_token) {
+    throw new Error(
+      `GitHub token error: ${tokenData.error_description || tokenData.error || "No access token returned"}`,
+    );
+  }
+
+  const accessToken = tokenData.access_token;
+
+  // Fetch GitHub user profile
+  const userRes = await fetch("https://api.github.com/user", {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "User-Agent": "ScopeGuard-App",
+    },
+  });
+
+  if (!userRes.ok) {
+    throw new Error("Failed to fetch user profile from GitHub.");
+  }
+
+  const ghProfile = (await userRes.json()) as {
+    id: number;
+    login: string;
+    name?: string;
+    email?: string;
+    avatar_url?: string;
+  };
+
+  let primaryEmail = ghProfile.email;
+
+  if (!primaryEmail) {
+    const emailsRes = await fetch("https://api.github.com/user/emails", {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "User-Agent": "ScopeGuard-App",
+      },
+    });
+
+    if (emailsRes.ok) {
+      const emailsList = (await emailsRes.json()) as Array<{
+        email: string;
+        primary: boolean;
+        verified: boolean;
+      }>;
+      const primaryObj =
+        emailsList.find((e) => e.primary && e.verified) ||
+        emailsList.find((e) => e.verified) ||
+        emailsList[0];
+      if (primaryObj) {
+        primaryEmail = primaryObj.email;
+      }
+    }
+  }
+
+  if (!primaryEmail) {
+    throw new Error("GitHub account does not expose a verified email address.");
+  }
+
+  await connectToDatabase();
+  const normalizedEmail = primaryEmail.toLowerCase();
+  let user = await User.findOne({ email: normalizedEmail });
+
+  const nameParts = (ghProfile.name || ghProfile.login).trim().split(/\s+/);
+  const firstName = nameParts[0] || ghProfile.login;
+  const lastName = nameParts.slice(1).join(" ") || "";
+
+  if (user) {
+    // Account Linking: existing user found with matching email
+    user.githubId = String(ghProfile.id);
+    user.githubUsername = ghProfile.login;
+    if (!user.avatar && ghProfile.avatar_url) {
+      user.avatar = ghProfile.avatar_url;
+    }
+    user.emailVerified = true;
+    user.lastLogin = new Date();
+    if (!user.authMethod) user.authMethod = ["email"];
+    if (!user.authMethod.includes("github")) {
+      user.authMethod.push("github");
+    }
+    await user.save();
+  } else {
+    user = new User({
+      firstName,
+      lastName,
+      email: normalizedEmail,
+      githubId: String(ghProfile.id),
+      githubUsername: ghProfile.login,
+      avatar: ghProfile.avatar_url,
+      provider: "github",
+      providerId: String(ghProfile.id),
+      emailVerified: true,
+      lastLogin: new Date(),
+      authMethod: ["github"],
+      workspaceName: `${firstName}'s Workspace`,
+    });
+    await user.save();
+  }
+
+  const sessionToken = await signToken({
+    userId: String(user._id),
+    email: user.email,
+  });
+
+  await setSessionCookie(sessionToken);
+
+  return { success: true, token: sessionToken };
+}
+
+export async function unlinkProviderImpl(data: { provider: "google" | "github" }) {
+  const user = await getSessionUser();
+  if (!user) {
+    throw new Error("Unauthorized");
+  }
+
+  await connectToDatabase();
+  const userDoc = await User.findById(user._id);
+  if (!userDoc) {
+    throw new Error("User not found.");
+  }
+
+  const hasPassword = Boolean(userDoc.password);
+  const hasGoogle = Boolean(userDoc.googleId);
+  const hasGithub = Boolean(userDoc.githubId);
+  const providerCount = (hasPassword ? 1 : 0) + (hasGoogle ? 1 : 0) + (hasGithub ? 1 : 0);
+
+  if (providerCount <= 1) {
+    throw new Error(
+      `Cannot disconnect ${data.provider} because it is your only login method. Set a password or connect another account first.`,
+    );
+  }
+
+  if (data.provider === "google") {
+    userDoc.googleId = undefined;
+    userDoc.googleProfile = undefined;
+    if (userDoc.authMethod) {
+      userDoc.authMethod = userDoc.authMethod.filter((m: string) => m !== "google");
+    }
+  } else if (data.provider === "github") {
+    userDoc.githubId = undefined;
+    userDoc.githubUsername = undefined;
+    if (userDoc.authMethod) {
+      userDoc.authMethod = userDoc.authMethod.filter((m: string) => m !== "github");
+    }
+  }
+
+  await userDoc.save();
+
+  return {
+    success: true,
+    message: `Successfully disconnected ${data.provider} account.`,
+  };
 }
