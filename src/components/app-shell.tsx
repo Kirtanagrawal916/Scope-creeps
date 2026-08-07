@@ -14,6 +14,7 @@ import {
   LogOut,
   ChevronsUpDown,
   Menu,
+  Keyboard,
   type LucideIcon,
 } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
@@ -24,8 +25,13 @@ import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "./ui/sheet";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { ExportButton } from "@/components/export/export-button";
+import { ExportDialog } from "@/components/export/export-dialog";
 import { NotificationBell } from "@/components/notifications/notification-bell";
 import { CommandPalette } from "@/components/command-palette";
+import {
+  KeyboardShortcutsDialog,
+  useGlobalShortcuts,
+} from "@/components/keyboard-shortcuts-dialog";
 import { getInitials } from "@/lib/formatters";
 
 interface NavItem {
@@ -202,7 +208,15 @@ export function AppShell({
 }) {
   const [open, setOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+
+  useGlobalShortcuts({
+    onOpenSearch: () => setSearchOpen(true),
+    onOpenExport: () => setExportOpen(true),
+    onOpenShortcuts: () => setShortcutsOpen(true),
+  });
 
   useEffect(() => {
     setOpen(false);
@@ -211,6 +225,8 @@ export function AppShell({
   return (
     <div className="relative flex min-h-screen w-full bg-background/80">
       <CommandPalette open={searchOpen} onOpenChange={setSearchOpen} />
+      <ExportDialog open={exportOpen} onOpenChange={setExportOpen} defaultScope="workspace" />
+      <KeyboardShortcutsDialog open={shortcutsOpen} onOpenChange={setShortcutsOpen} />
       <aside className="sticky top-0 hidden h-screen w-[248px] shrink-0 flex-col border-r border-sidebar-border bg-sidebar/90 backdrop-blur-2xl lg:flex">
         <SidebarContent onSearchClick={() => setSearchOpen(true)} />
       </aside>
@@ -266,6 +282,16 @@ export function AppShell({
               <kbd className="ml-1 rounded border border-border bg-background/60 px-1 py-[1px] font-mono text-[9px]">
                 ⌘K
               </kbd>
+            </Button>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => setShortcutsOpen(true)}
+              className="h-8 w-8 shrink-0 hidden sm:flex text-muted-foreground hover:text-foreground cursor-pointer"
+              title="Keyboard Shortcuts (?)"
+              aria-label="Keyboard Shortcuts (?)"
+            >
+              <Keyboard className="h-3.5 w-3.5" />
             </Button>
             <ThemeToggle className="hidden lg:flex" compact />
             <NotificationBell />

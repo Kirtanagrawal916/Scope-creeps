@@ -21,6 +21,7 @@ import {
 import { useState, useEffect } from "react";
 import { AppShell } from "@/components/app-shell";
 import { ExportButton } from "@/components/export/export-button";
+import { SmartEmptyState } from "@/components/smart-empty-state";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { listProjects, type SerializedProject } from "@/lib/projects.server";
@@ -711,25 +712,44 @@ function HistoryPage() {
       {/* Main List Area */}
       <div className="mt-4">
         {queryResult.analyses.length === 0 ? (
-          <div className="panel flex flex-col items-center justify-center gap-3 px-8 py-24 text-center">
-            <FolderOpen className="h-10 w-10 text-muted-foreground/30" />
-            <div className="text-[15px] font-medium">No analyses found</div>
-            <p className="max-w-xs text-[13px] text-muted-foreground">
-              Try adjusting your query, status filters, tabs, or date parameters.
-            </p>
-            {(searchParams.projectId ||
+          <SmartEmptyState
+            icon={FolderOpen}
+            title="No scope analyses found"
+            description={
+              searchParams.projectId ||
               searchParams.risk !== "all" ||
               searchParams.verdict !== "all" ||
-              searchParams.status !== "all" ||
-              searchParams.priority !== "all" ||
-              searchParams.dateStart ||
-              searchParams.dateEnd ||
-              searchParams.search) && (
-              <Button variant="outline" size="sm" onClick={resetFilters} className="mt-2">
-                Clear Filters
-              </Button>
-            )}
-          </div>
+              searchParams.search
+                ? "No analyses matched your active filters or search terms."
+                : "No AI scope scans have been generated yet. Create a project and scan client emails."
+            }
+            actionText={
+              searchParams.projectId ||
+              searchParams.risk !== "all" ||
+              searchParams.verdict !== "all" ||
+              searchParams.search
+                ? "Clear Filters"
+                : "Run first scope analysis"
+            }
+            onActionClick={
+              searchParams.projectId ||
+              searchParams.risk !== "all" ||
+              searchParams.verdict !== "all" ||
+              searchParams.search
+                ? resetFilters
+                : undefined
+            }
+            actionTo={
+              !(
+                searchParams.projectId ||
+                searchParams.risk !== "all" ||
+                searchParams.verdict !== "all" ||
+                searchParams.search
+              )
+                ? "/app"
+                : undefined
+            }
+          />
         ) : viewMode === "timeline" ? (
           /* Cards Timeline Layout */
           <div className="space-y-4">

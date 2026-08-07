@@ -15,6 +15,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useState } from "react";
+import { calculateProjectHealth } from "@/lib/health-calculator";
+import { SmartEmptyState } from "@/components/smart-empty-state";
 
 export const Route = createFileRoute("/app/projects/")({
   loader: async () => {
@@ -216,23 +218,30 @@ function ProjectsPage() {
       </div>
 
       {paginatedProjects.length === 0 ? (
-        <div className="panel flex flex-col items-center justify-center gap-3 px-8 py-20 text-center">
-          <FolderOpen className="h-10 w-10 text-muted-foreground/40" />
-          <div className="text-[15px] font-medium">No projects found</div>
-          <p className="max-w-xs text-[13px] text-muted-foreground">
-            {searchQuery || statusFilter !== "all" || riskFilter !== "all"
-              ? "Try adjusting your filters or search query."
-              : "Create your first project and upload a contract to start tracking scope."}
-          </p>
-          {!searchQuery &&
+        <SmartEmptyState
+          icon={FolderOpen}
+          title={
+            searchQuery || statusFilter !== "all" || riskFilter !== "all"
+              ? "No matching projects found"
+              : currentTab === "archived"
+                ? "No archived projects"
+                : "No active projects yet"
+          }
+          description={
+            searchQuery || statusFilter !== "all" || riskFilter !== "all"
+              ? "Try adjusting your search query, status filters, or risk level filters."
+              : "Create your first project workspace to start tracking scope and contract compliance."
+          }
+          actionText={
+            currentTab === "active" &&
+            !searchQuery &&
             statusFilter === "all" &&
-            riskFilter === "all" &&
-            currentTab === "active" && (
-              <Button size="sm" asChild>
-                <Link to="/app/projects/new">New project</Link>
-              </Button>
-            )}
-        </div>
+            riskFilter === "all"
+              ? "Create project"
+              : undefined
+          }
+          actionTo="/app/projects/new"
+        />
       ) : (
         <div className="space-y-4">
           <div className="panel overflow-hidden">
@@ -240,47 +249,73 @@ function ProjectsPage() {
               <div>Project</div>
               <div>Budget</div>
               <div>Hours</div>
-              <div>Risk</div>
+              <div>Health & Risk</div>
               <div>Status</div>
               <div />
             </div>
             <div className="divide-y divide-border">
-              {paginatedProjects.map((p) => (
-                <Link
-                  key={p.id}
-                  to="/app/projects/$id"
-                  params={{ id: p.id }}
-                  className="flex flex-col gap-3 px-4 py-4 transition-colors hover:bg-accent/40 sm:px-5 md:grid md:grid-cols-[1.6fr_1fr_1fr_1fr_1fr_auto] md:items-center md:gap-4"
-                >
-                  <div className="flex min-w-0 items-center gap-3">
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-accent text-[11px] font-medium">
-                      {p.clientInitials}
+              {paginatedProjects.map((p) => {
+                const health = calculateProjectHealth({
+                  budget: p.budget,
+                  hoursAllocated: p.hoursAllocated,
+                  hoursUsed: p.hoursUsed,
+                  progress: p.progress,
+                  status: p.status,
+                  risk: p.risk,
+                  scopeItemsCount: p.scopeItems?.length || 0,
+                  outOfScopeCount: p.outOfScope?.length || 0,
+                });
+
+                return (
+                  <Link
+                    key={p.id}
+                    to="/app/projects/$id"
+                    params={{ id: p.id }}
+                    className="flex flex-col gap-3 px-4 py-4 transition-colors hover:bg-accent/40 sm:px-5 md:grid md:grid-cols-[1.6fr_1fr_1fr_1fr_1fr_auto] md:items-center md:gap-4"
+                  >
+                    <div className="flex min-w-0 items-center gap-3">
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-accent text-[11px] font-medium">
+                        {p.clientInitials}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate text-[14px] font-medium">{p.name}</div>
+                        <div className="truncate text-[12px] text-muted-foreground">{p.client}</div>
+                      </div>
+                      <ArrowUpRight className="h-4 w-4 shrink-0 text-muted-foreground md:hidden" />
                     </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="truncate text-[14px] font-medium">{p.name}</div>
-                      <div className="truncate text-[12px] text-muted-foreground">{p.client}</div>
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-[12px] md:contents">
+                      <div className="text-[13px] tabular-nums">
+                        <span className="text-muted-foreground md:hidden">Budget: </span>
+                        {formatCurrency(p.budget, currencySymbol, locale)}
+                      </div>
+                      <div className="text-[13px] tabular-nums text-muted-foreground">
+                        {p.hoursUsed}h{" "}
+                        <span className="text-muted-foreground/60">/ {p.hoursAllocated}h</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <span
+                          className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${
+                            health.statusColor === "emerald"
+                              ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20"
+                              : health.statusColor === "blue"
+                                ? "bg-blue-500/10 text-blue-500 border-blue-500/20"
+                                : health.statusColor === "amber"
+                                  ? "bg-amber-500/10 text-amber-500 border-amber-500/20"
+                                  : "bg-rose-500/10 text-rose-500 border-rose-500/20"
+                          }`}
+                        >
+                          Health {health.healthPercent}%
+                        </span>
+                        <RiskChip level={p.risk} />
+                      </div>
+                      <div>
+                        <StatusPill status={p.status} />
+                      </div>
+                      <ArrowUpRight className="hidden h-4 w-4 text-muted-foreground md:block" />
                     </div>
-                    <ArrowUpRight className="h-4 w-4 shrink-0 text-muted-foreground md:hidden" />
-                  </div>
-                  <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-[12px] md:contents">
-                    <div className="text-[13px] tabular-nums">
-                      <span className="text-muted-foreground md:hidden">Budget: </span>
-                      {formatCurrency(p.budget, currencySymbol, locale)}
-                    </div>
-                    <div className="text-[13px] tabular-nums text-muted-foreground">
-                      {p.hoursUsed}h{" "}
-                      <span className="text-muted-foreground/60">/ {p.hoursAllocated}h</span>
-                    </div>
-                    <div>
-                      <RiskChip level={p.risk} />
-                    </div>
-                    <div>
-                      <StatusPill status={p.status} />
-                    </div>
-                    <ArrowUpRight className="hidden h-4 w-4 text-muted-foreground md:block" />
-                  </div>
-                </Link>
-              ))}
+                  </Link>
+                );
+              })}
             </div>
           </div>
 

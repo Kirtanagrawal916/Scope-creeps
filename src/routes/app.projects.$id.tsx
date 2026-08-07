@@ -29,6 +29,7 @@ import { StatusPill, RiskChip } from "@/components/status-pill";
 import { Button } from "@/components/ui/button";
 import type { ProjectStatus, RiskLevel } from "@/models/Project";
 import { formatCurrency } from "@/lib/formatters";
+import { calculateProjectHealth } from "@/lib/health-calculator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   getProject,
@@ -234,6 +235,19 @@ function ProjectDetail() {
     }
   };
 
+  const projectHealth = calculateProjectHealth({
+    budget: project.budget,
+    hoursAllocated: project.hoursAllocated,
+    hoursUsed: project.hoursUsed,
+    progress: project.progress,
+    status: project.status,
+    risk: project.risk,
+    scopeItemsCount: project.scopeItems?.length || 0,
+    outOfScopeCount: project.outOfScope?.length || 0,
+    analysesCount: projectAnalyses.length,
+    highRiskAnalysesCount: projectAnalyses.filter((a) => a.riskLevel === "high").length,
+  });
+
   return (
     <AppShell title={project.name} subtitle={`Client: ${project.client}`}>
       {/* Header Bar */}
@@ -261,6 +275,19 @@ function ProjectDetail() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          <span
+            className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${
+              projectHealth.statusColor === "emerald"
+                ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20"
+                : projectHealth.statusColor === "blue"
+                  ? "bg-blue-500/10 text-blue-500 border-blue-500/20"
+                  : projectHealth.statusColor === "amber"
+                    ? "bg-amber-500/10 text-amber-500 border-amber-500/20"
+                    : "bg-rose-500/10 text-rose-500 border-rose-500/20"
+            }`}
+          >
+            Health {projectHealth.healthPercent}% ({projectHealth.statusLabel})
+          </span>
           <StatusPill status={project.status} />
           <RiskChip level={project.risk} />
           <ExportButton
@@ -297,6 +324,42 @@ function ProjectDetail() {
               </Button>
             </>
           )}
+        </div>
+      </div>
+
+      {/* Project Health Analytics Banner */}
+      <div className="mt-4 rounded-xl border border-border/80 bg-card/60 p-4 shadow-xs backdrop-blur-md grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
+        <div>
+          <span className="text-muted-foreground block text-[11px]">Health Rating</span>
+          <span className="font-semibold text-foreground text-sm">
+            {projectHealth.healthPercent}% — {projectHealth.statusLabel}
+          </span>
+        </div>
+        <div>
+          <span className="text-muted-foreground block text-[11px]">Risk Trend</span>
+          <span
+            className={`font-semibold text-sm ${
+              projectHealth.riskTrend === "Improving"
+                ? "text-emerald-500"
+                : projectHealth.riskTrend === "Stable"
+                  ? "text-blue-500"
+                  : "text-rose-500"
+            }`}
+          >
+            {projectHealth.riskTrend}
+          </span>
+        </div>
+        <div>
+          <span className="text-muted-foreground block text-[11px]">Est. Success Rate</span>
+          <span className="font-semibold text-foreground text-sm">
+            {projectHealth.estimatedSuccessRate}%
+          </span>
+        </div>
+        <div>
+          <span className="text-muted-foreground block text-[11px]">Hours Consumption</span>
+          <span className="font-semibold text-foreground text-sm">
+            {projectHealth.budgetUsagePercent}% allocated
+          </span>
         </div>
       </div>
 

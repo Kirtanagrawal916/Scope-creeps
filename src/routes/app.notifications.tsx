@@ -20,6 +20,7 @@ import {
   RefreshCw,
 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
+import { SmartEmptyState } from "@/components/smart-empty-state";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -387,29 +388,33 @@ function NotificationsPage() {
 
         {/* Grouped Notifications List */}
         {groupedNotifications.length === 0 ? (
-          <div className="panel flex flex-col items-center justify-center p-12 text-center space-y-3">
-            <div className="h-12 w-12 rounded-full bg-accent text-muted-foreground flex items-center justify-center">
-              <Bell className="h-6 w-6 opacity-40" />
-            </div>
-            <h3 className="text-sm font-bold text-foreground">No Notifications Found</h3>
-            <p className="text-xs text-muted-foreground max-w-sm">
-              No notifications match your current filter selection. Try resetting filters or running
-              a scope analysis.
-            </p>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                setStatusFilter("all");
-                setTypeFilter("all");
-                setPriorityFilter("all");
-                setSearchQuery("");
-              }}
-              className="h-8 text-xs mt-2"
-            >
-              Reset Filters
-            </Button>
-          </div>
+          <SmartEmptyState
+            icon={Bell}
+            title="All notifications caught up"
+            description={
+              searchQuery || statusFilter !== "all" || typeFilter !== "all"
+                ? "No notifications matched your current filter criteria."
+                : "Your workspace is clear! ScopeGuard will notify you when high-risk scope changes or alerts occur."
+            }
+            actionText={
+              searchQuery || statusFilter !== "all" || typeFilter !== "all"
+                ? "Reset Filters"
+                : "Back to Dashboard"
+            }
+            onActionClick={
+              searchQuery || statusFilter !== "all" || typeFilter !== "all"
+                ? () => {
+                    setStatusFilter("all");
+                    setTypeFilter("all");
+                    setPriorityFilter("all");
+                    setSearchQuery("");
+                  }
+                : undefined
+            }
+            actionTo={
+              !(searchQuery || statusFilter !== "all" || typeFilter !== "all") ? "/app" : undefined
+            }
+          />
         ) : (
           groupedNotifications.map((group) => (
             <div key={group.label} className="space-y-3">

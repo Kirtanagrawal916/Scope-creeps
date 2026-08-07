@@ -19,6 +19,7 @@ import {
   FileText,
   Plus,
   Search,
+  FolderKanban,
 } from "lucide-react";
 import { Section } from "@/components/app-shell";
 import { AppShell } from "@/components/app-shell";
@@ -40,6 +41,11 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { useState, useMemo } from "react";
+import { calculateWorkspaceHealth, calculateProjectHealth } from "@/lib/health-calculator";
+import { ActivityTimeline, type ActivityItem } from "@/components/activity-timeline";
+import { QuickActionsPanel } from "@/components/quick-actions-panel";
+import { AIInsightsPanel } from "@/components/ai-insights-panel";
+import { SmartEmptyState } from "@/components/smart-empty-state";
 
 export const Route = createFileRoute("/app/")({
   loader: async () => {
@@ -167,6 +173,91 @@ function Dashboard() {
 
   // Total invoiced across the user's own projects, for the revenue overview panel
   const totalInvoiced = useMemo(() => projects.reduce((sum, p) => sum + p.budget, 0), [projects]);
+
+  // Workspace Health calculation
+  const workspaceHealth = useMemo(() => {
+    return calculateWorkspaceHealth({
+      totalProjects: projects.length,
+      activeProjects: projects.filter((p) => !p.archived).length,
+      archivedProjects: projects.filter((p) => p.archived).length,
+      totalAnalyses: analyses.length,
+      scopeCreepAnalyses: scopeCreepCount,
+      highRiskAnalyses: analyses.filter((a) => a.riskLevel === "high").length,
+      pendingNotifications: notifications.filter((n) => !n.isRead).length,
+      unbilledRevenue: kpis.revenueProtected,
+    });
+  }, [projects, analyses, scopeCreepCount, notifications, kpis.revenueProtected]);
+
+  // Project Health map
+  const projectHealthById = useMemo(() => {
+    const map = new Map<string, ReturnType<typeof calculateProjectHealth>>();
+    for (const p of projects) {
+      const projAnalyses = analyses.filter((a) => a.projectId === p.id);
+      map.set(
+        p.id,
+        calculateProjectHealth({
+          budget: p.budget,
+          hoursAllocated: p.hoursAllocated,
+          hoursUsed: p.hoursUsed,
+          progress: p.progress,
+          status: p.status,
+          risk: p.risk,
+          scopeItemsCount: p.scopeItems?.length || 0,
+          outOfScopeCount: p.outOfScope?.length || 0,
+          analysesCount: projAnalyses.length,
+          highRiskAnalysesCount: projAnalyses.filter((a) => a.riskLevel === "high").length,
+        }),
+      );
+    }
+    return map;
+  }, [projects, analyses]);
+
+  // Synthesize Activity Timeline items
+  const activityItems = useMemo(() => {
+    const list: ActivityItem[] = [];
+
+    for (const p of projects) {
+      list.push({
+        id: `proj-${p.id}`,
+        type: "project",
+        title: `Project "${p.name}" updated`,
+        description: `Client: ${p.client} • Status: ${p.status.replace("_", " ")}`,
+        timestamp: p.updatedAt,
+        rawDate: new Date(p.createdAt),
+        link: `/app/projects/${p.id}`,
+      });
+    }
+
+    for (const a of analyses) {
+      list.push({
+        id: `an-${a.id}`,
+        type: "analysis",
+        title: `Scope scan for ${projectNameById.get(a.projectId) || "Project"}`,
+        description:
+          a.verdict === "in_scope"
+            ? "Request confirmed in-scope."
+            : `Out-of-scope creep detected. Suggested cost: ${formatCurrency(a.suggestedCost, currencySymbol, locale)}`,
+        timestamp: a.createdAt,
+        rawDate: new Date(a.createdAtIso),
+        link: `/app/analysis/${a.id}`,
+        status: a.verdict,
+      });
+    }
+
+    for (const n of notifications) {
+      list.push({
+        id: `notif-${n.id}`,
+        type: "notification",
+        title: n.title,
+        description: n.message,
+        timestamp: n.createdAt,
+        rawDate: new Date(n.createdAtIso),
+        link: n.actionUrl || "/app/notifications",
+      });
+    }
+
+    return list;
+  }, [projects, analyses, notifications, projectNameById, currencySymbol, locale]);
 
   // 1. Dynamic Chart: Protected vs Invoiced rolling 6 months (memoized for chart performance)
   const dynamicRevenueChart = useMemo(() => {
@@ -316,6 +407,73 @@ function Dashboard() {
       action={<ExportButton defaultScope="dashboard" label="Export Dashboard Report" />}
     >
       <div className="space-y-8">
+        {/* Workspace Health & Quick Actions Header */}
+        <div className="grid gap-4 lg:grid-cols-3">
+          {/* Workspace Health Score Banner */}
+          <div className="lg:col-span-1 rounded-2xl border border-border/80 bg-card/60 p-5 shadow-xs backdrop-blur-xl flex flex-col justify-between">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Workspace Health Score
+              </span>
+              <span
+                className={`text-xs font-semibold px-2.5 py-0.5 rounded-full border ${
+                  workspaceHealth.statusColor === "emerald"
+                    ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20"
+                    : workspaceHealth.statusColor === "blue"
+                      ? "bg-blue-500/10 text-blue-500 border-blue-500/20"
+                      : workspaceHealth.statusColor === "amber"
+                        ? "bg-amber-500/10 text-amber-500 border-amber-500/20"
+                        : "bg-rose-500/10 text-rose-500 border-rose-500/20"
+                }`}
+              >
+                {workspaceHealth.status}
+              </span>
+            </div>
+
+            <div className="my-3 flex items-baseline gap-3">
+              <span className="text-4xl font-bold tracking-tight text-foreground">
+                {workspaceHealth.score}
+              </span>
+              <span className="text-sm text-muted-foreground font-medium">/ 100</span>
+              <span className="text-xs font-medium text-emerald-500 ml-auto">
+                {workspaceHealth.trend}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 text-xs pt-3 border-t border-border/40">
+              <div>
+                <span className="text-muted-foreground block text-[11px]">Resolution Rate</span>
+                <span className="font-semibold text-foreground">
+                  {workspaceHealth.resolutionRate}%
+                </span>
+              </div>
+              <div>
+                <span className="text-muted-foreground block text-[11px]">Scope Creep Rate</span>
+                <span className="font-semibold text-foreground">
+                  {workspaceHealth.scopeCreepRate}%
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Quick Shortcuts Panel */}
+          <div className="lg:col-span-2 space-y-2">
+            <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground block px-1">
+              Workspace Shortcuts & Quick Actions
+            </span>
+            <QuickActionsPanel />
+          </div>
+        </div>
+
+        {/* AI Productivity Insights */}
+        <AIInsightsPanel
+          projects={projects}
+          analyses={analyses}
+          unbilledRevenue={kpis.revenueProtected}
+          currencySymbol={currencySymbol}
+          locale={locale}
+        />
+
         <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
           <StatCard
             label="Revenue protected"
@@ -521,49 +679,70 @@ function Dashboard() {
         >
           <div className="panel divide-y divide-border overflow-hidden bg-background/50 backdrop-blur">
             {projects.length === 0 ? (
-              <div className="flex flex-col items-center justify-center gap-3 px-8 py-16 text-center">
-                <div className="text-[13px] text-muted-foreground">No projects yet</div>
-                <Button size="sm" asChild>
-                  <Link to="/app/projects/new">
-                    <Plus className="mr-1.5 h-3.5 w-3.5" /> Create your first project
-                  </Link>
-                </Button>
-              </div>
+              <SmartEmptyState
+                icon={FolderKanban}
+                title="No projects created yet"
+                description="Start protecting your freelance contract scope by creating your first project workspace."
+                actionText="Create project"
+                actionTo="/app/projects/new"
+              />
             ) : (
-              projects.slice(0, 4).map((p) => (
-                <Link
-                  key={p.id}
-                  to="/app/projects/$id"
-                  params={{ id: p.id }}
-                  className="flex items-center gap-4 px-5 py-4 transition-colors hover:bg-accent/40"
-                >
-                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-accent text-[11px] font-medium">
-                    {p.clientInitials}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="truncate text-[14px] font-medium text-foreground">{p.name}</div>
-                    <div className="mt-0.5 text-[12px] text-muted-foreground">
-                      {p.client} · updated {p.updatedAt}
+              projects.slice(0, 4).map((p) => {
+                const health = projectHealthById.get(p.id);
+                return (
+                  <Link
+                    key={p.id}
+                    to="/app/projects/$id"
+                    params={{ id: p.id }}
+                    className="flex items-center gap-4 px-5 py-4 transition-colors hover:bg-accent/40"
+                  >
+                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-accent text-[11px] font-medium">
+                      {p.clientInitials}
                     </div>
-                  </div>
-                  <div className="hidden w-40 md:block">
-                    <div className="mb-1 flex items-center justify-between text-[11px] text-muted-foreground">
-                      <span>
-                        {p.hoursUsed}h / {p.hoursAllocated}h
-                      </span>
-                      <span>{p.progress}%</span>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="truncate text-[14px] font-medium text-foreground">
+                          {p.name}
+                        </span>
+                        {health && (
+                          <span
+                            className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${
+                              health.statusColor === "emerald"
+                                ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20"
+                                : health.statusColor === "blue"
+                                  ? "bg-blue-500/10 text-blue-500 border-blue-500/20"
+                                  : health.statusColor === "amber"
+                                    ? "bg-amber-500/10 text-amber-500 border-amber-500/20"
+                                    : "bg-rose-500/10 text-rose-500 border-rose-500/20"
+                            }`}
+                          >
+                            Health {health.healthPercent}%
+                          </span>
+                        )}
+                      </div>
+                      <div className="mt-0.5 text-[12px] text-muted-foreground">
+                        {p.client} · updated {p.updatedAt}
+                      </div>
                     </div>
-                    <div className="h-1 overflow-hidden rounded-full bg-accent">
-                      <div
-                        className="h-full rounded-full bg-primary"
-                        style={{ width: `${p.progress}%` }}
-                      />
+                    <div className="hidden w-40 md:block">
+                      <div className="mb-1 flex items-center justify-between text-[11px] text-muted-foreground">
+                        <span>
+                          {p.hoursUsed}h / {p.hoursAllocated}h
+                        </span>
+                        <span>{p.progress}%</span>
+                      </div>
+                      <div className="h-1 overflow-hidden rounded-full bg-accent">
+                        <div
+                          className="h-full rounded-full bg-primary"
+                          style={{ width: `${p.progress}%` }}
+                        />
+                      </div>
                     </div>
-                  </div>
-                  <StatusPill status={p.status} />
-                  <ArrowUpRight className="h-4 w-4 text-muted-foreground" />
-                </Link>
-              ))
+                    <StatusPill status={p.status} />
+                    <ArrowUpRight className="h-4 w-4 text-muted-foreground" />
+                  </Link>
+                );
+              })
             )}
           </div>
         </Section>
@@ -790,6 +969,13 @@ function Dashboard() {
             </div>
           </Section>
         </div>
+
+        {/* Recent Activity Timeline */}
+        <Section title="Recent Activity Timeline">
+          <div className="panel p-5 bg-background/50 backdrop-blur">
+            <ActivityTimeline activities={activityItems} limit={8} />
+          </div>
+        </Section>
       </div>
     </AppShell>
   );
