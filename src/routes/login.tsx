@@ -123,7 +123,7 @@ function LoginPage() {
   }
 
   return (
-    <div className="auth-scene relative min-h-screen overflow-hidden bg-background text-foreground transition-colors duration-700">
+    <div className="auth-scene auth-paper min-h-screen bg-background text-foreground">
       <AnimatePresence mode="wait">
         <motion.div
           key="login-atmosphere"
@@ -178,7 +178,7 @@ function LoginPage() {
               <Sparkles className="h-3.5 w-3.5 text-primary" />
               Contract-aware workspace protection
             </div>
-            <h1 className="mt-8 max-w-lg font-display text-5xl font-semibold leading-[1.02] tracking-tight text-gradient sm:text-6xl">
+            <h1 className="mt-8 max-w-[11ch] text-balance font-display text-5xl font-semibold leading-[0.98] tracking-[-0.045em] text-foreground sm:text-6xl">
               Walk into the workday already protected.
             </h1>
             <p className="mt-5 max-w-md text-[15px] leading-7 text-muted-foreground">
@@ -200,7 +200,7 @@ function LoginPage() {
             {featureCards.map(({ title, detail, Icon }) => (
               <div
                 key={title}
-                className="rounded-xl border border-border bg-card/60 p-4 shadow-lg shadow-black/10 backdrop-blur-2xl"
+                className="rounded-xl border border-border bg-card/60 p-4 shadow-lg backdrop-blur-2xl"
               >
                 <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/15 text-primary">
                   <Icon className="h-4 w-4" />
@@ -221,7 +221,8 @@ function LoginPage() {
               delay: 0.12,
               ease: [0.22, 1, 0.36, 1],
             }}
-            className="auth-card w-full max-w-md p-6 sm:p-8"
+            whileHover={{ y: -2 }}
+            className="auth-card auth-paper-card lift w-full max-w-md p-6 sm:p-8"
           >
             <div className="text-center">
               <motion.div
@@ -257,7 +258,7 @@ function LoginPage() {
                     type="email"
                     placeholder="alex@studio.com"
                     defaultValue="alex@studio.com"
-                    className="h-11 rounded-lg bg-background/60 pl-10 transition-all duration-300 focus-visible:bg-background"
+                    className="h-11 rounded-lg border-border/80 bg-background/70 pl-10 shadow-sm transition-all duration-300 focus-visible:bg-background focus-visible:shadow-[0_12px_30px_-20px_var(--primary)]"
                   />
                 </div>
               </motion.div>
@@ -285,7 +286,7 @@ function LoginPage() {
                     name="password"
                     type={showPassword ? "text" : "password"}
                     defaultValue="password123"
-                    className="h-11 rounded-lg bg-background/60 pr-10 transition-all duration-300 focus-visible:bg-background"
+                    className="h-11 rounded-lg border-border/80 bg-background/70 pr-10 shadow-sm transition-all duration-300 focus-visible:bg-background focus-visible:shadow-[0_12px_30px_-20px_var(--primary)]"
                   />
                   <button
                     type="button"
@@ -373,7 +374,7 @@ function LoginPage() {
         </div>
 
         <motion.div
-          className="pointer-events-none absolute bottom-4 left-1/2 hidden w-[min(68rem,calc(100%-2rem))] -translate-x-1/2 rounded-xl border border-border bg-card/45 p-3 shadow-2xl shadow-black/10 backdrop-blur-2xl lg:block"
+          className="pointer-events-none absolute bottom-4 left-1/2 hidden w-[min(68rem,calc(100%-2rem))] -translate-x-1/2 rounded-xl border border-border bg-card/45 p-3 shadow-2xl backdrop-blur-2xl lg:block"
           initial={{ opacity: 0, y: 18 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{
