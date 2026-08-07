@@ -4,7 +4,10 @@
 
 export const PROJECT_STATUS_MAP: Record<
   string,
-  { label: string; variant: "default" | "secondary" | "destructive" | "outline" | "success" | "warning" }
+  {
+    label: string;
+    variant: "default" | "secondary" | "destructive" | "outline" | "success" | "warning";
+  }
 > = {
   on_track: { label: "On Track", variant: "success" },
   at_risk: { label: "At Risk", variant: "warning" },

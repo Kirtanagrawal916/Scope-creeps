@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { createProject } from "@/lib/projects.server";
+import { APP_CONFIG } from "@/config/app.config";
 import { type FormEvent, useState } from "react";
 
 export const Route = createFileRoute("/app/projects/new")({
@@ -20,7 +21,8 @@ function NewProjectPage() {
       currencySymbol?: string;
     } | null;
   };
-  const currencySymbol = user?.currencySymbol || "$";
+  const currencySymbol = user?.currencySymbol || APP_CONFIG.defaultCurrencySymbol;
+  const defaultHourlyRate = user?.defaultRate ?? APP_CONFIG.defaultHourlyRate;
   const nav = useNavigate();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -96,7 +98,14 @@ function NewProjectPage() {
                 <Label className="text-[12px]" htmlFor="hourlyRate">
                   Hourly rate ({currencySymbol}/h)
                 </Label>
-                <Input id="hourlyRate" name="hourlyRate" type="number" min={0} defaultValue={user?.defaultRate ?? 150} placeholder="150" />
+                <Input
+                  id="hourlyRate"
+                  name="hourlyRate"
+                  type="number"
+                  min={0}
+                  defaultValue={defaultHourlyRate}
+                  placeholder={String(defaultHourlyRate)}
+                />
               </div>
               <div className="space-y-1.5 md:col-span-2">
                 <Label className="text-[12px]" htmlFor="hoursAllocated">

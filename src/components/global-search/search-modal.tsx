@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -120,7 +120,7 @@ export function GlobalSearchModal({
     return () => clearTimeout(timer);
   }, [query, category, open, executeSearch]);
 
-  const results = response?.results || [];
+  const results = useMemo(() => response?.results || [], [response?.results]);
 
   // Keyboard navigation inside modal
   useEffect(() => {

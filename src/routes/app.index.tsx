@@ -247,7 +247,7 @@ function Dashboard() {
       ]
         .sort((a, b) => b.rawDate.getTime() - a.rawDate.getTime())
         .slice(0, 5),
-    [projects, analyses, projectNameById],
+    [projects, analyses, projectNameById, currencySymbol, locale],
   );
 
   // 3. Search, Filter, Sort, Pagination states for analyses

@@ -1,4 +1,11 @@
-import { createFileRoute, Link, notFound, useNavigate, useRouter, useRouteContext } from "@tanstack/react-router";
+import {
+  createFileRoute,
+  Link,
+  notFound,
+  useNavigate,
+  useRouter,
+  useRouteContext,
+} from "@tanstack/react-router";
 import {
   ArrowLeft,
   FileText,
@@ -20,6 +27,7 @@ import { AppShell } from "@/components/app-shell";
 import { ExportButton } from "@/components/export/export-button";
 import { StatusPill, RiskChip } from "@/components/status-pill";
 import { Button } from "@/components/ui/button";
+import type { ProjectStatus, RiskLevel } from "@/models/Project";
 import { formatCurrency } from "@/lib/formatters";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -37,7 +45,6 @@ import {
   deleteAnalysis,
   updateAnalysis,
 } from "@/lib/analyses.server";
-import type { ProjectStatus, RiskLevel } from "@/models/Project";
 import {
   Dialog,
   DialogContent,
@@ -129,8 +136,8 @@ function ProjectDetail() {
           hoursAllocated: Number(form.get("hoursAllocated") ?? 0),
           hoursUsed: Number(form.get("hoursUsed") ?? 0),
           progress: Number(form.get("progress") ?? 0),
-          status: form.get("status") as any,
-          risk: form.get("risk") as any,
+          status: (form.get("status") as ProjectStatus) || "on_track",
+          risk: (form.get("risk") as RiskLevel) || "low",
           contract: String(form.get("contract") ?? ""),
           scopeItems: String(form.get("scopeItems") ?? "")
             .split("\n")
@@ -256,7 +263,11 @@ function ProjectDetail() {
         <div className="flex flex-wrap items-center gap-2">
           <StatusPill status={project.status} />
           <RiskChip level={project.risk} />
-          <ExportButton defaultScope="project" defaultTargetId={project.id} label="Export Project" />
+          <ExportButton
+            defaultScope="project"
+            defaultTargetId={project.id}
+            label="Export Project"
+          />
 
           <Button variant="outline" size="sm" onClick={() => setIsEditOpen(true)}>
             <Edit className="mr-1.5 h-3.5 w-3.5" /> Edit
@@ -292,7 +303,11 @@ function ProjectDetail() {
       {/* KPI Stats */}
       <div className="mt-6 grid gap-3 md:grid-cols-4">
         {[
-          { icon: DollarSign, l: "Budget", v: formatCurrency(project.budget, currencySymbol, locale) },
+          {
+            icon: DollarSign,
+            l: "Budget",
+            v: formatCurrency(project.budget, currencySymbol, locale),
+          },
           {
             icon: Clock,
             l: "Hours logged",
@@ -345,7 +360,10 @@ function ProjectDetail() {
               <div className="mt-4 space-y-2 text-[13px]">
                 <div className="flex justify-between border-b border-border/40 pb-2">
                   <span className="text-muted-foreground">Hourly Rate</span>
-                  <span className="font-medium font-mono">{currencySymbol}{project.hourlyRate}/h</span>
+                  <span className="font-medium font-mono">
+                    {currencySymbol}
+                    {project.hourlyRate}/h
+                  </span>
                 </div>
                 <div className="flex justify-between border-b border-border/40 pb-2">
                   <span className="text-muted-foreground">Hours Used</span>
@@ -354,7 +372,8 @@ function ProjectDetail() {
                 <div className="flex justify-between border-b border-border/40 pb-2">
                   <span className="text-muted-foreground">Budget Utilization</span>
                   <span className="font-medium font-mono">
-                    {formatCurrency(project.hoursUsed * project.hourlyRate, currencySymbol, locale)} (
+                    {formatCurrency(project.hoursUsed * project.hourlyRate, currencySymbol, locale)}{" "}
+                    (
                     {project.budget > 0
                       ? Math.round(
                           ((project.hoursUsed * project.hourlyRate) / project.budget) * 100,

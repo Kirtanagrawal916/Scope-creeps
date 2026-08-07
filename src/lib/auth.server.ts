@@ -297,8 +297,6 @@ export async function registerUserImpl(data: {
   }
 }
 
-
-
 export async function getGoogleAuthUrlImpl() {
   const { setCookie } = await import("@tanstack/react-start/server");
   const clientId = process.env.GOOGLE_CLIENT_ID;
@@ -689,8 +687,6 @@ export async function unlinkProviderImpl(data: { provider: "google" | "github" }
     message: `Successfully disconnected ${data.provider} account.`,
   };
 }
-
-
 
 export async function updateWorkspaceSettingsImpl(data: {
   workspaceName?: string;

@@ -69,9 +69,7 @@ function SettingsPage() {
   );
 
   const connectedProviders =
-    user?.authMethod && user.authMethod.length > 0
-      ? user.authMethod
-      : [user?.provider || "email"];
+    user?.authMethod && user.authMethod.length > 0 ? user.authMethod : [user?.provider || "email"];
 
   async function handleSaveSettings(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -136,7 +134,11 @@ function SettingsPage() {
               <Row label="Default hourly rate" desc="Used for scope creep cost impact estimates.">
                 <Input
                   name="defaultRate"
-                  defaultValue={user?.defaultRate !== undefined ? user.defaultRate : APP_CONFIG.defaultHourlyRate}
+                  defaultValue={
+                    user?.defaultRate !== undefined
+                      ? user.defaultRate
+                      : APP_CONFIG.defaultHourlyRate
+                  }
                   className="w-32"
                   type="number"
                   min={0}
@@ -157,8 +159,6 @@ function SettingsPage() {
                 </Select>
               </Row>
             </div>
-
-
 
             <div className="mt-6 flex justify-end">
               <Button type="submit" disabled={isLoading}>

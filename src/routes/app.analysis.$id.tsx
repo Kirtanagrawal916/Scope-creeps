@@ -1,4 +1,10 @@
-import { createFileRoute, Link, notFound, useNavigate, useRouteContext } from "@tanstack/react-router";
+import {
+  createFileRoute,
+  Link,
+  notFound,
+  useNavigate,
+  useRouteContext,
+} from "@tanstack/react-router";
 import {
   ArrowLeft,
   ShieldCheck,

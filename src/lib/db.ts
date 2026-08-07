@@ -1,17 +1,16 @@
 import mongoose from "mongoose";
-import dns from "dns";
-import fs from "fs";
-import path from "path";
 import { logger } from "./logger";
 
-// Manual environment loader helper
-function loadEnvFile() {
-  if (process.env.MONGODB_URI) {
+// Manual environment loader helper (runs only in Node.js server environment)
+async function loadEnvFile() {
+  if (typeof window !== "undefined" || process.env.MONGODB_URI) {
     return;
   }
-  const envPath = path.resolve(process.cwd(), ".env");
-  if (fs.existsSync(envPath)) {
-    try {
+  try {
+    const path = await import("node:path");
+    const fs = await import("node:fs");
+    const envPath = path.resolve(process.cwd(), ".env");
+    if (fs.existsSync(envPath)) {
       const content = fs.readFileSync(envPath, "utf-8");
       const lines = content.split(/\r?\n/);
       for (const line of lines) {
@@ -31,16 +30,16 @@ function loadEnvFile() {
           process.env[key] = val;
         }
       }
-    } catch (e) {
-      logger.warn("Failed to load .env file manually:", e);
     }
+  } catch (e) {
+    logger.warn("Failed to load .env file manually:", e);
   }
 }
 
-// Load env file on module evaluation
-loadEnvFile();
-
-function applyDnsOverrideIfNeeded() {
+async function applyDnsOverrideIfNeeded() {
+  if (typeof window !== "undefined") {
+    return;
+  }
   const uri = process.env.MONGODB_URI;
   const shouldOverride =
     process.env.MONGODB_OVERRIDE_DNS === "true" ||
@@ -48,6 +47,7 @@ function applyDnsOverrideIfNeeded() {
 
   if (shouldOverride && uri?.startsWith("mongodb+srv://")) {
     try {
+      const dns = await import("node:dns");
       logger.log("Applying Google/Cloudflare public DNS override for MongoDB Atlas resolution...");
       dns.setServers(["8.8.8.8", "1.1.1.1"]);
     } catch (err) {
@@ -55,9 +55,6 @@ function applyDnsOverrideIfNeeded() {
     }
   }
 }
-
-// Apply DNS override at module load
-applyDnsOverrideIfNeeded();
 
 interface MongooseCache {
   conn: typeof mongoose | null;
@@ -75,8 +72,8 @@ if (!globalThis.mongooseCache) {
 const cached = globalThis.mongooseCache;
 
 export async function connectToDatabase(): Promise<typeof mongoose> {
-  loadEnvFile();
-  applyDnsOverrideIfNeeded();
+  await loadEnvFile();
+  await applyDnsOverrideIfNeeded();
 
   const uri = process.env.MONGODB_URI;
   if (!uri) {

@@ -60,11 +60,7 @@ export function formatCompactNumber(
 /**
  * Derive user initials from first name / last name or email.
  */
-export function getInitials(
-  firstName?: string,
-  lastName?: string,
-  email?: string,
-): string {
+export function getInitials(firstName?: string, lastName?: string, email?: string): string {
   if (firstName && firstName.trim()) {
     const first = firstName.trim()[0];
     const last = lastName && lastName.trim() ? lastName.trim()[0] : "";
