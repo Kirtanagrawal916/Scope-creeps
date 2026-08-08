@@ -147,7 +147,7 @@ export function performRuleBasedAnalysis(
   const executiveSummary =
     verdict === "in_scope"
       ? "The request aligns with the agreed project scope and requires no baseline budget adjustment."
-      : `The request introduces new or modified features totaling ~${additionalHours} engineering hours ($${estimatedExtraCost.toLocaleString()}).`;
+      : `The request introduces new or modified features totaling ~${additionalHours} engineering hours (₹${estimatedExtraCost.toLocaleString()}).`;
 
   const technicalExplanation =
     addedFeatures.length > 0
@@ -169,7 +169,7 @@ export function performRuleBasedAnalysis(
   const suggestedReply =
     verdict === "in_scope"
       ? `Hi ${context.clientName},\n\nThanks for reaching out! This request is fully covered within our existing scope. We will proceed as planned.\n\nBest regards,\nScopeGuard Team`
-      : `Hi ${context.clientName},\n\nThanks for sending over these details. Adding ${addedFeatures.join(", ") || "these features"} represents a scope expansion estimated at ${additionalHours} hours ($${estimatedExtraCost.toLocaleString()}) and +${timelineImpactDays} business days.\n\nWe would be happy to prepare a Change Order so we can add this to our sprint roadmap.\n\nBest regards,\nScopeGuard Team`;
+      : `Hi ${context.clientName},\n\nThanks for sending over these details. Adding ${addedFeatures.join(", ") || "these features"} represents a scope expansion estimated at ${additionalHours} hours (₹${estimatedExtraCost.toLocaleString()}) and +${timelineImpactDays} business days.\n\nWe would be happy to prepare a Change Order so we can add this to our sprint roadmap.\n\nBest regards,\nScopeGuard Team`;
 
   return {
     verdict,

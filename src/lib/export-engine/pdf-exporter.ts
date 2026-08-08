@@ -136,7 +136,7 @@ export function generatePdfBinary(payload: ExportPayload): Uint8Array {
       drawKpiCards([
         { label: "Active Projects", value: String(d.stats.totalProjects) },
         { label: "Total Analyses", value: String(d.stats.totalAnalyses) },
-        { label: "Revenue Protected", value: `$${d.stats.revenueProtected.toLocaleString()}` },
+        { label: "Revenue Protected", value: `₹${d.stats.revenueProtected.toLocaleString()}` },
         { label: "Hours Saved", value: `${d.stats.hoursSaved} hrs` },
       ]);
 
@@ -153,7 +153,7 @@ export function generatePdfBinary(payload: ExportPayload): Uint8Array {
         body: d.highRiskProjects.map((p) => [
           p.name,
           p.client,
-          `$${p.budget.toLocaleString()}`,
+          `₹${p.budget.toLocaleString()}`,
           `${p.hoursUsed} / ${p.hoursAllocated} hrs`,
           p.risk.toUpperCase(),
           p.status.toUpperCase(),
@@ -182,7 +182,7 @@ export function generatePdfBinary(payload: ExportPayload): Uint8Array {
           c.originalRequirement,
           c.changedRequirement,
           c.verdict.replace(/_/g, " ").toUpperCase(),
-          `$${c.suggestedCost.toLocaleString()}`,
+          `₹${c.suggestedCost.toLocaleString()}`,
         ]),
         theme: "striped",
         headStyles: { fillColor: [71, 85, 105], textColor: [255, 255, 255], fontStyle: "bold" },
@@ -208,8 +208,8 @@ export function generatePdfBinary(payload: ExportPayload): Uint8Array {
       y += 8;
 
       drawKpiCards([
-        { label: "Project Budget", value: `$${p.budget.toLocaleString()}` },
-        { label: "Hourly Rate", value: `$${p.hourlyRate}/hr` },
+        { label: "Project Budget", value: `₹${p.budget.toLocaleString()}` },
+        { label: "Hourly Rate", value: `₹${p.hourlyRate}/hr` },
         { label: "Hours Used", value: `${p.hoursUsed} / ${p.hoursAllocated} hrs` },
         { label: "Risk Rating", value: p.risk.toUpperCase() },
       ]);
@@ -228,7 +228,7 @@ export function generatePdfBinary(payload: ExportPayload): Uint8Array {
           a.aiSummary,
           a.verdict.replace(/_/g, " ").toUpperCase(),
           `+${a.additionalHours} hrs`,
-          `$${a.suggestedCost.toLocaleString()}`,
+          `₹${a.suggestedCost.toLocaleString()}`,
           a.createdAt,
         ]),
         theme: "striped",
@@ -258,7 +258,7 @@ export function generatePdfBinary(payload: ExportPayload): Uint8Array {
         { label: "Verdict", value: a.verdict.replace(/_/g, " ").toUpperCase() },
         { label: "AI Confidence", value: `${a.confidence}%` },
         { label: "Est. Additional Hours", value: `+${a.additionalHours} hrs` },
-        { label: "Est. Suggested Cost", value: `$${a.suggestedCost.toLocaleString()}` },
+        { label: "Est. Suggested Cost", value: `₹${a.suggestedCost.toLocaleString()}` },
       ]);
 
       // Summary Box
@@ -315,7 +315,7 @@ export function generatePdfBinary(payload: ExportPayload): Uint8Array {
           p.client,
           p.status.toUpperCase(),
           p.risk.toUpperCase(),
-          `$${p.budget.toLocaleString()}`,
+          `₹${p.budget.toLocaleString()}`,
           `${p.hoursUsed} / ${p.hoursAllocated} hrs`,
         ]),
         theme: "striped",
@@ -344,7 +344,7 @@ export function generatePdfBinary(payload: ExportPayload): Uint8Array {
           a.verdict.replace(/_/g, " ").toUpperCase(),
           `${a.confidence}%`,
           `+${a.additionalHours} hrs`,
-          `$${a.suggestedCost.toLocaleString()}`,
+          `₹${a.suggestedCost.toLocaleString()}`,
         ]),
         theme: "striped",
         headStyles: { fillColor: primaryColor, textColor: [255, 255, 255], fontStyle: "bold" },
@@ -364,7 +364,7 @@ export function generatePdfBinary(payload: ExportPayload): Uint8Array {
       y += 8;
 
       drawKpiCards([
-        { label: "Revenue Protected", value: `$${d.kpis.totalRevenueProtected.toLocaleString()}` },
+        { label: "Revenue Protected", value: `₹${d.kpis.totalRevenueProtected.toLocaleString()}` },
         { label: "Hours Saved", value: `${d.kpis.totalHoursSaved} hrs` },
         { label: "Avg Confidence", value: `${d.kpis.avgConfidenceScore}%` },
         { label: "Creep Ratio", value: `${d.kpis.scopeCreepRatio}%` },
@@ -383,7 +383,7 @@ export function generatePdfBinary(payload: ExportPayload): Uint8Array {
           m.month,
           String(m.totalAnalyses),
           String(m.scopeCreepCount),
-          `$${m.revenueProtected.toLocaleString()}`,
+          `₹${m.revenueProtected.toLocaleString()}`,
         ]),
         theme: "striped",
         headStyles: { fillColor: primaryColor, textColor: [255, 255, 255], fontStyle: "bold" },

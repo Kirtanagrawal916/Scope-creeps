@@ -68,8 +68,8 @@ SCORING & VERDICT RULES:
   const promptText = `PROJECT METADATA:
 Project Name: ${context.projectName}
 Client Name: ${context.clientName}
-Hourly Rate: $${context.hourlyRate}/hr
-Budget: $${context.budget}
+Hourly Rate: ₹${context.hourlyRate}/hr
+Budget: ₹${context.budget}
 Contract Terms: ${context.contractTerms || "Standard software development agreement"}
 
 DEFINED IN-SCOPE ITEMS:
@@ -86,7 +86,7 @@ Details:
 ${context.changedRequirement}
 """
 
-Evaluate this request carefully. Calculate estimated extra engineering hours based on industry benchmarks at $${context.hourlyRate}/hr. Return the complete structured JSON response now.`;
+Evaluate this request carefully. Calculate estimated extra engineering hours based on industry benchmarks at ₹${context.hourlyRate}/hr. Return the complete structured JSON response now.`;
 
   return { systemInstruction, promptText };
 }

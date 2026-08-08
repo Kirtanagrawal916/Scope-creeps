@@ -96,8 +96,8 @@ function ProjectDetail() {
       locale?: string;
     } | null;
   };
-  const currencySymbol = user?.currencySymbol || "$";
-  const locale = user?.locale || "en-US";
+  const currencySymbol = user?.currencySymbol || "₹";
+  const locale = user?.locale || "en-IN";
   const { project, projectEmails, projectAnalyses } = Route.useLoaderData();
   const nav = useNavigate();
   const router = useRouter();

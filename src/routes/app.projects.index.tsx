@@ -41,8 +41,8 @@ function ProjectsPage() {
       locale?: string;
     } | null;
   };
-  const currencySymbol = user?.currencySymbol || "$";
-  const locale = user?.locale || "en-US";
+  const currencySymbol = user?.currencySymbol || "₹";
+  const locale = user?.locale || "en-IN";
   const { activeProjects, archivedProjects } = Route.useLoaderData();
   const [currentTab, setCurrentTab] = useState<"active" | "archived">("active");
 

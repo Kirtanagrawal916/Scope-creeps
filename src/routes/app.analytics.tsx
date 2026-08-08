@@ -58,8 +58,8 @@ function Analytics() {
       locale?: string;
     } | null;
   };
-  const currencySymbol = user?.currencySymbol || "$";
-  const locale = user?.locale || "en-US";
+  const currencySymbol = user?.currencySymbol || "₹";
+  const locale = user?.locale || "en-IN";
   const { projects, emails, analyses } = Route.useLoaderData();
   const [timeframe, setTimeframe] = useState<"daily" | "weekly" | "monthly" | "yearly">("monthly");
 

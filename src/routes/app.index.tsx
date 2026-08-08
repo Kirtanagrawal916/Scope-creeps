@@ -109,8 +109,8 @@ function Dashboard() {
       locale?: string;
     } | null;
   };
-  const currencySymbol = user?.currencySymbol || "$";
-  const locale = user?.locale || "en-US";
+  const currencySymbol = user?.currencySymbol || "₹";
+  const locale = user?.locale || "en-IN";
   const { projects, emails, analyses, notifications } = Route.useLoaderData();
 
   const greetingName = user?.firstName || user?.email?.split("@")[0] || "there";

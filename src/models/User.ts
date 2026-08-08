@@ -67,15 +67,15 @@ const UserSchema = new Schema<IUser>(
     },
     currency: {
       type: String,
-      default: "USD",
+      default: "INR",
     },
     currencySymbol: {
       type: String,
-      default: "$",
+      default: "₹",
     },
     locale: {
       type: String,
-      default: "en-US",
+      default: "en-IN",
     },
     timezone: {
       type: String,

@@ -13,9 +13,9 @@ export const APP_CONFIG = {
   version: "1.0.0",
 
   // Workspace & Currency Defaults
-  defaultCurrency: "USD",
-  defaultCurrencySymbol: "$",
-  defaultLocale: "en-US",
+  defaultCurrency: "INR",
+  defaultCurrencySymbol: "₹",
+  defaultLocale: "en-IN",
   defaultTimezone: "UTC",
   defaultLanguage: "en",
   defaultHourlyRate: 150,

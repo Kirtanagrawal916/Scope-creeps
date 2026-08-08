@@ -134,8 +134,8 @@ function HistoryPage() {
       locale?: string;
     } | null;
   };
-  const currencySymbol = user?.currencySymbol || "$";
-  const locale = user?.locale || "en-US";
+  const currencySymbol = user?.currencySymbol || "₹";
+  const locale = user?.locale || "en-IN";
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { projects, queryResult } = Route.useLoaderData() as any;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

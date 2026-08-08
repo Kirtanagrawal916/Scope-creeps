@@ -87,8 +87,8 @@ function SettingsPage() {
           workspaceName,
           defaultRate,
           currency: selectedCurrency,
-          currencySymbol: currencyObj?.symbol || "$",
-          locale: currencyObj?.locale || "en-US",
+          currencySymbol: currencyObj?.symbol || "₹",
+          locale: currencyObj?.locale || "en-IN",
         },
       });
 

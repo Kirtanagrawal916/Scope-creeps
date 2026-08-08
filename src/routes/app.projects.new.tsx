@@ -21,8 +21,11 @@ function NewProjectPage() {
       currencySymbol?: string;
     } | null;
   };
-  const currencySymbol = user?.currencySymbol || APP_CONFIG.defaultCurrencySymbol;
-  const defaultHourlyRate = user?.defaultRate ?? APP_CONFIG.defaultHourlyRate;
+const currencySymbol =
+  user?.currencySymbol || APP_CONFIG.defaultCurrencySymbol;
+
+const defaultHourlyRate =
+  user?.defaultRate ?? APP_CONFIG.defaultHourlyRate;
   const nav = useNavigate();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);

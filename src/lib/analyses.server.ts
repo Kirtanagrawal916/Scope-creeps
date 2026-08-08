@@ -158,7 +158,7 @@ function performAnalysis(
   },
   changedRequirement: string,
   subject: string,
-  currencySymbol: string = "$",
+  currencySymbol: string = "₹",
 ) {
   const content = (subject + " " + changedRequirement).toLowerCase();
 

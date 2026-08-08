@@ -87,8 +87,8 @@ function AnalysisPage() {
       locale?: string;
     } | null;
   };
-  const currencySymbol = user?.currencySymbol || "$";
-  const locale = user?.locale || "en-US";
+  const currencySymbol = user?.currencySymbol || "₹";
+  const locale = user?.locale || "en-IN";
   const { analysis, project, email } = Route.useLoaderData();
   const [copied, setCopied] = useState(false);
   const navigate = useNavigate({ from: Route.fullPath });
