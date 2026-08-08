@@ -10,6 +10,7 @@ import { User, type IUser } from "../models/User";
 import { verifyToken, signToken } from "./jwt";
 import { comparePassword } from "./bcrypt";
 import { logger } from "./logger";
+import { getRequestStorage } from "../start";
 
 const COOKIE_NAME = "session_token";
 
@@ -41,40 +42,38 @@ export async function deleteSessionCookie() {
 /**
  * Reads the session cookie, verifies the JWT, sliding-refreshes it, and
  * returns the hydrated Mongoose user document (without the password field).
+ * Utilizes getRequestStorage for request-level caching to prevent redundant DB calls.
  */
 export async function getSessionUser(): Promise<IUser | null> {
+  const store = getRequestStorage()?.getStore();
+  if (store?.has("sessionUser")) {
+    return (store.get("sessionUser") as IUser | null) ?? null;
+  }
+
   const { getCookie } = await import("@tanstack/react-start/server");
   const token = getCookie(COOKIE_NAME);
   if (!token) {
-    logger.log("[AUTH SERVER] getSessionUser: No session token cookie found.");
+    if (store) store.set("sessionUser", null);
     return null;
   }
 
-  logger.log("[AUTH SERVER] getSessionUser: Found session token cookie. Verifying...");
   const payload = await verifyToken(token);
   if (!payload) {
     logger.warn("[AUTH SERVER] getSessionUser: Session token verification failed or expired.");
+    if (store) store.set("sessionUser", null);
     return null;
   }
 
-  logger.log(
-    "[AUTH SERVER] getSessionUser: Session token verified successfully. User ID:",
-    payload.userId,
-  );
-
-  // Sliding session: extend expiry by another 7 days on every valid request
+  // Sliding session: extend expiry by another 7 days on valid request
   try {
     const refreshed = await signToken({ userId: payload.userId, email: payload.email || "" });
     await setSessionCookie(refreshed);
-    logger.log("[AUTH SERVER] getSessionUser: Refreshed session token cookie (sliding session).");
   } catch (err) {
     logger.error("[AUTH SERVER] getSessionUser: Failed to refresh session token:", err);
   }
 
-  logger.log("[AUTH SERVER] getSessionUser: Connecting to database...");
   try {
     await connectToDatabase();
-    logger.log("[AUTH SERVER] getSessionUser: Database connected. Fetching user document...");
   } catch (dbErr) {
     logger.error(
       "[AUTH SERVER] getSessionUser: Database connection failed during user hydration:",
@@ -85,9 +84,10 @@ export async function getSessionUser(): Promise<IUser | null> {
 
   const user = await User.findById(payload.userId).select("-password");
   if (!user) {
-    logger.warn("[AUTH SERVER] getSessionUser: User not found in DB for ID:", payload.userId);
-  } else {
-    logger.log("[AUTH SERVER] getSessionUser: Successfully hydrated user details for:", user.email);
+    logger.warn("[AUTH SERVER] getSessionUser: User not found in DB.");
+  }
+  if (store) {
+    store.set("sessionUser", user);
   }
   return user;
 }

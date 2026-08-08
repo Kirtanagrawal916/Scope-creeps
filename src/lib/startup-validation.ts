@@ -20,7 +20,7 @@ export async function validateStartup() {
 
   const envPath = path.resolve(process.cwd(), ".env");
   if (!fs.existsSync(envPath)) {
-    console.error("| ❌ [Error] Environment configuration (.env) file is missing! |");
+    console.error("| ❌ [ERROR] Environment configuration (.env) file is missing! |");
     console.error("|                                                              |");
     console.error("| 👉 To configure your environment, please follow these steps: |");
     console.error("| 1. Copy the .env.example template to .env:                   |");
@@ -37,48 +37,51 @@ export async function validateStartup() {
 
   // 1. Validate MONGODB_URI
   if (!process.env.MONGODB_URI) {
-    console.error("| ❌ [Error] MONGODB_URI is not defined in .env!              |");
+    console.error("| ❌ [ERROR] MONGODB_URI is not defined in .env!               |");
     healthy = false;
   } else {
-    console.log("| ✅ MONGODB_URI is set.                                       |");
+    console.log("| [SUCCESS] MONGODB_URI is set.                                |");
   }
 
   // 2. Validate JWT_SECRET
   if (!process.env.JWT_SECRET) {
     if (isProduction) {
-      console.error("| ❌ [Error] JWT_SECRET is required in production!            |");
+      console.error("| ❌ [ERROR] JWT_SECRET is required in production!             |");
       healthy = false;
     } else {
-      console.warn("| ⚠️  [Warning] JWT_SECRET is not set. Using dev fallback key. |");
+      console.warn("| ⚠️  [WARNING] JWT_SECRET is not set. Using dev fallback key. |");
     }
   } else {
-    console.log("| ✅ JWT_SECRET is configured.                                 |");
+    console.log("| [SUCCESS] JWT_SECRET is configured.                          |");
   }
 
-  // 3. Validate Google OAuth Configuration (Optional, but checked if partially configured)
-  const oauthKeys = [
-    process.env.GOOGLE_CLIENT_ID,
-    process.env.GOOGLE_CLIENT_SECRET,
-    process.env.CALLBACK_URL,
-  ];
+  // 3. Validate Google OAuth Configuration (Supports GOOGLE_CALLBACK_URL, CALLBACK_URL, or APP_URL fallback)
+  const googleClientId = process.env.GOOGLE_CLIENT_ID;
+  const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET;
+  const googleCallbackUrl =
+    process.env.GOOGLE_CALLBACK_URL ||
+    process.env.CALLBACK_URL ||
+    (process.env.APP_URL ? `${process.env.APP_URL}/auth/callback?provider=google` : undefined);
+
+  const oauthKeys = [googleClientId, googleClientSecret, googleCallbackUrl];
   const oauthPresentCount = oauthKeys.filter(Boolean).length;
 
   if (oauthPresentCount > 0 && oauthPresentCount < 3) {
-    console.warn("| ⚠️  [Warning] Google OAuth is partially configured:          |");
-    if (!process.env.GOOGLE_CLIENT_ID) {
+    console.warn("| ⚠️  [WARNING] Google OAuth is partially configured:           |");
+    if (!googleClientId) {
       console.warn("|    - Missing GOOGLE_CLIENT_ID                                |");
     }
-    if (!process.env.GOOGLE_CLIENT_SECRET) {
+    if (!googleClientSecret) {
       console.warn("|    - Missing GOOGLE_CLIENT_SECRET                            |");
     }
-    if (!process.env.CALLBACK_URL) {
-      console.warn("|    - Missing CALLBACK_URL                                    |");
+    if (!googleCallbackUrl) {
+      console.warn("|    - Missing GOOGLE_CALLBACK_URL / CALLBACK_URL              |");
     }
     healthy = false;
   } else if (oauthPresentCount === 3) {
-    console.log("| ✅ Google OAuth is fully configured and enabled.             |");
+    console.log("| [SUCCESS] Google OAuth is fully configured and enabled.       |");
   } else {
-    console.log("| ℹ️  Google OAuth is disabled (optional credentials missing). |");
+    console.log("| [INFO] Google OAuth is disabled (optional credentials missing). |");
   }
 
   // 4. Test MongoDB Connectivity
@@ -86,10 +89,10 @@ export async function validateStartup() {
     console.log("| Testing database connection...                               |");
     try {
       await connectToDatabase();
-      console.log("| ✅ Successfully connected to MongoDB database.               |");
+      console.log("| [SUCCESS] Successfully connected to MongoDB database.        |");
     } catch (err) {
       const dbErr = err as Error;
-      console.error("| ❌ Database connection failed!                               |");
+      console.error("| ❌ [ERROR] Database connection failed!                       |");
       console.error(`|    Details: ${dbErr.message || String(err)}`);
       console.log("|                                                              |");
       console.log("| 💡 Troubleshooting Database Failures:                        |");
@@ -106,11 +109,11 @@ export async function validateStartup() {
 
   if (healthy) {
     console.log("+--------------------------------------------------------------+");
-    console.log("| 🎉 All checks passed! ScopeGuard server is ready.            |");
+    console.log("| [SUCCESS] All checks passed! ScopeGuard server is ready.     |");
     console.log("+--------------------------------------------------------------+\n");
   } else {
     console.log("+--------------------------------------------------------------+");
-    console.log("| ⚠️  Startup completed with warnings/errors. Check logs.       |");
+    console.log("| [WARNING] Startup completed with warnings/errors. Check logs. |");
     console.log("+--------------------------------------------------------------+\n");
   }
 }
