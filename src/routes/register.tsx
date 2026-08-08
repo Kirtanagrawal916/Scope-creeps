@@ -195,10 +195,10 @@ function RegisterPage() {
                     <div
                       className={`h-full transition-all duration-300 ${
                         password.length < 6
-                          ? "w-1/3 bg-rose-500"
+                          ? "w-1/3 bg-destructive"
                           : password.length < 10
-                            ? "w-2/3 bg-amber-500"
-                            : "w-full bg-emerald-500"
+                            ? "w-2/3 bg-warning"
+                            : "w-full bg-success"
                       }`}
                     />
                   </div>

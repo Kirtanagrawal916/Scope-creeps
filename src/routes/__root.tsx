@@ -8,27 +8,25 @@ import {
   Scripts,
 } from "@tanstack/react-router";
 import { useEffect, type ReactNode } from "react";
-
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { ThemeProvider } from "@/components/theme-toggle";
-import { ParticleBackdrop } from "@/components/particle-backdrop";
 
 function NotFoundComponent() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">
-        <div className="mx-auto mb-6 flex h-14 w-14 items-center justify-center rounded-2xl border border-border bg-card">
+        <div className="mx-auto mb-6 flex size-14 items-center justify-center border border-border bg-card">
           <span className="font-mono text-sm text-muted-foreground">404</span>
         </div>
-        <h1 className="text-2xl font-semibold tracking-tight text-foreground">Page not found</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">Page not found</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          The page you're looking for doesn't exist or has moved.
+          The page you&apos;re looking for doesn&apos;t exist or has moved.
         </p>
         <div className="mt-6">
           <Link
             to="/"
-            className="inline-flex items-center justify-center rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+            className="inline-flex items-center justify-center bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"
           >
             Back to home
           </Link>
@@ -37,20 +35,16 @@ function NotFoundComponent() {
     </div>
   );
 }
-
 function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   console.error(error);
   const router = useRouter();
   useEffect(() => {
     reportLovableError(error, { boundary: "tanstack_root_error_component" });
   }, [error]);
-
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">
-        <h1 className="text-xl font-semibold tracking-tight text-foreground">
-          Something went wrong
-        </h1>
+        <h1 className="text-xl font-semibold tracking-tight">Something went wrong</h1>
         <p className="mt-2 text-sm text-muted-foreground">
           Try again or head back to the dashboard.
         </p>
@@ -60,13 +54,13 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
               router.invalidate();
               reset();
             }}
-            className="inline-flex items-center justify-center rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+            className="inline-flex items-center justify-center bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"
           >
             Try again
           </button>
           <a
             href="/"
-            className="inline-flex items-center justify-center rounded-lg border border-border bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent"
+            className="inline-flex items-center justify-center border border-border bg-background px-4 py-2 text-sm font-medium"
           >
             Go home
           </a>
@@ -75,7 +69,6 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
     </div>
   );
 }
-
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
   head: () => ({
     meta: [
@@ -87,38 +80,13 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         content:
           "ScopeGuard analyzes client emails against your contract, flags scope creep, estimates cost and timeline impact, and drafts a professional reply — before you send.",
       },
-      { name: "author", content: "ScopeGuard" },
-      { property: "og:title", content: "ScopeGuard — AI change management for freelancers" },
-      {
-        property: "og:description",
-        content:
-          "ScopeGuard analyzes client emails against your contract, flags scope creep, estimates cost and timeline impact, and drafts a professional reply — before you send.",
-      },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:title", content: "ScopeGuard — AI change management for freelancers" },
-      {
-        name: "twitter:description",
-        content:
-          "ScopeGuard analyzes client emails against your contract, flags scope creep, estimates cost and timeline impact, and drafts a professional reply — before you send.",
-      },
-      {
-        property: "og:image",
-        content:
-          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/c54378a7-e82e-464d-bcd5-b6d6cb297996/id-preview-f1a37433--9bd9f55a-3493-46db-844d-4df58eb422a5.lovable.app-1783505175750.png",
-      },
-      {
-        name: "twitter:image",
-        content:
-          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/c54378a7-e82e-464d-bcd5-b6d6cb297996/id-preview-f1a37433--9bd9f55a-3493-46db-844d-4df58eb422a5.lovable.app-1783505175750.png",
-      },
     ],
     links: [
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       {
         rel: "stylesheet",
-        href: "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap",
+        href: "https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=IBM+Plex+Mono:wght@400;500&display=swap",
       },
       { rel: "stylesheet", href: appCss },
       { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
@@ -129,7 +97,6 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   notFoundComponent: NotFoundComponent,
   errorComponent: ErrorComponent,
 });
-
 function RootShell({ children }: { children: ReactNode }) {
   return (
     <html lang="en" className="dark">
@@ -143,16 +110,12 @@ function RootShell({ children }: { children: ReactNode }) {
     </html>
   );
 }
-
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
-
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
-        <div className="theme-root relative min-h-screen overflow-x-hidden bg-background text-foreground transition-colors duration-700">
-          <div className="site-atmosphere" aria-hidden="true" />
-          <ParticleBackdrop />
+        <div className="theme-root relative min-h-screen overflow-x-hidden bg-background text-foreground">
           <Outlet />
         </div>
       </ThemeProvider>

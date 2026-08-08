@@ -803,10 +803,10 @@ function HistoryPage() {
                         <span
                           className={`rounded-full px-2 py-0.5 text-[10px] font-medium border capitalize ${
                             a.priority === "high"
-                              ? "bg-red-500/10 text-red-500 border-red-500/20"
+                              ? "bg-destructive/10 text-destructive border-destructive/20"
                               : a.priority === "medium"
-                                ? "bg-yellow-500/10 text-yellow-500 border-yellow-500/20"
-                                : "bg-blue-500/10 text-blue-500 border-blue-500/20"
+                                ? "bg-warning/10 text-warning border-warning/20"
+                                : "bg-primary/10 text-primary border-primary/20"
                           }`}
                         >
                           {a.priority} Priority
@@ -990,10 +990,10 @@ function HistoryPage() {
                           <span
                             className={`text-[11px] capitalize font-medium ${
                               a.priority === "high"
-                                ? "text-red-500 font-semibold"
+                                ? "text-destructive font-semibold"
                                 : a.priority === "medium"
-                                  ? "text-yellow-500"
-                                  : "text-blue-500"
+                                  ? "text-warning"
+                                  : "text-primary"
                             }`}
                           >
                             {a.priority}
@@ -1079,7 +1079,7 @@ function HistoryPage() {
 function StatusPill({ status }: { status: "active" | "pending" | "resolved" }) {
   if (status === "active") {
     return (
-      <span className="rounded-full bg-blue-500/10 text-blue-500 border border-blue-500/20 px-2 py-0.5 text-[10px] font-semibold uppercase">
+      <span className="rounded-full bg-primary/10 text-primary border border-primary/20 px-2 py-0.5 text-[10px] font-semibold uppercase">
         Active
       </span>
     );

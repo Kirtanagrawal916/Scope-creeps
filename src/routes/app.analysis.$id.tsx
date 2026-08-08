@@ -495,18 +495,18 @@ function AnalysisPage() {
 
         {/* Missing Requirements & SOW Discrepancies */}
         {analysis.missingRequirements && analysis.missingRequirements.length > 0 && (
-          <div className="panel p-6 lg:col-span-2 bg-yellow-500/5 border-yellow-500/20">
-            <div className="text-[12px] font-medium uppercase tracking-wider text-yellow-600 border-b border-yellow-500/10 pb-2 mb-4 flex items-center gap-2">
-              <ShieldAlert className="h-4 w-4 text-yellow-600 animate-bounce" />
+          <div className="panel p-6 lg:col-span-2 bg-warning/5 border-warning/20">
+            <div className="text-[12px] font-medium uppercase tracking-wider text-warning border-b border-warning/10 pb-2 mb-4 flex items-center gap-2">
+              <ShieldAlert className="h-4 w-4 text-warning animate-bounce" />
               Missing Information Needed from Client
             </div>
             <ul className="grid gap-3 md:grid-cols-2">
               {analysis.missingRequirements.map((r: string, idx: number) => (
                 <li
                   key={idx}
-                  className="text-[13px] bg-background/50 border border-yellow-500/10 p-3 rounded-lg leading-relaxed flex items-start gap-2.5"
+                  className="text-[13px] bg-background/50 border border-warning/10 p-3 rounded-lg leading-relaxed flex items-start gap-2.5"
                 >
-                  <span className="font-bold text-[11px] bg-yellow-500/20 text-yellow-700 px-1.5 py-0.5 rounded shrink-0">
+                  <span className="font-bold text-[11px] bg-warning/20 text-warning px-1.5 py-0.5 rounded shrink-0">
                     #{idx + 1}
                   </span>
                   <span>{r}</span>

@@ -269,7 +269,7 @@ function ProfilePage() {
                   <div className="flex items-center gap-2 text-[14px] font-medium">
                     Google
                     {user?.googleId ? (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
+                      <span className="inline-flex items-center gap-1 rounded-full bg-success/15 px-2 py-0.5 text-[11px] font-medium text-success dark:text-success">
                         <CheckCircle2 className="h-3 w-3" /> Connected
                       </span>
                     ) : (
@@ -314,7 +314,7 @@ function ProfilePage() {
                   <div className="flex items-center gap-2 text-[14px] font-medium">
                     GitHub
                     {user?.githubId ? (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
+                      <span className="inline-flex items-center gap-1 rounded-full bg-success/15 px-2 py-0.5 text-[11px] font-medium text-success dark:text-success">
                         <CheckCircle2 className="h-3 w-3" /> Connected
                       </span>
                     ) : (
