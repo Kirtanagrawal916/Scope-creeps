@@ -175,9 +175,9 @@ function HealthCheckPage() {
             </div>
             <div className="flex items-center gap-3 self-start rounded-xl border border-border/40 bg-background/45 px-4 py-3 sm:self-center">
               {isAllHealthy ? (
-                <CheckCircle2 className="h-6 w-6 text-emerald-500" />
+                <CheckCircle2 className="h-6 w-6 text-success" />
               ) : (
-                <AlertTriangle className="h-6 w-6 text-amber-500" />
+                <AlertTriangle className="h-6 w-6 text-warning" />
               )}
               <div>
                 <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">
@@ -208,8 +208,8 @@ function HealthCheckPage() {
                 <h2 className="text-base font-semibold">MongoDB Connection</h2>
               </div>
               {diagnostics.database.connected ? (
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-xs font-medium text-emerald-500">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> Connected
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-success/10 px-2.5 py-0.5 text-xs font-medium text-success">
+                  <span className="h-1.5 w-1.5 rounded-full bg-success" /> Connected
                 </span>
               ) : (
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-destructive/10 px-2.5 py-0.5 text-xs font-medium text-destructive">
@@ -269,12 +269,12 @@ function HealthCheckPage() {
                 <h2 className="text-base font-semibold">JWT Signing Configurations</h2>
               </div>
               {diagnostics.jwt.configured ? (
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-xs font-medium text-emerald-500">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> Configured
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-success/10 px-2.5 py-0.5 text-xs font-medium text-success">
+                  <span className="h-1.5 w-1.5 rounded-full bg-success" /> Configured
                 </span>
               ) : (
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/10 px-2.5 py-0.5 text-xs font-medium text-amber-500">
-                  <span className="h-1.5 w-1.5 rounded-full bg-amber-500" /> Using Fallback
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-warning/10 px-2.5 py-0.5 text-xs font-medium text-warning">
+                  <span className="h-1.5 w-1.5 rounded-full bg-warning" /> Using Fallback
                 </span>
               )}
             </div>
@@ -293,8 +293,8 @@ function HealthCheckPage() {
                 </span>
               </div>
               {!diagnostics.jwt.configured && (
-                <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-4 mt-4 text-[11px] leading-relaxed">
-                  <div className="flex gap-2 text-amber-500 font-semibold">
+                <div className="rounded-xl border border-warning/20 bg-warning/5 p-4 mt-4 text-[11px] leading-relaxed">
+                  <div className="flex gap-2 text-warning font-semibold">
                     <AlertTriangle className="h-4 w-4 shrink-0" />
                     <span>Development Default Key Warning</span>
                   </div>
@@ -359,8 +359,8 @@ function HealthCheckPage() {
                 <h2 className="text-base font-semibold">Google OAuth Status</h2>
               </div>
               {diagnostics.oauth.googleConfigured ? (
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-xs font-medium text-emerald-500">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> Configured
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-success/10 px-2.5 py-0.5 text-xs font-medium text-success">
+                  <span className="h-1.5 w-1.5 rounded-full bg-success" /> Configured
                 </span>
               ) : (
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium text-muted-foreground">

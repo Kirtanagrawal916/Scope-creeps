@@ -74,7 +74,7 @@ export function ThemeToggle({
   return (
     <div
       className={cn(
-        "theme-toggle flex items-center gap-1 rounded-full border border-border bg-card/70 p-1 shadow-lg shadow-black/10 backdrop-blur-xl",
+        "theme-toggle flex items-center gap-1 rounded-full border border-border bg-card/70 p-1 shadow-sm backdrop-blur-xl",
         className,
       )}
       aria-label="Theme"

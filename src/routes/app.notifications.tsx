@@ -63,21 +63,21 @@ export const Route = createFileRoute("/app/notifications")({
 
 function getIconForType(type: string, priority: string) {
   if (type === "high_risk" || priority === "high" || priority === "urgent") {
-    return <AlertTriangle className="h-4 w-4 text-rose-500" />;
+    return <AlertTriangle className="h-4 w-4 text-destructive" />;
   }
   if (type === "project_created" || type === "project_updated" || type === "project_archived") {
-    return <FolderKanban className="h-4 w-4 text-indigo-500" />;
+    return <FolderKanban className="h-4 w-4 text-primary" />;
   }
   if (type === "scope_analysis" || type === "analysis_completed") {
-    return <Sparkles className="h-4 w-4 text-amber-500" />;
+    return <Sparkles className="h-4 w-4 text-warning" />;
   }
   if (type === "export_completed" || type === "export_failed") {
-    return <Download className="h-4 w-4 text-emerald-500" />;
+    return <Download className="h-4 w-4 text-success" />;
   }
   if (type === "security" || type === "login") {
-    return <Shield className="h-4 w-4 text-blue-500" />;
+    return <Shield className="h-4 w-4 text-primary" />;
   }
-  return <FileText className="h-4 w-4 text-slate-500" />;
+  return <FileText className="h-4 w-4 text-muted-foreground" />;
 }
 
 function NotificationsPage() {
@@ -365,7 +365,7 @@ function NotificationsPage() {
                       variant="outline"
                       size="sm"
                       onClick={handleDeleteSelected}
-                      className="h-7 text-xs text-rose-500 hover:text-rose-600"
+                      className="h-7 text-xs text-destructive hover:text-destructive"
                     >
                       <Trash2 className="mr-1 h-3 w-3" /> Delete
                     </Button>
@@ -377,7 +377,7 @@ function NotificationsPage() {
                 variant="ghost"
                 size="sm"
                 onClick={handleClearAll}
-                className="h-7 text-xs text-muted-foreground hover:text-rose-500"
+                className="h-7 text-xs text-muted-foreground hover:text-destructive"
               >
                 <XCircle className="mr-1 h-3.5 w-3.5" /> Clear All Notifications
               </Button>
@@ -447,7 +447,7 @@ function NotificationsPage() {
                               {n.title}
                             </span>
                             {n.priority === "high" || n.priority === "urgent" ? (
-                              <Badge className="bg-rose-500/10 text-rose-500 border-rose-500/20 text-[10px] px-1.5 py-0 font-semibold uppercase">
+                              <Badge className="bg-destructive/10 text-destructive border-destructive/20 text-[10px] px-1.5 py-0 font-semibold uppercase">
                                 High Risk
                               </Badge>
                             ) : null}
@@ -489,7 +489,7 @@ function NotificationsPage() {
                           size="icon"
                           title="Delete notification"
                           onClick={(e) => handleSingleDelete(n.id, e)}
-                          className="h-7 w-7 text-muted-foreground hover:text-rose-500"
+                          className="h-7 w-7 text-muted-foreground hover:text-destructive"
                         >
                           <Trash2 className="h-3.5 w-3.5" />
                         </Button>
