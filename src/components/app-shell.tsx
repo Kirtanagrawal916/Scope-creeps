@@ -14,6 +14,7 @@ import {
   LogOut,
   ChevronsUpDown,
   Menu,
+  Shield,
   type LucideIcon,
 } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
@@ -45,6 +46,8 @@ const secondary: NavItem[] = [
   { to: "/app/notifications", label: "Notifications", icon: Bell },
   { to: "/app/settings", label: "Settings", icon: Settings },
 ];
+
+const adminItem: NavItem = { to: "/app/admin", label: "Admin", icon: Shield };
 
 function NavLink({ item, onNavigate }: { item: NavItem; onNavigate?: () => void }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
@@ -88,8 +91,10 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
       firstName?: string;
       lastName?: string;
       workspaceName?: string;
+      role?: "user" | "admin";
     } | null;
   };
+  const isAdmin = user?.role === "admin";
 
   async function handleLogout() {
     try {
@@ -136,6 +141,14 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
             <NavLink key={item.to} item={item} onNavigate={onNavigate} />
           ))}
         </div>
+        {isAdmin && (
+          <div className="space-y-1">
+            <div className="px-2.5 pb-1 text-[11px] font-medium uppercase tracking-wider text-muted-foreground/70">
+              Administration
+            </div>
+            <NavLink item={adminItem} onNavigate={onNavigate} />
+          </div>
+        )}
       </nav>
 
       <div className="border-t border-sidebar-border p-3">

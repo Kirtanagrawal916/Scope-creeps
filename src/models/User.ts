@@ -11,6 +11,7 @@ export interface IUser extends Document {
   googleId?: string;
   avatar?: string;
   provider?: string;
+  role?: "user" | "admin";
   createdAt: Date;
   updatedAt: Date;
 }
@@ -63,6 +64,12 @@ const UserSchema = new Schema<IUser>(
       type: String,
       required: false,
       default: "local",
+    },
+    role: {
+      type: String,
+      enum: ["user", "admin"],
+      required: false,
+      default: "user",
     },
   },
   {

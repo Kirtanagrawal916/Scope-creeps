@@ -29,6 +29,7 @@ const checkAuth = createServerFn({ method: "GET" }).handler(async () => {
       firstName: user.firstName,
       lastName: user.lastName,
       workspaceName: user.workspaceName,
+      role: user.role ?? "user",
     },
   };
 });
