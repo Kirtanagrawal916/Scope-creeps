@@ -64,17 +64,20 @@ export const updateProfile = createServerFn({ method: "POST" })
 
 /** Build the Google OAuth redirect URL and set a CSRF state cookie. */
 export const getGoogleAuthUrl = createServerFn({ method: "GET" })
-  .validator((data?: { includeGmailScopes?: boolean }) => data)
+  .validator((data?: { includeGmailScopes?: boolean } | void) => data)
   .handler(async ({ data }) => {
     const { getGoogleAuthUrlImpl } = await import("./auth.server");
     return getGoogleAuthUrlImpl(data?.includeGmailScopes);
   });
 
 /** Build the GitHub OAuth redirect URL and set a CSRF state cookie. */
-export const getGithubAuthUrl = createServerFn({ method: "GET" }).handler(async () => {
-  const { getGithubAuthUrlImpl } = await import("./auth.server");
-  return getGithubAuthUrlImpl();
-});
+export const getGithubAuthUrl = createServerFn({ method: "GET" })
+  .validator((data?: void) => data)
+  .handler(async () => {
+    const { getGithubAuthUrlImpl } = await import("./auth.server");
+    return getGithubAuthUrlImpl();
+  });
+
 
 /** Deletes the session cookie. Called by the logout button. */
 export const logoutAction = createServerFn({ method: "POST" }).handler(async () => {

@@ -31,10 +31,11 @@ function RegisterPage() {
   ];
 
   async function handleGoogleSignUp() {
+    console.log("[OAuth] Google login initiated");
     setIsGoogleLoading(true);
     setMessage("");
     try {
-      const response = await getGoogleAuthUrl();
+      const response = await getGoogleAuthUrl({ data: {} });
       if (response && response.url) {
         window.location.href = response.url;
       } else {
@@ -49,6 +50,7 @@ function RegisterPage() {
   }
 
   async function handleGithubSignUp() {
+    console.log("[OAuth] GitHub login initiated");
     setIsGithubLoading(true);
     setMessage("");
     try {
@@ -65,6 +67,7 @@ function RegisterPage() {
       setIsGithubLoading(false);
     }
   }
+
 
   async function handleRegister(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();

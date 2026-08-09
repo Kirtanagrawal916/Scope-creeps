@@ -13,6 +13,9 @@ export default defineConfig({
     server: { entry: "server" },
   },
   vite: {
+    optimizeDeps: {
+      exclude: ["mongoose", "mongodb", "bcryptjs"],
+    },
     resolve: {
       alias: {
         "punycode/": "punycode",
@@ -20,3 +23,4 @@ export default defineConfig({
     },
   },
 });
+
