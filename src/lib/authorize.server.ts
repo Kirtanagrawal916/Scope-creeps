@@ -40,3 +40,4 @@ export async function requireAdmin(): Promise<IUser> {
   }
   return user;
 }
+

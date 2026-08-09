@@ -1,41 +1,22 @@
 import mongoose, { Schema, Document } from "mongoose";
-import { hashPassword } from "../lib/bcrypt";
 
 // 1. Define the TypeScript Interface for User Document
 export interface IUser extends Document {
   firstName?: string;
   lastName?: string;
   email: string;
-  password?: string;
+  password: string;
   workspaceName?: string;
   defaultRate?: number;
-
-  // User preferences
-  currency?: string;
-  currencySymbol?: string;
-  locale?: string;
-  timezone?: string;
-  language?: string;
-  dateFormat?: string;
-
-  // Authentication / identity
-  provider?: string;
-  providerId?: string;
   googleId?: string;
-  githubId?: string;
   avatar?: string;
-  emailVerified?: boolean;
-  githubUsername?: string;
-  googleProfile?: Record<string, unknown>;
-  lastLogin?: Date;
-  authMethod?: string[];
-
-  // Authorization
+  provider?: string;
   role?: "user" | "admin";
-
   createdAt: Date;
   updatedAt: Date;
 }
+
+import { hashPassword } from "../lib/bcrypt";
 
 // 2. Define the Mongoose Schema
 const UserSchema = new Schema<IUser>(
@@ -60,7 +41,7 @@ const UserSchema = new Schema<IUser>(
     },
     password: {
       type: String,
-      required: false,
+      required: [true, "Password is required"],
     },
     workspaceName: {
       type: String,
@@ -70,46 +51,8 @@ const UserSchema = new Schema<IUser>(
     defaultRate: {
       type: Number,
       required: false,
-      default: 150,
-    },
-    currency: {
-      type: String,
-      default: "INR",
-    },
-    currencySymbol: {
-      type: String,
-      default: "₹",
-    },
-    locale: {
-      type: String,
-      default: "en-IN",
-    },
-    timezone: {
-      type: String,
-      default: "UTC",
-    },
-    language: {
-      type: String,
-      default: "en",
-    },
-    dateFormat: {
-      type: String,
-      default: "MMM d, yyyy",
-    },
-    provider: {
-      type: String,
-      required: false,
-      default: "email",
-    },
-    providerId: {
-      type: String,
-      required: false,
     },
     googleId: {
-      type: String,
-      required: false,
-    },
-    githubId: {
       type: String,
       required: false,
     },
@@ -117,27 +60,10 @@ const UserSchema = new Schema<IUser>(
       type: String,
       required: false,
     },
-    emailVerified: {
-      type: Boolean,
-      required: false,
-      default: false,
-    },
-    githubUsername: {
+    provider: {
       type: String,
       required: false,
-    },
-    googleProfile: {
-      type: Schema.Types.Mixed,
-      required: false,
-    },
-    lastLogin: {
-      type: Date,
-      required: false,
-    },
-    authMethod: {
-      type: [String],
-      required: false,
-      default: ["email"],
+      default: "local",
     },
     role: {
       type: String,
@@ -147,19 +73,19 @@ const UserSchema = new Schema<IUser>(
     },
   },
   {
+    // Automatically manage createdAt and updatedAt fields
     timestamps: true,
   },
 );
 
 // Pre-save hook to automatically hash password before storing
 UserSchema.pre("save", async function () {
-  if (!this.password || !this.isModified("password")) {
+  if (!this.isModified("password")) {
     return;
   }
-
   this.password = await hashPassword(this.password);
 });
 
 // 3. Compile and Export the Model
 // Prevent re-compilation during hot-reloads in development.
-export const User = mongoose.models.User || mongoose.model<IUser>("User", UserSchema);
+export const User = mongoose.models.User || mongoose.model("User", UserSchema);

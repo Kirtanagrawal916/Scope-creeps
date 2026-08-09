@@ -1,4 +1,5 @@
 import { Link, useNavigate, useRouterState, useRouteContext } from "@tanstack/react-router";
+import { logoutAction } from "@/lib/auth";
 import { motion } from "framer-motion";
 import {
   LayoutDashboard,
@@ -11,9 +12,9 @@ import {
   Search,
   Plus,
   LogOut,
+  ChevronsUpDown,
   Menu,
-  Keyboard,
-  ArrowUpRight,
+  Shield,
   type LucideIcon,
 } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
@@ -24,32 +25,29 @@ import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "./ui/sheet";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { ExportButton } from "@/components/export/export-button";
-import { ExportDialog } from "@/components/export/export-dialog";
 import { NotificationBell } from "@/components/notifications/notification-bell";
-import { CommandPalette } from "@/components/command-palette";
-import {
-  KeyboardShortcutsDialog,
-  useGlobalShortcuts,
-} from "@/components/keyboard-shortcuts-dialog";
-import { getInitials } from "@/lib/formatters";
-import { logoutAction } from "@/lib/auth";
 
 interface NavItem {
   to: string;
   label: string;
   icon: LucideIcon;
+  badge?: string;
 }
+
 const primary: NavItem[] = [
-  { to: "/app", label: "Command center", icon: LayoutDashboard },
-  { to: "/app/projects", label: "Projects", icon: FolderKanban },
-  { to: "/app/inbox", label: "Inbox monitor", icon: Mail },
-  { to: "/app/history", label: "Review history", icon: Sparkles },
+  { to: "/app", label: "Dashboard", icon: LayoutDashboard },
+  { to: "/app/projects", label: "Projects", icon: FolderKanban, badge: "5" },
+  { to: "/app/inbox", label: "Email monitoring", icon: Mail, badge: "3" },
+  { to: "/app/history", label: "Analysis History", icon: Sparkles },
   { to: "/app/analytics", label: "Analytics", icon: BarChart3 },
 ];
+
 const secondary: NavItem[] = [
   { to: "/app/notifications", label: "Notifications", icon: Bell },
   { to: "/app/settings", label: "Settings", icon: Settings },
 ];
+
+const adminItem: NavItem = { to: "/app/admin", label: "Admin", icon: Shield };
 
 function NavLink({ item, onNavigate }: { item: NavItem; onNavigate?: () => void }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
@@ -60,41 +58,31 @@ function NavLink({ item, onNavigate }: { item: NavItem; onNavigate?: () => void 
       to={item.to}
       onClick={onNavigate}
       className={cn(
-        "group relative flex items-center gap-3 px-3 py-2.5 text-[12px] font-medium tracking-wide transition-colors",
+        "group relative flex items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-[13px] font-medium transition-colors",
         active
-          ? "text-sidebar-foreground"
-          : "text-sidebar-foreground/60 hover:text-sidebar-foreground",
+          ? "bg-sidebar-accent text-foreground"
+          : "text-muted-foreground hover:bg-sidebar-accent/60 hover:text-foreground",
       )}
     >
       {active && (
         <motion.div
           layoutId="nav-active"
-          className="absolute inset-y-0 left-0 w-0.5 bg-sidebar-primary"
+          className="absolute inset-0 -z-10 rounded-lg bg-sidebar-accent"
           transition={{ type: "spring", stiffness: 400, damping: 30 }}
         />
       )}
-      <Icon
-        className={cn(
-          "size-4",
-          active
-            ? "text-sidebar-primary"
-            : "text-sidebar-foreground/45 group-hover:text-sidebar-primary",
-        )}
-        strokeWidth={1.7}
-      />
-      <span>{item.label}</span>
-      {active && <ArrowUpRight className="ml-auto size-3 text-sidebar-primary" />}
+      <Icon className="h-4 w-4 shrink-0" strokeWidth={1.75} />
+      <span className="flex-1 truncate">{item.label}</span>
+      {item.badge && (
+        <span className="rounded-md bg-background/60 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+          {item.badge}
+        </span>
+      )}
     </Link>
   );
 }
 
-function Navigation({
-  onNavigate,
-  onSearchClick,
-}: {
-  onNavigate?: () => void;
-  onSearchClick?: () => void;
-}) {
+function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   const nav = useNavigate();
   const { user } = useRouteContext({ from: "/app" }) as {
     user: {
@@ -103,8 +91,11 @@ function Navigation({
       firstName?: string;
       lastName?: string;
       workspaceName?: string;
+      role?: "user" | "admin";
     } | null;
   };
+  const isAdmin = user?.role === "admin";
+
   async function handleLogout() {
     try {
       await logoutAction();
@@ -116,68 +107,81 @@ function Navigation({
     onNavigate?.();
     nav({ to: "/login" });
   }
+
   return (
-    <div className="flex h-full flex-col bg-sidebar text-sidebar-foreground">
-      <div className="border-b border-sidebar-border px-5 py-5">
-        <Logo className="[&_span]:text-sidebar-foreground" />
-        <div className="mt-5 flex items-center gap-2 text-[10px] uppercase tracking-[0.18em] text-sidebar-foreground/45">
-          <span className="size-1.5 rounded-full bg-sidebar-primary" /> Workspace /{" "}
-          {user?.workspaceName || "My studio"}
-        </div>
+    <>
+      <div className="flex items-center justify-between px-4 pt-4 pb-2">
+        <button className="flex items-center gap-2 rounded-md px-1 py-1 hover:bg-sidebar-accent">
+          <Logo />
+          <ChevronsUpDown className="h-3.5 w-3.5 text-muted-foreground" />
+        </button>
       </div>
-      <div className="px-4 py-5">
-        <button
-          type="button"
-          onClick={() => {
-            onNavigate?.();
-            onSearchClick?.();
-          }}
-          className="flex w-full items-center gap-2 border border-sidebar-border bg-sidebar-accent/40 px-3 py-2 text-left text-[11px] text-sidebar-foreground/55 transition-colors hover:border-sidebar-primary/60 hover:text-sidebar-foreground"
-          aria-label="Search ScopeGuard"
-        >
-          <Search className="size-3.5" />
-          <span>Search workspace</span>
-          <kbd className="ml-auto border border-sidebar-border px-1 py-0.5 font-mono text-[9px]">
+
+      <div className="px-3 pt-2">
+        <button className="flex w-full items-center gap-2 rounded-lg border border-sidebar-border bg-background/40 px-2.5 py-1.5 text-[13px] text-muted-foreground hover:text-foreground">
+          <Search className="h-3.5 w-3.5" />
+          <span className="flex-1 text-left">Search</span>
+          <kbd className="rounded border border-border bg-background/60 px-1.5 py-[1px] font-mono text-[10px]">
             ⌘K
           </kbd>
         </button>
       </div>
-      <nav className="flex-1 px-4">
-        <div className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-sidebar-foreground/35">
-          Workspace
+
+      <nav className="flex-1 space-y-6 overflow-y-auto px-2 py-4">
+        <div className="space-y-0.5">
+          {primary.map((item) => (
+            <NavLink key={item.to} item={item} onNavigate={onNavigate} />
+          ))}
         </div>
-        {primary.map((item) => (
-          <NavLink key={item.to} item={item} onNavigate={onNavigate} />
-        ))}
-        <div className="mb-2 mt-8 px-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-sidebar-foreground/35">
-          Account
+        <div className="space-y-1">
+          <div className="px-2.5 pb-1 text-[11px] font-medium uppercase tracking-wider text-muted-foreground/70">
+            Workspace
+          </div>
+          {secondary.map((item) => (
+            <NavLink key={item.to} item={item} onNavigate={onNavigate} />
+          ))}
         </div>
-        {secondary.map((item) => (
-          <NavLink key={item.to} item={item} onNavigate={onNavigate} />
-        ))}
+        {isAdmin && (
+          <div className="space-y-1">
+            <div className="px-2.5 pb-1 text-[11px] font-medium uppercase tracking-wider text-muted-foreground/70">
+              Administration
+            </div>
+            <NavLink item={adminItem} onNavigate={onNavigate} />
+          </div>
+        )}
       </nav>
-      <div className="border-t border-sidebar-border p-4">
-        <div className="flex items-center gap-3">
-          <Avatar className="size-8">
-            <AvatarFallback className="bg-sidebar-primary/20 text-xs text-sidebar-primary">
-              {getInitials(user?.firstName, user?.lastName, user?.email)}
+
+      <div className="border-t border-sidebar-border p-3">
+        <ThemeToggle className="mb-3 w-full justify-center bg-background/45" compact />
+        <div className="flex items-center gap-2.5 rounded-lg p-1.5 hover:bg-sidebar-accent">
+          <Avatar className="h-7 w-7">
+            <AvatarFallback className="bg-primary/20 text-[11px] font-medium text-primary">
+              {user?.firstName
+                ? `${user.firstName[0]}${user.lastName ? user.lastName[0] : ""}`.toUpperCase()
+                : "U"}
             </AvatarFallback>
           </Avatar>
-          <div className="min-w-0 flex-1">
-            <div className="truncate text-xs font-medium">{user?.firstName || "User"}</div>
-            <div className="truncate text-[10px] text-sidebar-foreground/45">{user?.email}</div>
+          <div className="min-w-0 flex-1 overflow-hidden">
+            <div className="truncate text-[13px] font-medium text-foreground">
+              {user?.firstName ? `${user.firstName} ${user.lastName ?? ""}`.trim() : "User"}
+            </div>
+            <div className="truncate text-[11px] text-muted-foreground">
+              {user?.workspaceName || "Workspace"}
+            </div>
           </div>
-          <button
-            type="button"
-            onClick={handleLogout}
-            className="text-sidebar-foreground/45 hover:text-sidebar-primary"
-            aria-label="Log out"
-          >
-            <LogOut className="size-4" />
-          </button>
+          <ChevronsUpDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
         </div>
+        <Button
+          type="button"
+          variant="ghost"
+          className="mt-2 w-full justify-start gap-2 text-muted-foreground"
+          onClick={handleLogout}
+        >
+          <LogOut className="h-4 w-4" />
+          Logout
+        </Button>
       </div>
-    </div>
+    </>
   );
 }
 
@@ -193,120 +197,77 @@ export function AppShell({
   action?: ReactNode;
 }) {
   const [open, setOpen] = useState(false);
-  const [searchOpen, setSearchOpen] = useState(false);
-  const [exportOpen, setExportOpen] = useState(false);
-  const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-
-  useGlobalShortcuts({
-    onOpenSearch: () => setSearchOpen(true),
-    onOpenExport: () => setExportOpen(true),
-    onOpenShortcuts: () => setShortcutsOpen(true),
-  });
-
   useEffect(() => {
     setOpen(false);
   }, [pathname]);
 
   return (
-    <div className="min-h-screen bg-background text-foreground selection:bg-primary/20">
-      <CommandPalette open={searchOpen} onOpenChange={setSearchOpen} />
-      <ExportDialog open={exportOpen} onOpenChange={setExportOpen} defaultScope="workspace" />
-      <KeyboardShortcutsDialog open={shortcutsOpen} onOpenChange={setShortcutsOpen} />
-      <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 lg:block">
-        <Navigation onSearchClick={() => setSearchOpen(true)} />
+    <div className="relative flex min-h-screen w-full bg-background/80">
+      <aside className="sticky top-0 hidden h-screen w-[248px] shrink-0 flex-col border-r border-sidebar-border bg-sidebar/90 backdrop-blur-2xl lg:flex">
+        <SidebarContent />
       </aside>
-      <header className="sticky top-0 z-30 border-b border-border/80 bg-background/90 backdrop-blur-md lg:ml-64">
-        <div className="flex h-16 items-center gap-3 px-4 sm:px-6">
-          <Sheet open={open} onOpenChange={setOpen}>
-            <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" className="lg:hidden" aria-label="Open menu">
-                <Menu className="size-4" />
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="left" className="w-64 border-sidebar-border p-0">
-              <SheetTitle className="sr-only">Navigation</SheetTitle>
-              <Navigation
-                onNavigate={() => setOpen(false)}
-                onSearchClick={() => setSearchOpen(true)}
-              />
-            </SheetContent>
-          </Sheet>
-          <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-            ScopeGuard / {pathname.replace("/app", "") || "overview"}
-          </div>
-          <div className="ml-auto flex items-center gap-2">
-            <ThemeToggle className="hidden sm:flex" compact />
-            <NotificationBell />
-          </div>
-        </div>
-      </header>
-      <div className="lg:ml-64">
-        <motion.div
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-          className="mx-auto flex max-w-[1440px] flex-wrap items-end justify-between gap-4 border-b border-border px-4 py-8 sm:px-6 lg:px-10"
-        >
-          <div className="min-w-0">
-            <p className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.22em] text-primary">
-              <span className="h-px w-6 bg-primary/60" />
-              Workspace brief
-            </p>
-            <h1 className="mt-3 truncate font-display text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
-              {title}
-            </h1>
-            {subtitle && (
-              <p className="mt-2.5 max-w-2xl text-sm leading-6 text-muted-foreground">{subtitle}</p>
-            )}
+
+      <div className="flex min-w-0 flex-1 flex-col">
+        <header className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-border bg-background/80 px-4 py-3 backdrop-blur-xl sm:px-6 md:px-8 md:py-4">
+          <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
+            <Sheet open={open} onOpenChange={setOpen}>
+              <SheetTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 shrink-0 lg:hidden"
+                  aria-label="Open menu"
+                >
+                  <Menu className="h-4 w-4" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent
+                side="left"
+                className="flex w-[280px] flex-col border-r border-sidebar-border bg-sidebar p-0"
+              >
+                <SheetTitle className="sr-only">Navigation</SheetTitle>
+                <SidebarContent onNavigate={() => setOpen(false)} />
+              </SheetContent>
+            </Sheet>
+            <div className="min-w-0 flex-1">
+              {title && (
+                <h1 className="truncate text-[15px] font-semibold tracking-tight text-foreground sm:text-[18px]">
+                  {title}
+                </h1>
+              )}
+              {subtitle && (
+                <p className="mt-0.5 hidden truncate text-[13px] text-muted-foreground sm:block">
+                  {subtitle}
+                </p>
+              )}
+            </div>
           </div>
           <div className="flex shrink-0 items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setSearchOpen(true)}
-              className="h-8 gap-1.5 px-2.5 text-xs text-muted-foreground flex"
-              aria-label="Search Workspace (⌘K)"
-            >
-              <Search className="h-3.5 w-3.5 text-primary" />
-              <span className="hidden sm:inline">Search...</span>
-              <kbd className="ml-1 rounded border border-border bg-background/60 px-1 py-[1px] font-mono text-[9px]">
-                ⌘K
-              </kbd>
-            </Button>
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => setShortcutsOpen(true)}
-              className="h-8 w-8 shrink-0 hidden sm:flex text-muted-foreground hover:text-foreground cursor-pointer"
-              title="Keyboard Shortcuts (?)"
-              aria-label="Keyboard Shortcuts (?)"
-            >
-              <Keyboard className="h-3.5 w-3.5" />
-            </Button>
-            {action && <div className="hidden sm:block">{action}</div>}
+            <ThemeToggle className="hidden lg:flex" compact />
+            <NotificationBell />
             <ExportButton
               defaultScope="workspace"
               label="Export"
               variant="outline"
-              className="hidden h-8 text-xs sm:flex"
+              className="h-8 text-xs font-medium hidden sm:flex"
             />
+            <div className="hidden sm:block">{action}</div>
             <Button size="sm" className="gap-1.5" asChild>
               <Link to="/app/projects/new">
-                <Plus className="size-3.5" />
+                <Plus className="h-3.5 w-3.5" />
                 <span className="hidden sm:inline">New project</span>
                 <span className="sm:hidden">New</span>
               </Link>
             </Button>
           </div>
-        </motion.div>
-        <main className="mx-auto max-w-[1440px] px-4 py-6 sm:px-6 lg:px-10 lg:py-8">
-          {children}
-        </main>
+        </header>
+        <main className="flex-1 px-4 py-6 sm:px-6 md:px-8 md:py-8">{children}</main>
       </div>
     </div>
   );
 }
+
 export function Section({
   title,
   action,
@@ -319,16 +280,14 @@ export function Section({
   className?: string;
 }) {
   return (
-    <section className={cn("flex flex-col gap-4", className)}>
+    <section className={cn("space-y-4", className)}>
       {(title || action) && (
         <div className="flex items-center justify-between gap-2">
-          <div>
-            {title && (
-              <h2 className="font-mono text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                {title}
-              </h2>
-            )}
-          </div>
+          {title && (
+            <h2 className="truncate text-[13px] font-semibold uppercase tracking-wider text-muted-foreground">
+              {title}
+            </h2>
+          )}
           {action}
         </div>
       )}
@@ -336,6 +295,7 @@ export function Section({
     </section>
   );
 }
+
 export function SparkleIcon() {
-  return <Sparkles className="size-3.5" />;
+  return <Sparkles className="h-3.5 w-3.5" />;
 }
