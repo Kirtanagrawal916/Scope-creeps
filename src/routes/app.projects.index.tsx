@@ -1,5 +1,5 @@
 import { createFileRoute, Link, notFound, useRouteContext } from "@tanstack/react-router";
-import { Search, Filter, ArrowUpRight, FolderOpen, Archive, CheckCircle2 } from "lucide-react";
+import { Search, Filter, ArrowUpRight, FolderOpen, Archive, CheckCircle2, LayoutGrid, Kanban } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { ExportButton } from "@/components/export/export-button";
 import { StatusPill, RiskChip } from "@/components/status-pill";
@@ -52,6 +52,7 @@ function ProjectsPage() {
   const [sortBy, setSortBy] = useState<"name" | "budget" | "hours" | "progress">("name");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
   const [currentPage, setCurrentPage] = useState(1);
+  const [viewMode, setViewMode] = useState<"grid" | "kanban">("grid");
 
   const projects = currentTab === "active" ? activeProjects : archivedProjects;
 
@@ -100,38 +101,58 @@ function ProjectsPage() {
     <AppShell
       title="Projects"
       subtitle="Every engagement, one source of truth."
-      action={<ExportButton defaultScope="projects_bulk" label="Export Projects Report" />}
     >
-      {/* Active vs Archived Tabs */}
-      <div className="mb-6 flex border-b border-border">
-        <button
-          onClick={() => {
-            setCurrentTab("active");
-            setCurrentPage(1);
-          }}
-          className={`flex items-center gap-2 border-b-2 px-4 py-2.5 text-[13px] font-medium transition-all ${
-            currentTab === "active"
-              ? "border-primary text-foreground"
-              : "border-transparent text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          <CheckCircle2 className="h-4 w-4" />
-          Active Projects ({activeProjects.length})
-        </button>
-        <button
-          onClick={() => {
-            setCurrentTab("archived");
-            setCurrentPage(1);
-          }}
-          className={`flex items-center gap-2 border-b-2 px-4 py-2.5 text-[13px] font-medium transition-all ${
-            currentTab === "archived"
-              ? "border-primary text-foreground"
-              : "border-transparent text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          <Archive className="h-4 w-4" />
-          Archived Projects ({archivedProjects.length})
-        </button>
+      {/* Active vs Archived Tabs & View Mode Toggle */}
+      <div className="mb-6 flex flex-wrap items-center justify-between border-b border-border gap-2">
+        <div className="flex">
+          <button
+            onClick={() => {
+              setCurrentTab("active");
+              setCurrentPage(1);
+            }}
+            className={`flex items-center gap-2 border-b-2 px-4 py-2.5 text-[13px] font-medium transition-all ${
+              currentTab === "active"
+                ? "border-primary text-foreground"
+                : "border-transparent text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <CheckCircle2 className="h-4 w-4" />
+            Active Projects ({activeProjects.length})
+          </button>
+          <button
+            onClick={() => {
+              setCurrentTab("archived");
+              setCurrentPage(1);
+            }}
+            className={`flex items-center gap-2 border-b-2 px-4 py-2.5 text-[13px] font-medium transition-all ${
+              currentTab === "archived"
+                ? "border-primary text-foreground"
+                : "border-transparent text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <Archive className="h-4 w-4" />
+            Archived Projects ({archivedProjects.length})
+          </button>
+        </div>
+
+        <div className="flex items-center gap-1 pb-2">
+          <Button
+            variant={viewMode === "grid" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setViewMode("grid")}
+            className="h-8 text-xs gap-1.5"
+          >
+            <LayoutGrid className="h-3.5 w-3.5" /> Grid View
+          </Button>
+          <Button
+            variant={viewMode === "kanban" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setViewMode("kanban")}
+            className="h-8 text-xs gap-1.5"
+          >
+            <Kanban className="h-3.5 w-3.5" /> Kanban Board
+          </Button>
+        </div>
       </div>
 
       {/* Filters Row */}
@@ -217,7 +238,96 @@ function ProjectsPage() {
         </Button>
       </div>
 
-      {paginatedProjects.length === 0 ? (
+      {viewMode === "kanban" ? (
+        <div className="grid gap-4 md:grid-cols-3">
+          {/* Column 1: On Track */}
+          <div className="panel p-4 space-y-3 bg-card/30">
+            <div className="flex items-center justify-between border-b border-border/40 pb-2">
+              <span className="text-xs font-semibold uppercase tracking-wider text-emerald-500 flex items-center gap-1.5">
+                <span className="h-2 w-2 rounded-full bg-emerald-500" /> On Track (
+                {sortedProjects.filter((p) => p.status === "on_track").length})
+              </span>
+            </div>
+            {sortedProjects
+              .filter((p) => p.status === "on_track")
+              .map((p) => (
+                <Link
+                  key={p.id}
+                  to="/app/projects/$id"
+                  params={{ id: p.id }}
+                  className="block p-3.5 rounded-xl border border-border/50 bg-background/60 hover:border-primary/50 transition-all space-y-2"
+                >
+                  <div className="font-semibold text-xs text-foreground flex items-center justify-between">
+                    <span>{p.name}</span>
+                    <span className="text-[10px] text-muted-foreground font-mono">{p.client}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+                    <span>Budget: {formatCurrency(p.budget, currencySymbol, locale)}</span>
+                    <RiskChip level={p.risk} />
+                  </div>
+                </Link>
+              ))}
+          </div>
+
+          {/* Column 2: In Progress / At Risk */}
+          <div className="panel p-4 space-y-3 bg-card/30">
+            <div className="flex items-center justify-between border-b border-border/40 pb-2">
+              <span className="text-xs font-semibold uppercase tracking-wider text-amber-500 flex items-center gap-1.5">
+                <span className="h-2 w-2 rounded-full bg-amber-500" /> At Risk / In Progress (
+                {sortedProjects.filter((p) => p.status === "at_risk" || p.status === "scope_creep").length})
+              </span>
+            </div>
+            {sortedProjects
+              .filter((p) => p.status === "at_risk" || p.status === "scope_creep")
+              .map((p) => (
+                <Link
+                  key={p.id}
+                  to="/app/projects/$id"
+                  params={{ id: p.id }}
+                  className="block p-3.5 rounded-xl border border-border/50 bg-background/60 hover:border-primary/50 transition-all space-y-2"
+                >
+                  <div className="font-semibold text-xs text-foreground flex items-center justify-between">
+                    <span>{p.name}</span>
+                    <span className="text-[10px] text-muted-foreground font-mono">{p.client}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+                    <span>Budget: {formatCurrency(p.budget, currencySymbol, locale)}</span>
+                    <RiskChip level={p.risk} />
+                  </div>
+                </Link>
+              ))}
+          </div>
+
+          {/* Column 3: Completed */}
+          <div className="panel p-4 space-y-3 bg-card/30">
+            <div className="flex items-center justify-between border-b border-border/40 pb-2">
+              <span className="text-xs font-semibold uppercase tracking-wider text-blue-500 flex items-center gap-1.5">
+                <span className="h-2 w-2 rounded-full bg-blue-500" /> Completed (
+                {sortedProjects.filter((p) => p.status === "completed").length})
+              </span>
+            </div>
+            {sortedProjects
+              .filter((p) => p.status === "completed")
+              .map((p) => (
+                <Link
+                  key={p.id}
+                  to="/app/projects/$id"
+                  params={{ id: p.id }}
+                  className="block p-3.5 rounded-xl border border-border/50 bg-background/60 hover:border-primary/50 transition-all space-y-2"
+                >
+                  <div className="font-semibold text-xs text-foreground flex items-center justify-between">
+                    <span>{p.name}</span>
+                    <span className="text-[10px] text-muted-foreground font-mono">{p.client}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+                    <span>Budget: {formatCurrency(p.budget, currencySymbol, locale)}</span>
+                    <RiskChip level={p.risk} />
+                  </div>
+                </Link>
+              ))}
+          </div>
+        </div>
+      ) : paginatedProjects.length === 0 ? (
         <SmartEmptyState
           icon={FolderOpen}
           title={

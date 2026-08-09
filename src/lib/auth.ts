@@ -63,10 +63,12 @@ export const updateProfile = createServerFn({ method: "POST" })
   });
 
 /** Build the Google OAuth redirect URL and set a CSRF state cookie. */
-export const getGoogleAuthUrl = createServerFn({ method: "GET" }).handler(async () => {
-  const { getGoogleAuthUrlImpl } = await import("./auth.server");
-  return getGoogleAuthUrlImpl();
-});
+export const getGoogleAuthUrl = createServerFn({ method: "GET" })
+  .validator((data?: { includeGmailScopes?: boolean }) => data)
+  .handler(async ({ data }) => {
+    const { getGoogleAuthUrlImpl } = await import("./auth.server");
+    return getGoogleAuthUrlImpl(data?.includeGmailScopes);
+  });
 
 /** Build the GitHub OAuth redirect URL and set a CSRF state cookie. */
 export const getGithubAuthUrl = createServerFn({ method: "GET" }).handler(async () => {

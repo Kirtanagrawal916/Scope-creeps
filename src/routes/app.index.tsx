@@ -404,7 +404,6 @@ function Dashboard() {
     <AppShell
       title={`${greeting}, ${greetingName}`}
       subtitle="Here's what's happened across your workspace today."
-      action={<ExportButton defaultScope="dashboard" label="Export Dashboard Report" />}
     >
       <div className="space-y-8">
         {/* Workspace Health & Quick Actions Header */}

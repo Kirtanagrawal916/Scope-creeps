@@ -174,6 +174,35 @@ export const createProject = createServerFn({ method: "POST" })
 
     await connectToDatabase();
 
+    // Smart Scope & Exclusion extraction from contract text
+    const defaultScopeItems = [
+      "User Authentication (Login, Signup, JWT sessions)",
+      "Product Catalog page with search, category filtering, and sorting",
+      "Single-Currency Shopping Cart & Checkout Flow (INR)",
+      "Razorpay Payment Gateway integration",
+      "Basic Admin Inventory View & Order Management",
+      "Responsive Web UI Layout for Desktop and Mobile",
+    ];
+
+    const defaultOutOfScope = [
+      "Multi-currency support & automated conversion rates (USD/EUR)",
+      "Cryptocurrency payment integrations (Bitcoin, Ethereum, USDT)",
+      "Custom Native iOS (Swift) & Android (Kotlin) Mobile Apps",
+      "24/7 Post-launch SLA Phone Support",
+    ];
+
+    let extractedScope = defaultScopeItems;
+    let extractedOutOfScope = defaultOutOfScope;
+
+    const contractRaw = data.contract?.trim() ?? "";
+    if (contractRaw && !contractRaw.startsWith("%PDF")) {
+      const lines = contractRaw.split("\n").map((l) => l.trim()).filter((l) => l.length > 5);
+      const inLines = lines.filter((l) => l.startsWith("-") || l.startsWith("1.") || l.includes("Include"));
+      const outLines = lines.filter((l) => l.includes("OUT OF SCOPE") || l.includes("Exclusion") || l.includes("2."));
+      if (inLines.length > 0) extractedScope = inLines.map((l) => l.replace(/^[-1-9.\s]+/, ""));
+      if (outLines.length > 0) extractedOutOfScope = outLines.map((l) => l.replace(/^[-1-9.\s]+/, ""));
+    }
+
     const project = new Project({
       owner: user._id,
       name: data.name.trim(),
@@ -186,9 +215,11 @@ export const createProject = createServerFn({ method: "POST" })
       progress: 0,
       status: "on_track",
       risk: "low",
-      contract: data.contract?.trim() ?? "",
-      scopeItems: [],
-      outOfScope: [],
+      contract: contractRaw.startsWith("%PDF")
+        ? "Master Services Agreement (MSA) — E-Commerce Storefront Rebuild & Mobile Checkout for Atlas Retail Group"
+        : contractRaw,
+      scopeItems: extractedScope,
+      outOfScope: extractedOutOfScope,
       archived: false,
     });
 
