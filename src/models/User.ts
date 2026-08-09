@@ -1,4 +1,5 @@
 import mongoose, { Schema, Document } from "mongoose";
+import { hashPassword } from "../lib/bcrypt";
 
 // 1. Define the TypeScript Interface for User Document
 export interface IUser extends Document {
@@ -8,12 +9,16 @@ export interface IUser extends Document {
   password?: string;
   workspaceName?: string;
   defaultRate?: number;
+
+  // User preferences
   currency?: string;
   currencySymbol?: string;
   locale?: string;
   timezone?: string;
   language?: string;
   dateFormat?: string;
+
+  // Authentication / identity
   provider?: string;
   providerId?: string;
   googleId?: string;
@@ -24,11 +29,13 @@ export interface IUser extends Document {
   googleProfile?: Record<string, unknown>;
   lastLogin?: Date;
   authMethod?: string[];
+
+  // Authorization
+  role?: "user" | "admin";
+
   createdAt: Date;
   updatedAt: Date;
 }
-
-import { hashPassword } from "../lib/bcrypt";
 
 // 2. Define the Mongoose Schema
 const UserSchema = new Schema<IUser>(
@@ -132,9 +139,14 @@ const UserSchema = new Schema<IUser>(
       required: false,
       default: ["email"],
     },
+    role: {
+      type: String,
+      enum: ["user", "admin"],
+      required: false,
+      default: "user",
+    },
   },
   {
-    // Automatically manage createdAt and updatedAt fields
     timestamps: true,
   },
 );
@@ -144,9 +156,11 @@ UserSchema.pre("save", async function () {
   if (!this.password || !this.isModified("password")) {
     return;
   }
+
   this.password = await hashPassword(this.password);
 });
 
 // 3. Compile and Export the Model
-// Note: We check mongoose.models.User first to prevent re-compilation during hot-reloads in development.
-export const User = mongoose.models.User || mongoose.model<IUser>("User", UserSchema);
+// Prevent re-compilation during hot-reloads in development.
+export const User =
+  mongoose.models.User || mongoose.model<IUser>("User", UserSchema);

@@ -23,6 +23,7 @@ import { Route as AppNotificationsRouteImport } from './routes/app.notifications
 import { Route as AppInboxRouteImport } from './routes/app.inbox'
 import { Route as AppHistoryRouteImport } from './routes/app.history'
 import { Route as AppAnalyticsRouteImport } from './routes/app.analytics'
+import { Route as AppAdminRouteImport } from './routes/app.admin'
 import { Route as AppProjectsIndexRouteImport } from './routes/app.projects.index'
 import { Route as AppProjectsNewRouteImport } from './routes/app.projects.new'
 import { Route as AppProjectsIdRouteImport } from './routes/app.projects.$id'
@@ -98,6 +99,11 @@ const AppAnalyticsRoute = AppAnalyticsRouteImport.update({
   path: '/analytics',
   getParentRoute: () => AppRoute,
 } as any)
+const AppAdminRoute = AppAdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppProjectsIndexRoute = AppProjectsIndexRouteImport.update({
   id: '/projects/',
   path: '/projects/',
@@ -126,6 +132,7 @@ export interface FileRoutesByFullPath {
   '/health': typeof HealthRoute
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
+  '/app/admin': typeof AppAdminRoute
   '/app/analytics': typeof AppAnalyticsRoute
   '/app/history': typeof AppHistoryRoute
   '/app/inbox': typeof AppInboxRoute
@@ -145,6 +152,7 @@ export interface FileRoutesByTo {
   '/health': typeof HealthRoute
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
+  '/app/admin': typeof AppAdminRoute
   '/app/analytics': typeof AppAnalyticsRoute
   '/app/history': typeof AppHistoryRoute
   '/app/inbox': typeof AppInboxRoute
@@ -166,6 +174,7 @@ export interface FileRoutesById {
   '/health': typeof HealthRoute
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
+  '/app/admin': typeof AppAdminRoute
   '/app/analytics': typeof AppAnalyticsRoute
   '/app/history': typeof AppHistoryRoute
   '/app/inbox': typeof AppInboxRoute
@@ -188,6 +197,7 @@ export interface FileRouteTypes {
     | '/health'
     | '/login'
     | '/register'
+    | '/app/admin'
     | '/app/analytics'
     | '/app/history'
     | '/app/inbox'
@@ -207,6 +217,7 @@ export interface FileRouteTypes {
     | '/health'
     | '/login'
     | '/register'
+    | '/app/admin'
     | '/app/analytics'
     | '/app/history'
     | '/app/inbox'
@@ -227,6 +238,7 @@ export interface FileRouteTypes {
     | '/health'
     | '/login'
     | '/register'
+    | '/app/admin'
     | '/app/analytics'
     | '/app/history'
     | '/app/inbox'
@@ -351,6 +363,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAnalyticsRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/admin': {
+      id: '/app/admin'
+      path: '/admin'
+      fullPath: '/app/admin'
+      preLoaderRoute: typeof AppAdminRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/projects/': {
       id: '/app/projects/'
       path: '/projects'
@@ -383,6 +402,7 @@ declare module '@tanstack/react-router' {
 }
 
 interface AppRouteChildren {
+  AppAdminRoute: typeof AppAdminRoute
   AppAnalyticsRoute: typeof AppAnalyticsRoute
   AppHistoryRoute: typeof AppHistoryRoute
   AppInboxRoute: typeof AppInboxRoute
@@ -397,6 +417,7 @@ interface AppRouteChildren {
 }
 
 const AppRouteChildren: AppRouteChildren = {
+  AppAdminRoute: AppAdminRoute,
   AppAnalyticsRoute: AppAnalyticsRoute,
   AppHistoryRoute: AppHistoryRoute,
   AppInboxRoute: AppInboxRoute,

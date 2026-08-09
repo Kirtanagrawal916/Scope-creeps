@@ -29,6 +29,7 @@ const checkAuth = createServerFn({ method: "GET" }).handler(async () => {
       firstName: user.firstName,
       lastName: user.lastName,
       workspaceName: user.workspaceName || "Workspace",
+      role: user.role ?? "user",
       defaultRate: user.defaultRate ?? 150,
       currency: user.currency || "INR",
       currencySymbol: user.currencySymbol || "₹",
@@ -36,6 +37,7 @@ const checkAuth = createServerFn({ method: "GET" }).handler(async () => {
       timezone: user.timezone || "UTC",
       language: user.language || "en",
       dateFormat: user.dateFormat || "MMM d, yyyy",
+
     },
   };
 });
