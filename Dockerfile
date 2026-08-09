@@ -12,7 +12,7 @@ RUN apk add --no-libc6-compat python3 make g++
 
 # Copy package manifests
 COPY package.json package-lock.json ./
-RUN npm ci
+RUN npm install
 
 # Copy full application source
 COPY . .
