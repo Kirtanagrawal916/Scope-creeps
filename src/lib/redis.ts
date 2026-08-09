@@ -55,7 +55,7 @@ class InMemoryRedisMock {
 
 class RedisManager {
   private mock = new InMemoryRedisMock();
-  private redisClient: any = null;
+  private redisClient: unknown = null;
   private connected = false;
 
   constructor() {
@@ -65,13 +65,15 @@ class RedisManager {
   private async init() {
     if (process.env.REDIS_URL || process.env.REDIS_HOST) {
       try {
-        // Optional ioredis connection if environment is configured
+        // @ts-expect-error - ioredis optional dependency
         const { default: Redis } = await import("ioredis");
-        this.redisClient = new Redis(process.env.REDIS_URL || {
-          host: process.env.REDIS_HOST || "localhost",
-          port: Number(process.env.REDIS_PORT) || 6379,
-          retryStrategy: (times) => Math.min(times * 100, 3000),
-        });
+        this.redisClient = new Redis(
+          process.env.REDIS_URL || {
+            host: process.env.REDIS_HOST || "localhost",
+            port: Number(process.env.REDIS_PORT) || 6379,
+            retryStrategy: (times: number) => Math.min(times * 100, 3000),
+          },
+        );
         this.redisClient.on("connect", () => {
           this.connected = true;
           console.log("[Redis] Connected successfully to Redis server.");
@@ -89,8 +91,8 @@ class RedisManager {
   async get(key: string): Promise<string | null> {
     if (this.connected && this.redisClient) {
       try {
-        return await this.redisClient.get(key);
-      } catch (e) {
+        return await (this.redisClient as Record<string, (...args: unknown[]) => unknown>).get(key);
+      } catch {
         return this.mock.get(key);
       }
     }
@@ -100,11 +102,12 @@ class RedisManager {
   async set(key: string, value: string, mode?: string, duration?: number): Promise<string> {
     if (this.connected && this.redisClient) {
       try {
+        const client = this.redisClient as Record<string, (...args: unknown[]) => unknown>;
         if (mode === "EX" && duration) {
-          return await this.redisClient.set(key, value, "EX", duration);
+          return await client.set(key, value, "EX", duration);
         }
-        return await this.redisClient.set(key, value);
-      } catch (e) {
+        return await client.set(key, value);
+      } catch {
         return this.mock.set(key, value, mode, duration);
       }
     }
@@ -114,8 +117,8 @@ class RedisManager {
   async del(key: string): Promise<number> {
     if (this.connected && this.redisClient) {
       try {
-        return await this.redisClient.del(key);
-      } catch (e) {
+        return await (this.redisClient as Record<string, (...args: unknown[]) => unknown>).del(key);
+      } catch {
         return this.mock.del(key);
       }
     }

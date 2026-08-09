@@ -94,7 +94,6 @@ function LoginPage() {
     }
   }
 
-
   async function handleLogin(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setMessage("");

@@ -3,7 +3,8 @@ import dns from "dns";
 
 dns.setServers(["8.8.8.8", "1.1.1.1"]);
 
-const MONGODB_URI = "mongodb+srv://kirtanagrawal169_db_user:Kirtan%40svnit25-29@scopeguard-cluster.eou5ord.mongodb.net/?appName=scopeguard-cluster";
+const MONGODB_URI =
+  "mongodb+srv://kirtanagrawal169_db_user:Kirtan%40svnit25-29@scopeguard-cluster.eou5ord.mongodb.net/?appName=scopeguard-cluster";
 
 async function clearUsers() {
   try {

@@ -8,7 +8,7 @@ export interface AuditLogEntry {
   ipAddress: string;
   severity: "INFO" | "WARN" | "ERROR" | "CRITICAL";
   details: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 class AuditLogsEngine {

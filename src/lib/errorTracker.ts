@@ -10,7 +10,7 @@ export interface TrackedError {
   count: number;
   environment: string;
   handled: boolean;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 class ErrorTrackerEngine {
@@ -54,7 +54,7 @@ class ErrorTrackerEngine {
     options?: {
       path?: string;
       severity?: TrackedError["severity"];
-      metadata?: Record<string, any>;
+      metadata?: Record<string, unknown>;
     },
   ): TrackedError {
     const message = typeof err === "string" ? err : err.message || "Unknown Runtime Error";
@@ -64,9 +64,7 @@ class ErrorTrackerEngine {
 
     // Deduplicate by message & path
     const key = `${message}:${path}`;
-    const existing = Array.from(this.errors.values()).find(
-      (e) => `${e.message}:${e.path}` === key,
-    );
+    const existing = Array.from(this.errors.values()).find((e) => `${e.message}:${e.path}` === key);
 
     if (existing) {
       existing.count += 1;

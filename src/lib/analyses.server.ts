@@ -1096,7 +1096,9 @@ export const bulkDeleteAnalyses = createServerFn({ method: "POST" })
       .select("emailId")
       .lean();
 
-    const emailIds = analysesToToggle.map((a) => a.emailId).filter(Boolean);
+    const emailIds = analysesToToggle
+      .map((a) => a.emailId)
+      .filter((id): id is NonNullable<typeof id> => Boolean(id));
 
     // Perform bulk delete
     const result = await Analysis.deleteMany({

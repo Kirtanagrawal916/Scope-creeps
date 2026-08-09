@@ -1,4 +1,4 @@
-import mongoose, { Schema, Document, Types } from "mongoose";
+import type { Document, Model, Types } from "mongoose";
 
 export type AuditAction =
   | "admin_login"
@@ -23,46 +23,55 @@ export interface IAuditLog extends Document {
   updatedAt: Date;
 }
 
-const AuditLogSchema = new Schema<IAuditLog>(
-  {
-    actorId: {
-      type: Schema.Types.ObjectId,
-      ref: "User",
-      required: true,
-      index: true,
-    },
-    // Denormalized so the log entry stays readable even if the actor's
-    // email later changes.
-    actorEmail: { type: String, required: true, trim: true },
-    action: {
-      type: String,
-      required: true,
-      enum: [
-        "admin_login",
-        "user_updated",
-        "user_role_changed",
-        "user_activated",
-        "user_deactivated",
-        "feature_flag_toggled",
-        "feature_flag_created",
-      ],
-      index: true,
-    },
-    targetType: {
-      type: String,
-      enum: ["user", "feature_flag", "system"],
-      required: false,
-    },
-    targetId: { type: String, required: false },
-    message: { type: String, required: true, trim: true },
-    metadata: { type: Schema.Types.Mixed, required: false },
-  },
-  {
-    timestamps: true,
-  },
-);
+let AuditLog: Model<IAuditLog>;
 
-AuditLogSchema.index({ createdAt: -1 });
+if (typeof window !== "undefined") {
+  AuditLog = {} as Model<IAuditLog>;
+} else {
+  const mongooseMod = await import("mongoose");
+  const mongoose = mongooseMod.default || mongooseMod;
+  const Schema = mongoose.Schema;
 
-export const AuditLog =
-  mongoose.models.AuditLog || mongoose.model<IAuditLog>("AuditLog", AuditLogSchema);
+  const AuditLogSchema = new Schema<IAuditLog>(
+    {
+      actorId: {
+        type: Schema.Types.ObjectId,
+        ref: "User",
+        required: true,
+        index: true,
+      },
+      actorEmail: { type: String, required: true, trim: true },
+      action: {
+        type: String,
+        required: true,
+        enum: [
+          "admin_login",
+          "user_updated",
+          "user_role_changed",
+          "user_activated",
+          "user_deactivated",
+          "feature_flag_toggled",
+          "feature_flag_created",
+        ],
+        index: true,
+      },
+      targetType: {
+        type: String,
+        enum: ["user", "feature_flag", "system"],
+        required: false,
+      },
+      targetId: { type: String, required: false },
+      message: { type: String, required: true, trim: true },
+      metadata: { type: Schema.Types.Mixed, required: false },
+    },
+    {
+      timestamps: true,
+    },
+  );
+
+  AuditLogSchema.index({ createdAt: -1 });
+
+  AuditLog = mongoose.models.AuditLog || mongoose.model<IAuditLog>("AuditLog", AuditLogSchema);
+}
+
+export { AuditLog };

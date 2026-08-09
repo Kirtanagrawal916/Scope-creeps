@@ -488,9 +488,12 @@ export async function handleGoogleCallbackImpl(data: { code: string; state: stri
 
   // Attempt to sync actual Gmail messages if access_token has Gmail permissions
   try {
-    const messagesRes = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=5", {
-      headers: { Authorization: `Bearer ${tokens.access_token}` },
-    });
+    const messagesRes = await fetch(
+      "https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=5",
+      {
+        headers: { Authorization: `Bearer ${tokens.access_token}` },
+      },
+    );
     if (messagesRes.ok) {
       const listData = (await messagesRes.json()) as { messages?: Array<{ id: string }> };
       if (listData.messages && listData.messages.length > 0) {
@@ -516,12 +519,15 @@ export async function handleGoogleCallbackImpl(data: { code: string; state: stri
             },
           );
           if (detailRes.ok) {
-            const msgDetail = (await detailRes.json()) as any;
+            const msgDetail = (await detailRes.json()) as {
+              payload?: { headers?: Array<{ name: string; value: string }> };
+              snippet?: string;
+            };
             const headers = msgDetail.payload?.headers || [];
             const subject =
-              headers.find((h: any) => h.name.toLowerCase() === "subject")?.value || "No Subject";
+              headers.find((h) => h.name.toLowerCase() === "subject")?.value || "No Subject";
             const fromStr =
-              headers.find((h: any) => h.name.toLowerCase() === "from")?.value || "Client Email";
+              headers.find((h) => h.name.toLowerCase() === "from")?.value || "Client Email";
             const snippet = msgDetail.snippet || "";
 
             const existingThread = await EmailThread.findOne({ owner: user._id, subject });

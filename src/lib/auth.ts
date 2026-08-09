@@ -78,7 +78,6 @@ export const getGithubAuthUrl = createServerFn({ method: "GET" })
     return getGithubAuthUrlImpl();
   });
 
-
 /** Deletes the session cookie. Called by the logout button. */
 export const logoutAction = createServerFn({ method: "POST" }).handler(async () => {
   const { logoutActionImpl } = await import("./auth.server");

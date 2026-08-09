@@ -68,7 +68,6 @@ function RegisterPage() {
     }
   }
 
-
   async function handleRegister(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setMessage("");

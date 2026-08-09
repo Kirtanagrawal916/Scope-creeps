@@ -1,4 +1,4 @@
-import mongoose, { Schema, Document, Types } from "mongoose";
+import type { Document, Model, Types } from "mongoose";
 
 export type ProjectStatus = "on_track" | "at_risk" | "scope_creep" | "completed";
 export type RiskLevel = "low" | "medium" | "high";
@@ -23,50 +23,61 @@ export interface IProject extends Document {
   updatedAt: Date;
 }
 
-const ProjectSchema = new Schema<IProject>(
-  {
-    // Every project must belong to exactly one user — the owner field is the
-    // single enforcement point for all IDOR prevention.
-    owner: {
-      type: Schema.Types.ObjectId,
-      ref: "User",
-      required: true,
-      index: true,
-    },
-    name: { type: String, required: true, trim: true },
-    client: { type: String, required: true, trim: true },
-    clientInitials: { type: String, required: true, trim: true, maxlength: 3 },
-    budget: { type: Number, required: true, default: 0, min: 0 },
-    hourlyRate: { type: Number, default: 0, min: 0 },
-    hoursAllocated: { type: Number, default: 0, min: 0 },
-    hoursUsed: { type: Number, default: 0, min: 0 },
-    progress: { type: Number, default: 0, min: 0, max: 100 },
-    status: {
-      type: String,
-      enum: ["on_track", "at_risk", "scope_creep", "completed"],
-      default: "on_track",
-    },
-    risk: {
-      type: String,
-      enum: ["low", "medium", "high"],
-      default: "low",
-    },
-    contract: { type: String, default: "" },
-    scopeItems: [{ type: String }],
-    outOfScope: [{ type: String }],
-    archived: { type: Boolean, default: false, index: true },
-  },
-  { timestamps: true },
-);
+let Project: Model<IProject>;
 
-// Compound indexes for high-performance, ownership-scoped queries.
-// All DB lookups MUST include { owner: userId } to prevent IDOR.
-ProjectSchema.index({ owner: 1, _id: 1 });
-ProjectSchema.index({ owner: 1, archived: 1, updatedAt: -1 });
-ProjectSchema.index({ owner: 1, name: 1 });
-ProjectSchema.index({ owner: 1, client: 1 });
-ProjectSchema.index({ owner: 1, status: 1, risk: 1 });
-ProjectSchema.index({ owner: 1, name: "text", client: "text", contract: "text" });
+if (typeof window !== "undefined") {
+  Project = {} as Model<IProject>;
+} else {
+  const mongooseMod = await import("mongoose");
+  const mongoose = mongooseMod.default || mongooseMod;
+  const Schema = mongoose.Schema;
 
-export const Project =
-  mongoose.models.Project || mongoose.model<IProject>("Project", ProjectSchema);
+  const ProjectSchema = new Schema<IProject>(
+    {
+      // Every project must belong to exactly one user — the owner field is the
+      // single enforcement point for all IDOR prevention.
+      owner: {
+        type: Schema.Types.ObjectId,
+        ref: "User",
+        required: true,
+        index: true,
+      },
+      name: { type: String, required: true, trim: true },
+      client: { type: String, required: true, trim: true },
+      clientInitials: { type: String, required: true, trim: true, maxlength: 3 },
+      budget: { type: Number, required: true, default: 0, min: 0 },
+      hourlyRate: { type: Number, default: 0, min: 0 },
+      hoursAllocated: { type: Number, default: 0, min: 0 },
+      hoursUsed: { type: Number, default: 0, min: 0 },
+      progress: { type: Number, default: 0, min: 0, max: 100 },
+      status: {
+        type: String,
+        enum: ["on_track", "at_risk", "scope_creep", "completed"],
+        default: "on_track",
+      },
+      risk: {
+        type: String,
+        enum: ["low", "medium", "high"],
+        default: "low",
+      },
+      contract: { type: String, default: "" },
+      scopeItems: [{ type: String }],
+      outOfScope: [{ type: String }],
+      archived: { type: Boolean, default: false, index: true },
+    },
+    { timestamps: true },
+  );
+
+  // Compound indexes for high-performance, ownership-scoped queries.
+  // All DB lookups MUST include { owner: userId } to prevent IDOR.
+  ProjectSchema.index({ owner: 1, _id: 1 });
+  ProjectSchema.index({ owner: 1, archived: 1, updatedAt: -1 });
+  ProjectSchema.index({ owner: 1, name: 1 });
+  ProjectSchema.index({ owner: 1, client: 1 });
+  ProjectSchema.index({ owner: 1, status: 1, risk: 1 });
+  ProjectSchema.index({ owner: 1, name: "text", client: "text", contract: "text" });
+
+  Project = mongoose.models.Project || mongoose.model<IProject>("Project", ProjectSchema);
+}
+
+export { Project };

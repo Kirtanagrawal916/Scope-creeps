@@ -25,7 +25,8 @@ class FeatureFlagsManager {
         id: "flag-1",
         name: "AI Scope Intelligence V2",
         key: "enable_ai_scope_v2",
-        description: "Enables Gemini 2.5 Flash deep scope comparison and contract clause breakdown.",
+        description:
+          "Enables Gemini 2.5 Flash deep scope comparison and contract clause breakdown.",
         enabled: true,
         rolloutPercent: 100,
         targetAudience: "ALL",
@@ -47,7 +48,8 @@ class FeatureFlagsManager {
         id: "flag-3",
         name: "Redis Queue Workers",
         key: "enable_redis_queue",
-        description: "Offloads export jobs and AI token accounting to Redis background queue workers.",
+        description:
+          "Offloads export jobs and AI token accounting to Redis background queue workers.",
         enabled: true,
         rolloutPercent: 100,
         targetAudience: "ALL",
@@ -110,7 +112,11 @@ class FeatureFlagsManager {
     return flag;
   }
 
-  async updateRollout(key: string, rolloutPercent: number, updatedBy = "Admin"): Promise<FeatureFlag> {
+  async updateRollout(
+    key: string,
+    rolloutPercent: number,
+    updatedBy = "Admin",
+  ): Promise<FeatureFlag> {
     const flag = this.flags.get(key);
     if (!flag) throw new Error(`Feature flag '${key}' not found.`);
 

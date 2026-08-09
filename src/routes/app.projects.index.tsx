@@ -1,5 +1,14 @@
 import { createFileRoute, Link, notFound, useRouteContext } from "@tanstack/react-router";
-import { Search, Filter, ArrowUpRight, FolderOpen, Archive, CheckCircle2, LayoutGrid, Kanban } from "lucide-react";
+import {
+  Search,
+  Filter,
+  ArrowUpRight,
+  FolderOpen,
+  Archive,
+  CheckCircle2,
+  LayoutGrid,
+  Kanban,
+} from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { ExportButton } from "@/components/export/export-button";
 import { StatusPill, RiskChip } from "@/components/status-pill";
@@ -98,10 +107,7 @@ function ProjectsPage() {
   );
 
   return (
-    <AppShell
-      title="Projects"
-      subtitle="Every engagement, one source of truth."
-    >
+    <AppShell title="Projects" subtitle="Every engagement, one source of truth.">
       {/* Active vs Archived Tabs & View Mode Toggle */}
       <div className="mb-6 flex flex-wrap items-center justify-between border-b border-border gap-2">
         <div className="flex">
@@ -274,7 +280,11 @@ function ProjectsPage() {
             <div className="flex items-center justify-between border-b border-border/40 pb-2">
               <span className="text-xs font-semibold uppercase tracking-wider text-amber-500 flex items-center gap-1.5">
                 <span className="h-2 w-2 rounded-full bg-amber-500" /> At Risk / In Progress (
-                {sortedProjects.filter((p) => p.status === "at_risk" || p.status === "scope_creep").length})
+                {
+                  sortedProjects.filter((p) => p.status === "at_risk" || p.status === "scope_creep")
+                    .length
+                }
+                )
               </span>
             </div>
             {sortedProjects

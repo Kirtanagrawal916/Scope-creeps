@@ -27,6 +27,7 @@ import { AppShell } from "@/components/app-shell";
 import { ExportButton } from "@/components/export/export-button";
 import { RiskChip, StatusPill } from "@/components/status-pill";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import { getAnalysisDetails, updateAnalysis, runScopeAnalysis } from "@/lib/analyses.server";
 import { formatCurrency } from "@/lib/formatters";
 import { useState } from "react";
@@ -591,7 +592,10 @@ function EditableReplySection({
     const mailtoUrl = `mailto:${encodeURIComponent(recipientEmail)}?subject=${encodeURIComponent(`Re: ${subject}`)}&body=${encodeURIComponent(replyText)}`;
     const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(recipientEmail)}&su=${encodeURIComponent(`Re: ${subject}`)}&body=${encodeURIComponent(replyText)}`;
 
-    window.open(gmailUrl, "_blank") || (window.location.href = mailtoUrl);
+    const popup = window.open(gmailUrl, "_blank");
+    if (!popup) {
+      window.location.href = mailtoUrl;
+    }
     toast.success("Opened Gmail composer with draft response!");
   };
 
@@ -634,7 +638,7 @@ function EditableReplySection({
       {isEditing ? (
         <Textarea
           value={replyText}
-          onChange={(e) => setReplyText(e.target.value)}
+          onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setReplyText(e.target.value)}
           rows={7}
           className="font-serif text-[13px] leading-relaxed bg-background/60"
         />

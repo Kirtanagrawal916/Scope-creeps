@@ -1,6 +1,15 @@
 import { createFileRoute, Link, Outlet, useLocation } from "@tanstack/react-router";
 import { AppShell } from "@/components/app-shell";
-import { Users, Activity, Flag, FileText, Cpu, Download, Database, ShieldCheck } from "lucide-react";
+import {
+  Users,
+  Activity,
+  Flag,
+  FileText,
+  Cpu,
+  Download,
+  Database,
+  ShieldCheck,
+} from "lucide-react";
 
 export const Route = createFileRoute("/app/admin")({
   component: AdminLayout,
@@ -29,12 +38,14 @@ function AdminLayout() {
       <div className="mb-6 flex flex-wrap gap-2 border-b border-border pb-3">
         {tabs.map((tab) => {
           const Icon = tab.icon;
-          const isActive = location.pathname.startsWith(tab.path) || (location.pathname === "/app/admin" && tab.name === "Users");
+          const isActive =
+            location.pathname.startsWith(tab.path) ||
+            (location.pathname === "/app/admin" && tab.name === "Users");
 
           return (
             <Link
               key={tab.name}
-              to={tab.path as any}
+              to={tab.path as string}
               className={`flex items-center gap-2 rounded-lg px-3.5 py-2 text-xs font-medium transition-all ${
                 isActive
                   ? "bg-primary text-primary-foreground shadow-xs font-semibold"

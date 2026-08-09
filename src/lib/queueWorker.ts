@@ -5,7 +5,7 @@ export interface Job {
   id: string;
   name: string;
   type: "EXPORT_PDF" | "EXPORT_CSV" | "AI_SCOPE_ANALYSIS" | "AUDIT_CLEANUP";
-  payload: Record<string, any>;
+  payload: Record<string, unknown>;
   status: "PENDING" | "PROCESSING" | "COMPLETED" | "FAILED";
   progress: number; // 0 to 100
   createdAt: string;
@@ -62,7 +62,7 @@ class QueueWorkerEngine {
     mockJobs.forEach((job) => this.jobs.set(job.id, job));
   }
 
-  async addJob(type: Job["type"], name: string, payload: Record<string, any>): Promise<Job> {
+  async addJob(type: Job["type"], name: string, payload: Record<string, unknown>): Promise<Job> {
     const job: Job = {
       id: `job-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
       name,

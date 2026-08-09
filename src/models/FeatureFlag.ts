@@ -1,4 +1,4 @@
-import mongoose, { Schema, Document } from "mongoose";
+import type { Document, Model } from "mongoose";
 
 export interface IFeatureFlag extends Document {
   key: string;
@@ -9,36 +9,48 @@ export interface IFeatureFlag extends Document {
   updatedAt: Date;
 }
 
-const FeatureFlagSchema = new Schema<IFeatureFlag>(
-  {
-    key: {
-      type: String,
-      required: [true, "Flag key is required"],
-      unique: true,
-      trim: true,
-      lowercase: true,
-      match: [/^[a-z0-9_]+$/, "Key may only contain lowercase letters, numbers and underscores"],
-    },
-    label: {
-      type: String,
-      required: [true, "Flag label is required"],
-      trim: true,
-    },
-    description: {
-      type: String,
-      required: false,
-      trim: true,
-    },
-    enabled: {
-      type: Boolean,
-      required: true,
-      default: false,
-    },
-  },
-  {
-    timestamps: true,
-  },
-);
+let FeatureFlag: Model<IFeatureFlag>;
 
-export const FeatureFlag =
-  mongoose.models.FeatureFlag || mongoose.model<IFeatureFlag>("FeatureFlag", FeatureFlagSchema);
+if (typeof window !== "undefined") {
+  FeatureFlag = {} as Model<IFeatureFlag>;
+} else {
+  const mongooseMod = await import("mongoose");
+  const mongoose = mongooseMod.default || mongooseMod;
+  const Schema = mongoose.Schema;
+
+  const FeatureFlagSchema = new Schema<IFeatureFlag>(
+    {
+      key: {
+        type: String,
+        required: [true, "Flag key is required"],
+        unique: true,
+        trim: true,
+        lowercase: true,
+        match: [/^[a-z0-9_]+$/, "Key may only contain lowercase letters, numbers and underscores"],
+      },
+      label: {
+        type: String,
+        required: [true, "Flag label is required"],
+        trim: true,
+      },
+      description: {
+        type: String,
+        required: false,
+        trim: true,
+      },
+      enabled: {
+        type: Boolean,
+        required: true,
+        default: false,
+      },
+    },
+    {
+      timestamps: true,
+    },
+  );
+
+  FeatureFlag =
+    mongoose.models.FeatureFlag || mongoose.model<IFeatureFlag>("FeatureFlag", FeatureFlagSchema);
+}
+
+export { FeatureFlag };

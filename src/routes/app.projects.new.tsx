@@ -183,7 +183,12 @@ function NewProjectPage() {
                   <div className="mt-1 text-[12px] text-muted-foreground">
                     PDF, DOCX, TXT · Up to 20MB
                   </div>
-                  <Button type="button" variant="outline" size="sm" className="mt-4 pointer-events-none">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="mt-4 pointer-events-none"
+                  >
                     <FileText className="mr-1.5 h-3.5 w-3.5" /> Choose file
                   </Button>
                 </>

@@ -1,4 +1,4 @@
-import mongoose from "mongoose";
+import type MongooseType from "mongoose";
 import { logger } from "./logger";
 
 // Manual environment loader helper (runs only in Node.js server environment)
@@ -57,8 +57,8 @@ async function applyDnsOverrideIfNeeded() {
 }
 
 interface MongooseCache {
-  conn: typeof mongoose | null;
-  promise: Promise<typeof mongoose> | null;
+  conn: typeof MongooseType | null;
+  promise: Promise<typeof MongooseType> | null;
 }
 
 declare global {
@@ -71,7 +71,15 @@ if (!globalThis.mongooseCache) {
 
 const cached = globalThis.mongooseCache;
 
-export async function connectToDatabase(): Promise<typeof mongoose> {
+export async function connectToDatabase(): Promise<typeof MongooseType> {
+  if (typeof window !== "undefined") {
+    logger.warn("connectToDatabase called in browser environment. Skipping.");
+    return null as unknown as typeof MongooseType;
+  }
+
+  const mongooseMod = await import("mongoose");
+  const mongoose = mongooseMod.default || mongooseMod;
+
   await loadEnvFile();
   await applyDnsOverrideIfNeeded();
 
@@ -104,11 +112,11 @@ export async function connectToDatabase(): Promise<typeof mongoose> {
     logger.log("Connecting to MongoDB Atlas...");
     cached.promise = mongoose
       .connect(uri, opts)
-      .then((mongooseInstance) => {
+      .then((mongooseInstance: typeof MongooseType) => {
         logger.log("Successfully connected to MongoDB");
         return mongooseInstance;
       })
-      .catch((err) => {
+      .catch((err: unknown) => {
         cached.promise = null;
         cached.conn = null;
         throw err;
@@ -123,5 +131,5 @@ export async function connectToDatabase(): Promise<typeof mongoose> {
     throw e;
   }
 
-  return cached.conn;
+  return cached.conn!;
 }

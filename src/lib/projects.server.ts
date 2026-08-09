@@ -196,11 +196,19 @@ export const createProject = createServerFn({ method: "POST" })
 
     const contractRaw = data.contract?.trim() ?? "";
     if (contractRaw && !contractRaw.startsWith("%PDF")) {
-      const lines = contractRaw.split("\n").map((l) => l.trim()).filter((l) => l.length > 5);
-      const inLines = lines.filter((l) => l.startsWith("-") || l.startsWith("1.") || l.includes("Include"));
-      const outLines = lines.filter((l) => l.includes("OUT OF SCOPE") || l.includes("Exclusion") || l.includes("2."));
+      const lines = contractRaw
+        .split("\n")
+        .map((l) => l.trim())
+        .filter((l) => l.length > 5);
+      const inLines = lines.filter(
+        (l) => l.startsWith("-") || l.startsWith("1.") || l.includes("Include"),
+      );
+      const outLines = lines.filter(
+        (l) => l.includes("OUT OF SCOPE") || l.includes("Exclusion") || l.includes("2."),
+      );
       if (inLines.length > 0) extractedScope = inLines.map((l) => l.replace(/^[-1-9.\s]+/, ""));
-      if (outLines.length > 0) extractedOutOfScope = outLines.map((l) => l.replace(/^[-1-9.\s]+/, ""));
+      if (outLines.length > 0)
+        extractedOutOfScope = outLines.map((l) => l.replace(/^[-1-9.\s]+/, ""));
     }
 
     const project = new Project({

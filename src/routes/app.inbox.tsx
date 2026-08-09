@@ -1,6 +1,14 @@
 import { createFileRoute, Link, notFound, useRouter } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
-import { Search, Filter, Mail, RefreshCw, CheckCircle2, AlertTriangle, Sparkles } from "lucide-react";
+import {
+  Search,
+  Filter,
+  Mail,
+  RefreshCw,
+  CheckCircle2,
+  AlertTriangle,
+  Sparkles,
+} from "lucide-react";
 import { useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { RiskChip } from "@/components/status-pill";
@@ -43,7 +51,8 @@ export const syncSampleGmailThreads = createServerFn({ method: "POST" }).handler
     from: "Alex Studio <bhavyajuneja2007@gmail.com>",
     fromInitials: "AS",
     subject: "Urgent: Payment gateway & multi-currency crypto addition",
-    preview: "Hi team, can we also add Stripe multi-currency auto-conversion and Crypto payment support before launch?",
+    preview:
+      "Hi team, can we also add Stripe multi-currency auto-conversion and Crypto payment support before launch?",
     body: "Hi team, we were reviewing the payment checkout flow and noticed it only supports USD/INR. Can we also add Stripe multi-currency auto-conversion and Crypto payment support (Bitcoin & USDT) before launch next week? Let us know if this is included in the initial sprint.",
     risk: "high",
     analyzed: true,
@@ -58,8 +67,10 @@ export const syncSampleGmailThreads = createServerFn({ method: "POST" }).handler
     projectId: project._id,
     emailId: email1._id,
     originalRequirement: "Single-currency INR checkout flow with Razorpay Payment Gateway",
-    changedRequirement: "Client Alex Studio (bhavyajuneja2007@gmail.com) requested Stripe Multi-Currency Auto-Conversion & Crypto Payment Integration before launch next week.",
-    aiExplanation: "Crypto payment integration (Bitcoin/USDT) and multi-currency conversion were explicitly listed in Section 2 (Exclusions) of the Master Services Agreement. Implementing crypto gateways requires smart contract validation and wallet webhooks, representing 120 hours of out-of-scope development.",
+    changedRequirement:
+      "Client Alex Studio (bhavyajuneja2007@gmail.com) requested Stripe Multi-Currency Auto-Conversion & Crypto Payment Integration before launch next week.",
+    aiExplanation:
+      "Crypto payment integration (Bitcoin/USDT) and multi-currency conversion were explicitly listed in Section 2 (Exclusions) of the Master Services Agreement. Implementing crypto gateways requires smart contract validation and wallet webhooks, representing 120 hours of out-of-scope development.",
     verdict: "out_of_scope",
     confidence: 96,
     riskLevel: "high",
@@ -77,7 +88,8 @@ export const syncSampleGmailThreads = createServerFn({ method: "POST" }).handler
       "Cryptocurrency Payment Gateways (Bitcoin, USDT)",
       "Custom Native Mobile Apps",
     ],
-    reasoning: "Crypto payment webhooks and multi-currency conversion rates are explicitly excluded under Section 2 of the signed agreement. Billed at agreed hourly rate of ₹150/hr.",
+    reasoning:
+      "Crypto payment webhooks and multi-currency conversion rates are explicitly excluded under Section 2 of the signed agreement. Billed at agreed hourly rate of ₹150/hr.",
     suggestedReply: `Hi Alex Studio (bhavyajuneja2007@gmail.com),
 
 Thanks for reaching out! Regarding your request to add Stripe Multi-Currency and Crypto payment support before launch: as per Section 2 of our signed Master Services Agreement, multi-currency auto-conversion and crypto payment gateways are explicitly out of scope for the current sprint.
@@ -89,9 +101,12 @@ Please let us know if you would like us to send over the formal Change Order app
 Best regards,
 ${user.firstName || "Bhavya"} ${user.lastName || "Juneja"}
 ScopeGuard Studio`,
-    aiSummary: "High risk scope creep detected: Client requested out-of-scope crypto payment gateways and multi-currency auto-conversion. Total cost impact: +₹18,000 (120 hours).",
-    explanation: "Crypto payment integration requires wallet webhooks and smart contract verification, which are excluded under Section 2 of the contract.",
-    executiveSummary: "Out-of-scope feature request detected from Alex Studio (bhavyajuneja2007@gmail.com). Total cost impact: ₹18,000.",
+    aiSummary:
+      "High risk scope creep detected: Client requested out-of-scope crypto payment gateways and multi-currency auto-conversion. Total cost impact: +₹18,000 (120 hours).",
+    explanation:
+      "Crypto payment integration requires wallet webhooks and smart contract verification, which are excluded under Section 2 of the contract.",
+    executiveSummary:
+      "Out-of-scope feature request detected from Alex Studio (bhavyajuneja2007@gmail.com). Total cost impact: ₹18,000.",
     technicalExplanation: "Section 2 explicitly excludes multi-currency rates and crypto gateways.",
     potentialRisks: [
       "Delaying current deployment by 14 days if crypto webhooks are forced before launch",
@@ -243,13 +258,25 @@ function InboxPage() {
             <Mail className="h-10 w-10 text-muted-foreground/40" />
             <div className="text-[14px] font-medium">No emails found</div>
             <p className="max-w-xs text-[13px] text-muted-foreground">
-              Connect your Gmail OAuth account or click <strong>Sync Gmail Inbox</strong> to fetch and monitor client threads from Alex Studio.
+              Connect your Gmail OAuth account or click <strong>Sync Gmail Inbox</strong> to fetch
+              and monitor client threads from Alex Studio.
             </p>
             <div className="flex items-center gap-3 mt-3">
-              <Button size="sm" onClick={handleConnectGmail} disabled={isConnecting} className="gap-1.5 text-xs">
+              <Button
+                size="sm"
+                onClick={handleConnectGmail}
+                disabled={isConnecting}
+                className="gap-1.5 text-xs"
+              >
                 <Mail className="h-3.5 w-3.5" /> Connect Gmail Account
               </Button>
-              <Button size="sm" variant="outline" onClick={handleSyncSampleThreads} disabled={isSyncing} className="gap-1.5 text-xs">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleSyncSampleThreads}
+                disabled={isSyncing}
+                className="gap-1.5 text-xs"
+              >
                 <Sparkles className="h-3.5 w-3.5 text-primary" /> Sync Gmail Threads
               </Button>
             </div>
@@ -280,9 +307,13 @@ function InboxPage() {
                       </span>
                     )}
                   </div>
-                  <span className="shrink-0 text-[11px] text-muted-foreground font-mono">{e.receivedAt}</span>
+                  <span className="shrink-0 text-[11px] text-muted-foreground font-mono">
+                    {e.receivedAt}
+                  </span>
                 </div>
-                <div className="mt-0.5 truncate text-[13px] font-medium text-foreground">{e.subject}</div>
+                <div className="mt-0.5 truncate text-[13px] font-medium text-foreground">
+                  {e.subject}
+                </div>
                 <div className="mt-0.5 truncate text-[12px] text-muted-foreground">{e.preview}</div>
               </div>
               <div className="flex flex-col items-end gap-1.5">
