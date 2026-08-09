@@ -8,11 +8,7 @@ export function Hero() {
   return (
     <section className="relative overflow-hidden bg-background text-foreground">
       <div className="mx-auto grid max-w-7xl gap-12 px-5 py-16 sm:px-8 md:grid-cols-[1.1fr_0.9fr] md:items-center md:py-24 lg:py-28">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-        >
+        <div>
           <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3.5 py-1 font-mono text-[11px] uppercase tracking-[0.2em] text-primary">
             <Zap className="h-3.5 w-3.5" /> Scope Intelligence for Software Teams
           </div>
@@ -54,17 +50,12 @@ export function Hero() {
               <Timer className="h-4 w-4 text-primary" /> Instant Impact Estimates
             </span>
           </div>
-        </motion.div>
+        </div>
 
         {/* Product Interactive Preview */}
-        <motion.div
-          initial={{ opacity: 0, scale: 0.96 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.6, delay: 0.15 }}
-          className="relative"
-        >
+        <div className="relative">
           <ProductPreview />
-        </motion.div>
+        </div>
       </div>
     </section>
   );

@@ -48,6 +48,7 @@ const primary: NavItem[] = [
   { to: "/app/analytics", label: "Analytics", icon: BarChart3 },
 ];
 const secondary: NavItem[] = [
+  { to: "/app/admin", label: "Admin console", icon: ShieldCheck },
   { to: "/app/notifications", label: "Notifications", icon: Bell },
   { to: "/app/settings", label: "Settings", icon: Settings },
 ];

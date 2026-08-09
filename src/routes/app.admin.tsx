@@ -1,74 +1,55 @@
-import { createFileRoute, redirect } from "@tanstack/react-router";
-import { createServerFn } from "@tanstack/react-start";
-import { ShieldCheck } from "lucide-react";
+import { createFileRoute, Link, Outlet, useLocation } from "@tanstack/react-router";
 import { AppShell } from "@/components/app-shell";
-import type { AdminUser } from "@/lib/admin.server";
-
-// ---------------------------------------------------------------------------
-// Route-level access check
-// ---------------------------------------------------------------------------
-// Dynamically imports admin.server.ts inside the handler (same pattern as
-// app.tsx's checkAuth) so server-only code never leaks into the client bundle.
-
-const checkAdminAccess = createServerFn({ method: "GET" }).handler(async () => {
-  const { verifyAdminAccess } = await import("@/lib/admin.server");
-  try {
-    const admin = await verifyAdminAccess();
-    return { authorized: true as const, admin };
-  } catch {
-    return { authorized: false as const, admin: null };
-  }
-});
+import { Users, Activity, Flag, FileText, Cpu, Download, Database, ShieldCheck } from "lucide-react";
 
 export const Route = createFileRoute("/app/admin")({
-  beforeLoad: async () => {
-    const result = await checkAdminAccess();
-    if (!result.authorized || !result.admin) {
-      // Authenticated but not an admin (or session invalid) — send back to
-      // the regular dashboard rather than /login, since /app's own beforeLoad
-      // already guarantees a logged-in user got this far.
-      throw redirect({ to: "/app" });
-    }
-    return { admin: result.admin };
-  },
-  component: AdminDashboard,
-  head: () => ({ meta: [{ title: "Admin — ScopeGuard" }] }),
+  component: AdminLayout,
+  head: () => ({ meta: [{ title: "Admin Portal — ScopeGuard" }] }),
 });
 
-// Names only — no data, no logic. Populated module-by-module in later phases.
-const upcomingModules = [
-  "System Metrics",
-  "AI Usage",
-  "API Metrics",
-  "Export Usage",
-  "Audit Logs",
-  "Feature Flags",
-  "Users",
-];
+function AdminLayout() {
+  const location = useLocation();
 
-function AdminDashboard() {
-  const { admin } = Route.useRouteContext() as { admin: AdminUser };
+  const tabs = [
+    { name: "Users", path: "/app/admin/users", icon: Users },
+    { name: "Metrics", path: "/app/admin/metrics", icon: Activity },
+    { name: "Feature Flags", path: "/app/admin/feature-flags", icon: Flag },
+    { name: "Audit Logs", path: "/app/admin/audit-logs", icon: FileText },
+    { name: "AI Usage", path: "/app/admin/ai-usage", icon: Cpu },
+    { name: "Exports Queue", path: "/app/admin/export", icon: Download },
+    { name: "API Health", path: "/app/admin/api-metrics", icon: Database },
+  ];
 
   return (
-    <AppShell title="Admin Dashboard" subtitle="Workspace-wide administration">
-      <div className="rounded-xl border border-dashed border-border bg-background/40 p-8 text-center">
-        <ShieldCheck className="mx-auto mb-3 h-8 w-8 text-muted-foreground" strokeWidth={1.5} />
-        <h2 className="text-[15px] font-semibold text-foreground">Admin foundation is live</h2>
-        <p className="mt-1 text-[13px] text-muted-foreground">
-          Signed in as {admin.email}. This route is protected and reserved for admin-only tooling —
-          the modules below will be implemented in upcoming phases.
-        </p>
-        <ul className="mt-5 flex flex-wrap justify-center gap-2">
-          {upcomingModules.map((moduleName) => (
-            <li
-              key={moduleName}
-              className="rounded-md border border-border bg-background/60 px-2.5 py-1 text-[12px] text-muted-foreground"
+    <AppShell
+      title="Admin Control Center"
+      subtitle="System telemetry, user management, feature flags, and audit logs."
+    >
+      {/* Tab Navigation Bar */}
+      <div className="mb-6 flex flex-wrap gap-2 border-b border-border pb-3">
+        {tabs.map((tab) => {
+          const Icon = tab.icon;
+          const isActive = location.pathname.startsWith(tab.path) || (location.pathname === "/app/admin" && tab.name === "Users");
+
+          return (
+            <Link
+              key={tab.name}
+              to={tab.path as any}
+              className={`flex items-center gap-2 rounded-lg px-3.5 py-2 text-xs font-medium transition-all ${
+                isActive
+                  ? "bg-primary text-primary-foreground shadow-xs font-semibold"
+                  : "bg-card/60 text-muted-foreground hover:bg-accent hover:text-foreground"
+              }`}
             >
-              {moduleName}
-            </li>
-          ))}
-        </ul>
+              <Icon className="h-3.5 w-3.5" />
+              {tab.name}
+            </Link>
+          );
+        })}
       </div>
+
+      {/* Render Active Sub-Route Content */}
+      <Outlet />
     </AppShell>
   );
 }
