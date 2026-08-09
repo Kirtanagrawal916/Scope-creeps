@@ -407,10 +407,10 @@ function Dashboard() {
     >
       <div className="space-y-8">
         {/* Workspace Health & Quick Actions Header */}
-        <div className="grid gap-4 lg:grid-cols-3">
+        <div className="grid gap-5 grid-cols-1 lg:grid-cols-12 items-stretch">
           {/* Workspace Health Score Banner */}
-          <div className="lg:col-span-1 rounded-2xl border border-border/80 bg-card/60 p-5 shadow-xs backdrop-blur-xl flex flex-col justify-between">
-            <div className="flex items-center justify-between">
+          <div className="lg:col-span-5 xl:col-span-4 rounded-2xl border border-border/80 bg-card/60 p-5 shadow-xs backdrop-blur-xl flex flex-col justify-between h-full">
+            <div className="flex items-center justify-between border-b border-border/40 pb-3 mb-3">
               <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 Workspace Health Score
               </span>
@@ -429,7 +429,7 @@ function Dashboard() {
               </span>
             </div>
 
-            <div className="my-3 flex items-baseline gap-3">
+            <div className="my-2 flex items-baseline gap-3">
               <span className="text-4xl font-bold tracking-tight text-foreground">
                 {workspaceHealth.score}
               </span>
@@ -439,7 +439,7 @@ function Dashboard() {
               </span>
             </div>
 
-            <div className="grid grid-cols-2 gap-2 text-xs pt-3 border-t border-border/40">
+            <div className="grid grid-cols-2 gap-2 text-xs pt-3 border-t border-border/40 mt-auto">
               <div>
                 <span className="text-muted-foreground block text-[11px]">Resolution Rate</span>
                 <span className="font-semibold text-foreground">
@@ -456,10 +456,15 @@ function Dashboard() {
           </div>
 
           {/* Quick Shortcuts Panel */}
-          <div className="lg:col-span-2 space-y-2">
-            <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground block px-1">
-              Workspace Shortcuts & Quick Actions
-            </span>
+          <div className="lg:col-span-7 xl:col-span-8 rounded-2xl border border-border/80 bg-card/60 p-5 shadow-xs backdrop-blur-xl flex flex-col justify-between h-full">
+            <div className="flex items-center justify-between border-b border-border/40 pb-3 mb-3">
+              <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Workspace Shortcuts & Quick Actions
+              </span>
+              <span className="font-mono text-[10px] text-muted-foreground/70 tracking-wider uppercase">
+                6 Quick Tools
+              </span>
+            </div>
             <QuickActionsPanel />
           </div>
         </div>

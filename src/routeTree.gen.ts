@@ -23,11 +23,19 @@ import { Route as AppNotificationsRouteImport } from './routes/app.notifications
 import { Route as AppInboxRouteImport } from './routes/app.inbox'
 import { Route as AppHistoryRouteImport } from './routes/app.history'
 import { Route as AppAnalyticsRouteImport } from './routes/app.analytics'
+import { Route as AppAdminRouteImport } from './routes/app.admin'
 import { Route as ApiMetricsRouteImport } from './routes/api.metrics'
 import { Route as AppProjectsIndexRouteImport } from './routes/app.projects.index'
 import { Route as AppProjectsNewRouteImport } from './routes/app.projects.new'
 import { Route as AppProjectsIdRouteImport } from './routes/app.projects.$id'
 import { Route as AppAnalysisIdRouteImport } from './routes/app.analysis.$id'
+import { Route as AppAdminUsersRouteImport } from './routes/app.admin.users'
+import { Route as AppAdminMetricsRouteImport } from './routes/app.admin.metrics'
+import { Route as AppAdminFeatureFlagsRouteImport } from './routes/app.admin.feature-flags'
+import { Route as AppAdminExportRouteImport } from './routes/app.admin.export'
+import { Route as AppAdminAuditLogsRouteImport } from './routes/app.admin.audit-logs'
+import { Route as AppAdminApiMetricsRouteImport } from './routes/app.admin.api-metrics'
+import { Route as AppAdminAiUsageRouteImport } from './routes/app.admin.ai-usage'
 
 const RegisterRoute = RegisterRouteImport.update({
   id: '/register',
@@ -99,6 +107,11 @@ const AppAnalyticsRoute = AppAnalyticsRouteImport.update({
   path: '/analytics',
   getParentRoute: () => AppRoute,
 } as any)
+const AppAdminRoute = AppAdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => AppRoute,
+} as any)
 const ApiMetricsRoute = ApiMetricsRouteImport.update({
   id: '/api/metrics',
   path: '/api/metrics',
@@ -124,6 +137,41 @@ const AppAnalysisIdRoute = AppAnalysisIdRouteImport.update({
   path: '/analysis/$id',
   getParentRoute: () => AppRoute,
 } as any)
+const AppAdminUsersRoute = AppAdminUsersRouteImport.update({
+  id: '/users',
+  path: '/users',
+  getParentRoute: () => AppAdminRoute,
+} as any)
+const AppAdminMetricsRoute = AppAdminMetricsRouteImport.update({
+  id: '/metrics',
+  path: '/metrics',
+  getParentRoute: () => AppAdminRoute,
+} as any)
+const AppAdminFeatureFlagsRoute = AppAdminFeatureFlagsRouteImport.update({
+  id: '/feature-flags',
+  path: '/feature-flags',
+  getParentRoute: () => AppAdminRoute,
+} as any)
+const AppAdminExportRoute = AppAdminExportRouteImport.update({
+  id: '/export',
+  path: '/export',
+  getParentRoute: () => AppAdminRoute,
+} as any)
+const AppAdminAuditLogsRoute = AppAdminAuditLogsRouteImport.update({
+  id: '/audit-logs',
+  path: '/audit-logs',
+  getParentRoute: () => AppAdminRoute,
+} as any)
+const AppAdminApiMetricsRoute = AppAdminApiMetricsRouteImport.update({
+  id: '/api-metrics',
+  path: '/api-metrics',
+  getParentRoute: () => AppAdminRoute,
+} as any)
+const AppAdminAiUsageRoute = AppAdminAiUsageRouteImport.update({
+  id: '/ai-usage',
+  path: '/ai-usage',
+  getParentRoute: () => AppAdminRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -133,6 +181,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
   '/api/metrics': typeof ApiMetricsRoute
+  '/app/admin': typeof AppAdminRouteWithChildren
   '/app/analytics': typeof AppAnalyticsRoute
   '/app/history': typeof AppHistoryRoute
   '/app/inbox': typeof AppInboxRoute
@@ -141,6 +190,13 @@ export interface FileRoutesByFullPath {
   '/app/settings': typeof AppSettingsRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/app/': typeof AppIndexRoute
+  '/app/admin/ai-usage': typeof AppAdminAiUsageRoute
+  '/app/admin/api-metrics': typeof AppAdminApiMetricsRoute
+  '/app/admin/audit-logs': typeof AppAdminAuditLogsRoute
+  '/app/admin/export': typeof AppAdminExportRoute
+  '/app/admin/feature-flags': typeof AppAdminFeatureFlagsRoute
+  '/app/admin/metrics': typeof AppAdminMetricsRoute
+  '/app/admin/users': typeof AppAdminUsersRoute
   '/app/analysis/$id': typeof AppAnalysisIdRoute
   '/app/projects/$id': typeof AppProjectsIdRoute
   '/app/projects/new': typeof AppProjectsNewRoute
@@ -153,6 +209,7 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
   '/api/metrics': typeof ApiMetricsRoute
+  '/app/admin': typeof AppAdminRouteWithChildren
   '/app/analytics': typeof AppAnalyticsRoute
   '/app/history': typeof AppHistoryRoute
   '/app/inbox': typeof AppInboxRoute
@@ -161,6 +218,13 @@ export interface FileRoutesByTo {
   '/app/settings': typeof AppSettingsRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/app': typeof AppIndexRoute
+  '/app/admin/ai-usage': typeof AppAdminAiUsageRoute
+  '/app/admin/api-metrics': typeof AppAdminApiMetricsRoute
+  '/app/admin/audit-logs': typeof AppAdminAuditLogsRoute
+  '/app/admin/export': typeof AppAdminExportRoute
+  '/app/admin/feature-flags': typeof AppAdminFeatureFlagsRoute
+  '/app/admin/metrics': typeof AppAdminMetricsRoute
+  '/app/admin/users': typeof AppAdminUsersRoute
   '/app/analysis/$id': typeof AppAnalysisIdRoute
   '/app/projects/$id': typeof AppProjectsIdRoute
   '/app/projects/new': typeof AppProjectsNewRoute
@@ -175,6 +239,7 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
   '/api/metrics': typeof ApiMetricsRoute
+  '/app/admin': typeof AppAdminRouteWithChildren
   '/app/analytics': typeof AppAnalyticsRoute
   '/app/history': typeof AppHistoryRoute
   '/app/inbox': typeof AppInboxRoute
@@ -183,6 +248,13 @@ export interface FileRoutesById {
   '/app/settings': typeof AppSettingsRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/app/': typeof AppIndexRoute
+  '/app/admin/ai-usage': typeof AppAdminAiUsageRoute
+  '/app/admin/api-metrics': typeof AppAdminApiMetricsRoute
+  '/app/admin/audit-logs': typeof AppAdminAuditLogsRoute
+  '/app/admin/export': typeof AppAdminExportRoute
+  '/app/admin/feature-flags': typeof AppAdminFeatureFlagsRoute
+  '/app/admin/metrics': typeof AppAdminMetricsRoute
+  '/app/admin/users': typeof AppAdminUsersRoute
   '/app/analysis/$id': typeof AppAnalysisIdRoute
   '/app/projects/$id': typeof AppProjectsIdRoute
   '/app/projects/new': typeof AppProjectsNewRoute
@@ -198,6 +270,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/register'
     | '/api/metrics'
+    | '/app/admin'
     | '/app/analytics'
     | '/app/history'
     | '/app/inbox'
@@ -206,6 +279,13 @@ export interface FileRouteTypes {
     | '/app/settings'
     | '/auth/callback'
     | '/app/'
+    | '/app/admin/ai-usage'
+    | '/app/admin/api-metrics'
+    | '/app/admin/audit-logs'
+    | '/app/admin/export'
+    | '/app/admin/feature-flags'
+    | '/app/admin/metrics'
+    | '/app/admin/users'
     | '/app/analysis/$id'
     | '/app/projects/$id'
     | '/app/projects/new'
@@ -218,6 +298,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/register'
     | '/api/metrics'
+    | '/app/admin'
     | '/app/analytics'
     | '/app/history'
     | '/app/inbox'
@@ -226,6 +307,13 @@ export interface FileRouteTypes {
     | '/app/settings'
     | '/auth/callback'
     | '/app'
+    | '/app/admin/ai-usage'
+    | '/app/admin/api-metrics'
+    | '/app/admin/audit-logs'
+    | '/app/admin/export'
+    | '/app/admin/feature-flags'
+    | '/app/admin/metrics'
+    | '/app/admin/users'
     | '/app/analysis/$id'
     | '/app/projects/$id'
     | '/app/projects/new'
@@ -239,6 +327,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/register'
     | '/api/metrics'
+    | '/app/admin'
     | '/app/analytics'
     | '/app/history'
     | '/app/inbox'
@@ -247,6 +336,13 @@ export interface FileRouteTypes {
     | '/app/settings'
     | '/auth/callback'
     | '/app/'
+    | '/app/admin/ai-usage'
+    | '/app/admin/api-metrics'
+    | '/app/admin/audit-logs'
+    | '/app/admin/export'
+    | '/app/admin/feature-flags'
+    | '/app/admin/metrics'
+    | '/app/admin/users'
     | '/app/analysis/$id'
     | '/app/projects/$id'
     | '/app/projects/new'
@@ -364,6 +460,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAnalyticsRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/admin': {
+      id: '/app/admin'
+      path: '/admin'
+      fullPath: '/app/admin'
+      preLoaderRoute: typeof AppAdminRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/api/metrics': {
       id: '/api/metrics'
       path: '/api/metrics'
@@ -399,10 +502,84 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAnalysisIdRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/admin/users': {
+      id: '/app/admin/users'
+      path: '/users'
+      fullPath: '/app/admin/users'
+      preLoaderRoute: typeof AppAdminUsersRouteImport
+      parentRoute: typeof AppAdminRoute
+    }
+    '/app/admin/metrics': {
+      id: '/app/admin/metrics'
+      path: '/metrics'
+      fullPath: '/app/admin/metrics'
+      preLoaderRoute: typeof AppAdminMetricsRouteImport
+      parentRoute: typeof AppAdminRoute
+    }
+    '/app/admin/feature-flags': {
+      id: '/app/admin/feature-flags'
+      path: '/feature-flags'
+      fullPath: '/app/admin/feature-flags'
+      preLoaderRoute: typeof AppAdminFeatureFlagsRouteImport
+      parentRoute: typeof AppAdminRoute
+    }
+    '/app/admin/export': {
+      id: '/app/admin/export'
+      path: '/export'
+      fullPath: '/app/admin/export'
+      preLoaderRoute: typeof AppAdminExportRouteImport
+      parentRoute: typeof AppAdminRoute
+    }
+    '/app/admin/audit-logs': {
+      id: '/app/admin/audit-logs'
+      path: '/audit-logs'
+      fullPath: '/app/admin/audit-logs'
+      preLoaderRoute: typeof AppAdminAuditLogsRouteImport
+      parentRoute: typeof AppAdminRoute
+    }
+    '/app/admin/api-metrics': {
+      id: '/app/admin/api-metrics'
+      path: '/api-metrics'
+      fullPath: '/app/admin/api-metrics'
+      preLoaderRoute: typeof AppAdminApiMetricsRouteImport
+      parentRoute: typeof AppAdminRoute
+    }
+    '/app/admin/ai-usage': {
+      id: '/app/admin/ai-usage'
+      path: '/ai-usage'
+      fullPath: '/app/admin/ai-usage'
+      preLoaderRoute: typeof AppAdminAiUsageRouteImport
+      parentRoute: typeof AppAdminRoute
+    }
   }
 }
 
+interface AppAdminRouteChildren {
+  AppAdminAiUsageRoute: typeof AppAdminAiUsageRoute
+  AppAdminApiMetricsRoute: typeof AppAdminApiMetricsRoute
+  AppAdminAuditLogsRoute: typeof AppAdminAuditLogsRoute
+  AppAdminExportRoute: typeof AppAdminExportRoute
+  AppAdminFeatureFlagsRoute: typeof AppAdminFeatureFlagsRoute
+  AppAdminMetricsRoute: typeof AppAdminMetricsRoute
+  AppAdminUsersRoute: typeof AppAdminUsersRoute
+}
+
+const AppAdminRouteChildren: AppAdminRouteChildren = {
+  AppAdminAiUsageRoute: AppAdminAiUsageRoute,
+  AppAdminApiMetricsRoute: AppAdminApiMetricsRoute,
+  AppAdminAuditLogsRoute: AppAdminAuditLogsRoute,
+  AppAdminExportRoute: AppAdminExportRoute,
+  AppAdminFeatureFlagsRoute: AppAdminFeatureFlagsRoute,
+  AppAdminMetricsRoute: AppAdminMetricsRoute,
+  AppAdminUsersRoute: AppAdminUsersRoute,
+}
+
+const AppAdminRouteWithChildren = AppAdminRoute._addFileChildren(
+  AppAdminRouteChildren,
+)
+
 interface AppRouteChildren {
+  AppAdminRoute: typeof AppAdminRouteWithChildren
   AppAnalyticsRoute: typeof AppAnalyticsRoute
   AppHistoryRoute: typeof AppHistoryRoute
   AppInboxRoute: typeof AppInboxRoute
@@ -417,6 +594,7 @@ interface AppRouteChildren {
 }
 
 const AppRouteChildren: AppRouteChildren = {
+  AppAdminRoute: AppAdminRouteWithChildren,
   AppAnalyticsRoute: AppAnalyticsRoute,
   AppHistoryRoute: AppHistoryRoute,
   AppInboxRoute: AppInboxRoute,

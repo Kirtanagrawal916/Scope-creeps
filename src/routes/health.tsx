@@ -60,11 +60,15 @@ const getHealthDiagnostics = createServerFn({ method: "GET" }).handler(async () 
       googleConfigured: !!(
         process.env.GOOGLE_CLIENT_ID &&
         process.env.GOOGLE_CLIENT_SECRET &&
-        process.env.CALLBACK_URL
+        (process.env.GOOGLE_CALLBACK_URL || process.env.CALLBACK_URL || process.env.APP_URL)
       ),
       clientIdPresent: !!process.env.GOOGLE_CLIENT_ID,
       clientSecretPresent: !!process.env.GOOGLE_CLIENT_SECRET,
-      callbackUrlPresent: !!process.env.CALLBACK_URL,
+      callbackUrlPresent: !!(
+        process.env.GOOGLE_CALLBACK_URL ||
+        process.env.CALLBACK_URL ||
+        process.env.APP_URL
+      ),
     },
   };
 });

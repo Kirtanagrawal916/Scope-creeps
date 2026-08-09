@@ -1,13 +1,18 @@
-import { createFileRoute, useRouteContext, useRouter } from "@tanstack/react-router";
+import { createFileRoute, useRouteContext, useRouter, Link } from "@tanstack/react-router";
 import {
   Mail,
-  MapPin,
   FolderKanban,
-  ShieldCheck,
   Github,
   CheckCircle2,
   Link2,
   Unlink,
+  FileSearch,
+  AlertTriangle,
+  Coins,
+  TrendingUp,
+  Clock,
+  ArrowRight,
+  Sparkles,
 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
@@ -24,9 +29,53 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { updateProfile, getGoogleAuthUrl, getGithubAuthUrl, unlinkProvider } from "@/lib/auth";
+import { listProjects } from "@/lib/projects.server";
+import { listAllUserAnalyses } from "@/lib/analyses.server";
+import { formatCurrency } from "@/lib/formatters";
+import { StatusPill } from "@/components/status-pill";
 import { type FormEvent, useState } from "react";
 
 export const Route = createFileRoute("/app/profile")({
+  loader: async () => {
+    try {
+      const [projectsRes, analysesRes] = await Promise.all([
+        listProjects({ data: { archived: false } }).catch(() => []),
+        listAllUserAnalyses().catch(() => []),
+      ]);
+
+      const projects = projectsRes || [];
+      const analyses = analysesRes || [];
+
+      const activeProjects = projects.filter((p) => !p.archived);
+      const outOfScopeAnalyses = analyses.filter((a) => a.verdict === "out_of_scope");
+      const totalCostImpact = analyses.reduce((acc, a) => acc + (a.suggestedCost || 0), 0);
+
+      return {
+        projects,
+        analyses,
+        stats: {
+          totalProjects: projects.length,
+          activeProjects: activeProjects.length,
+          totalAnalyses: analyses.length,
+          outOfScopeCount: outOfScopeAnalyses.length,
+          totalCostImpact,
+        },
+      };
+    } catch (err) {
+      console.error("Profile loader error:", err);
+      return {
+        projects: [],
+        analyses: [],
+        stats: {
+          totalProjects: 0,
+          activeProjects: 0,
+          totalAnalyses: 0,
+          outOfScopeCount: 0,
+          totalCostImpact: 0,
+        },
+      };
+    }
+  },
   component: ProfilePage,
   head: () => ({ meta: [{ title: "Profile — ScopeGuard" }] }),
 });
@@ -43,6 +92,7 @@ interface UserProfile {
   githubUsername?: string;
   authMethod?: string[];
   provider?: string;
+  currencySymbol?: string;
 }
 
 function EditProfileModal({
@@ -94,9 +144,9 @@ function EditProfileModal({
       <DialogContent className="sm:max-w-[425px]">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
-            <DialogTitle>Edit profile</DialogTitle>
+            <DialogTitle>Edit Profile</DialogTitle>
             <DialogDescription>
-              Update your personal details below. Click save when you're done.
+              Update your personal details below. Click save when you&apos;re done.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
@@ -141,9 +191,8 @@ function EditProfileModal({
 
 function ProfilePage() {
   const router = useRouter();
-  const { user } = useRouteContext({ from: "/app" }) as {
-    user: UserProfile | null;
-  };
+  const { user } = useRouteContext({ from: "/app" }) as { user: UserProfile | null };
+  const { projects, analyses, stats } = Route.useLoaderData();
   const [unlinking, setUnlinking] = useState<string | null>(null);
   const [authError, setAuthError] = useState("");
 
@@ -191,40 +240,175 @@ function ProfilePage() {
 
   return (
     <AppShell title="Profile">
-      <div className="mx-auto max-w-3xl space-y-6">
+      <div className="mx-auto max-w-4xl space-y-6">
+        {/* Profile Header */}
         <div className="panel overflow-hidden">
           <div className="h-32 bg-hero-gradient" />
           <div className="flex flex-wrap items-end justify-between gap-4 px-6 pb-6">
             <div className="-mt-10 flex items-end gap-4">
-              <Avatar className="h-20 w-20 border-4 border-card">
+              <Avatar className="h-20 w-20 border-4 border-card shadow-md">
                 {user?.avatar ? (
                   <AvatarImage src={user.avatar} alt={fullName} />
                 ) : (
-                  <AvatarFallback className="bg-primary/20 text-lg font-semibold text-primary">
+                  <AvatarFallback className="bg-primary/20 text-xl font-bold text-primary">
                     {initials}
                   </AvatarFallback>
                 )}
               </Avatar>
               <div className="pb-1">
                 <h1 className="font-display text-2xl font-semibold tracking-tight">{fullName}</h1>
-                <div className="mt-1 text-[13px] text-muted-foreground">
-                  Member · {user?.workspaceName || "Workspace"}
+                <div className="mt-1 text-[13px] text-muted-foreground flex items-center gap-2">
+                  <span>Workspace Owner</span> ·
+                  <span className="font-medium text-foreground">
+                    {user?.workspaceName || "Workspace"}
+                  </span>
                 </div>
               </div>
             </div>
             <EditProfileModal user={user} onSuccess={() => router.invalidate()} />
           </div>
 
-          <div className="grid gap-4 border-t border-border p-6 md:grid-cols-3">
+          <div className="grid gap-4 border-t border-border p-6 sm:grid-cols-2 md:grid-cols-3">
             <div className="flex items-center gap-2 text-[13px] text-muted-foreground">
-              <Mail className="h-3.5 w-3.5" /> {user?.email || "No email"}
+              <Mail className="h-4 w-4 text-primary" /> {user?.email || "No email"}
             </div>
             <div className="flex items-center gap-2 text-[13px] text-muted-foreground">
-              <MapPin className="h-3.5 w-3.5" /> Brooklyn, NY
+              <FolderKanban className="h-4 w-4 text-primary" /> {stats.activeProjects} Active
+              Projects
             </div>
             <div className="flex items-center gap-2 text-[13px] text-muted-foreground">
-              <FolderKanban className="h-3.5 w-3.5" /> Active Protected Workspace
+              <FileSearch className="h-4 w-4 text-primary" /> {stats.totalAnalyses} Scope Analyses
             </div>
+          </div>
+        </div>
+
+        {/* Real Backend Statistics Grid */}
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="panel p-5">
+            <div className="flex items-center justify-between text-muted-foreground">
+              <span className="text-xs font-medium">Total Projects</span>
+              <FolderKanban className="h-4 w-4 text-primary" />
+            </div>
+            <div className="mt-3 font-display text-3xl font-bold">{stats.totalProjects}</div>
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              {stats.activeProjects} currently active
+            </p>
+          </div>
+
+          <div className="panel p-5">
+            <div className="flex items-center justify-between text-muted-foreground">
+              <span className="text-xs font-medium">Scope Creep Flagged</span>
+              <AlertTriangle className="h-4 w-4 text-destructive" />
+            </div>
+            <div className="mt-3 font-display text-3xl font-bold text-destructive">
+              {stats.outOfScopeCount}
+            </div>
+            <p className="mt-1 text-[11px] text-muted-foreground">out-of-scope requests</p>
+          </div>
+
+          <div className="panel p-5">
+            <div className="flex items-center justify-between text-muted-foreground">
+              <span className="text-xs font-medium">Cost Impact (₹)</span>
+              <Coins className="h-4 w-4 text-emerald-500" />
+            </div>
+            <div className="mt-3 font-display text-2xl font-bold text-emerald-600 dark:text-emerald-400">
+              {formatCurrency(stats.totalCostImpact, user?.currencySymbol || "₹")}
+            </div>
+            <p className="mt-1 text-[11px] text-muted-foreground">quantified extra revenue</p>
+          </div>
+
+          <div className="panel p-5">
+            <div className="flex items-center justify-between text-muted-foreground">
+              <span className="text-xs font-medium">Total Analyses</span>
+              <FileSearch className="h-4 w-4 text-primary" />
+            </div>
+            <div className="mt-3 font-display text-3xl font-bold">{stats.totalAnalyses}</div>
+            <p className="mt-1 text-[11px] text-muted-foreground">email requests scanned</p>
+          </div>
+        </div>
+
+        {/* Recent Projects & Recent Analyses */}
+        <div className="grid gap-6 md:grid-cols-2">
+          {/* Active Projects */}
+          <div className="panel p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="font-display text-base font-semibold">Active Projects</h2>
+              <Button variant="ghost" size="sm" className="h-8 text-xs gap-1" asChild>
+                <Link to="/app/projects">
+                  View All <ArrowRight className="h-3 w-3" />
+                </Link>
+              </Button>
+            </div>
+
+            {projects.length === 0 ? (
+              <p className="text-xs text-muted-foreground py-4 text-center">
+                No active projects found.
+              </p>
+            ) : (
+              <div className="divide-y divide-border">
+                {projects.slice(0, 4).map((p) => (
+                  <Link
+                    key={p.id}
+                    to="/app/projects/$id"
+                    params={{ id: p.id }}
+                    className="flex items-center justify-between py-3 hover:bg-muted/40 px-2 rounded-lg transition-colors"
+                  >
+                    <div>
+                      <div className="font-medium text-sm text-foreground">{p.name}</div>
+                      <div className="text-xs text-muted-foreground">{p.client || "Client"}</div>
+                    </div>
+                    <StatusPill status={p.status || "on_track"} />
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Recent Scope Analyses */}
+          <div className="panel p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="font-display text-base font-semibold">Recent Analyses</h2>
+              <Button variant="ghost" size="sm" className="h-8 text-xs gap-1" asChild>
+                <Link to="/app/history">
+                  History <ArrowRight className="h-3 w-3" />
+                </Link>
+              </Button>
+            </div>
+
+            {analyses.length === 0 ? (
+              <p className="text-xs text-muted-foreground py-4 text-center">
+                No scope analyses run yet.
+              </p>
+            ) : (
+              <div className="divide-y divide-border">
+                {analyses.slice(0, 4).map((a) => (
+                  <Link
+                    key={a.id}
+                    to="/app/analysis/$id"
+                    params={{ id: a.id }}
+                    className="flex items-center justify-between py-3 hover:bg-muted/40 px-2 rounded-lg transition-colors"
+                  >
+                    <div className="max-w-[200px] truncate">
+                      <div className="font-medium text-sm text-foreground truncate">
+                        {a.aiSummary || a.originalRequirement || "Scope Analysis"}
+                      </div>
+                      <div className="text-xs text-muted-foreground font-mono">
+                        {a.riskLevel ? `${a.riskLevel.toUpperCase()} RISK` : "Analysis"}
+                      </div>
+                    </div>
+                    <span
+                      className={`text-xs font-semibold ${
+                        a.verdict === "out_of_scope" ? "text-destructive" : "text-emerald-500"
+                      }`}
+                    >
+                      {a.verdict === "out_of_scope" && a.suggestedCost
+                        ? `+${formatCurrency(a.suggestedCost, "₹")}`
+                        : "In Scope"}
+                    </span>
+                  </Link>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
@@ -269,7 +453,7 @@ function ProfilePage() {
                   <div className="flex items-center gap-2 text-[14px] font-medium">
                     Google
                     {user?.googleId ? (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-success/15 px-2 py-0.5 text-[11px] font-medium text-success dark:text-success">
+                      <span className="inline-flex items-center gap-1 rounded-full bg-success/15 px-2 py-0.5 text-[11px] font-medium text-success">
                         <CheckCircle2 className="h-3 w-3" /> Connected
                       </span>
                     ) : (
@@ -314,7 +498,7 @@ function ProfilePage() {
                   <div className="flex items-center gap-2 text-[14px] font-medium">
                     GitHub
                     {user?.githubId ? (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-success/15 px-2 py-0.5 text-[11px] font-medium text-success dark:text-success">
+                      <span className="inline-flex items-center gap-1 rounded-full bg-success/15 px-2 py-0.5 text-[11px] font-medium text-success">
                         <CheckCircle2 className="h-3 w-3" /> Connected
                       </span>
                     ) : (
@@ -351,19 +535,6 @@ function ProfilePage() {
               )}
             </div>
           </div>
-        </div>
-
-        <div className="grid gap-3 md:grid-cols-3">
-          {[
-            { l: "Primary Email", v: user?.email || "—" },
-            { l: "Auth Methods", v: `${(user?.authMethod || ["email"]).length} active` },
-            { l: "Security Level", v: "High (JWT + OAuth)" },
-          ].map((s) => (
-            <div key={s.l} className="panel p-5">
-              <div className="text-[12px] text-muted-foreground">{s.l}</div>
-              <div className="mt-2 font-display text-sm font-semibold truncate">{s.v}</div>
-            </div>
-          ))}
         </div>
       </div>
     </AppShell>

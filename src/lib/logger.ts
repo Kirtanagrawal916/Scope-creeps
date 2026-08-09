@@ -21,7 +21,8 @@ function sanitize(value: unknown): unknown {
     .replace(/(password|passwd|pass)\s*[:=]\s*["']?[^\s"'\s&,]+["']?/gi, "$1=*****")
     .replace(/(token|session_token|jwt|jwt_secret)\s*[:=]\s*["']?[^\s"'\s&,]+["']?/gi, "$1=*****")
     .replace(/(secret|client_secret|clientsecret)\s*[:=]\s*["']?[^\s"'\s&,]+["']?/gi, "$1=*****")
-    .replace(/(cookie|set-cookie)\s*[:=]\s*["']?[^\s"'\s&,]+["']?/gi, "$1=*****");
+    .replace(/(cookie|set-cookie)\s*[:=]\s*["']?[^\s"'\s&,]+["']?/gi, "$1=*****")
+    .replace(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/gi, "[REDACTED_EMAIL]");
 }
 
 export const logger = {

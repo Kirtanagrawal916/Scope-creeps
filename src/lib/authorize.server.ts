@@ -23,3 +23,21 @@ export async function requireSession(): Promise<IUser> {
   }
   return user;
 }
+
+/**
+ * Retrieves the authenticated user and verifies they hold the "admin" role.
+ * Throws a 401 AppError (via requireSession) if there is no valid session,
+ * or a 403 AppError if the session belongs to a non-admin user.
+ *
+ * Usage:
+ *   const admin = await requireAdmin();
+ *   // admin is a session-verified user with role === "admin"
+ */
+export async function requireAdmin(): Promise<IUser> {
+  const user = await requireSession();
+  if (user.role !== "admin") {
+    throw new AppError(403, "You do not have permission to access this area.");
+  }
+  return user;
+}
+
