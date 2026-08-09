@@ -162,5 +162,4 @@ UserSchema.pre("save", async function () {
 
 // 3. Compile and Export the Model
 // Prevent re-compilation during hot-reloads in development.
-export const User =
-  mongoose.models.User || mongoose.model<IUser>("User", UserSchema);
+export const User = mongoose.models.User || mongoose.model<IUser>("User", UserSchema);

@@ -1,8 +1,5 @@
 import { google } from "googleapis";
-import {
-  createOAuth2Client,
-  isGoogleOAuthConfigured,
-} from "../config/googleOAuth.js";
+import { createOAuth2Client, isGoogleOAuthConfigured } from "../config/googleOAuth.js";
 import { successResult, failureResult } from "../utils/serviceResult.js";
 
 /**
@@ -60,8 +57,7 @@ export async function fetchEmails(tokens, options = {}) {
         });
 
         const headers = full.data.payload?.headers || [];
-        const getHeader = (name) =>
-          headers.find((h) => h.name === name)?.value || null;
+        const getHeader = (name) => headers.find((h) => h.name === name)?.value || null;
 
         // Only the fields the /emails endpoint needs — no analysis, no Gemini.
         return {

@@ -122,7 +122,15 @@ export function AIInsightsPanel({
         <span className="text-[10px] text-muted-foreground font-mono">Real-Time Evaluation</span>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+      <div
+        className={`grid grid-cols-1 gap-3 ${
+          insights.length === 2
+            ? "sm:grid-cols-2"
+            : insights.length === 1
+              ? "grid-cols-1"
+              : "sm:grid-cols-2 md:grid-cols-3"
+        }`}
+      >
         {insights.map((card) => {
           const Icon = card.icon;
           const isWarning = card.type === "warning";

@@ -1,9 +1,6 @@
 import { analyzeScope as analyzeScopeService } from "../services/scopeAnalysisService.js";
 import { draftReply as draftReplyService } from "../services/replyDraftingService.js";
-import {
-  incrementAiAnalyses,
-  incrementReplyDrafts,
-} from "../services/analyticsService.js";
+import { incrementAiAnalyses, incrementReplyDrafts } from "../services/analyticsService.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 
 /**

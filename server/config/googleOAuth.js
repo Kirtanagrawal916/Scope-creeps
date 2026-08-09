@@ -14,9 +14,7 @@ export const GOOGLE_OAUTH_SCOPES = [
  * True when all three Google OAuth credentials are present.
  */
 export function isGoogleOAuthConfigured() {
-  return Boolean(
-    env.google.clientId && env.google.clientSecret && env.google.redirectUri,
-  );
+  return Boolean(env.google.clientId && env.google.clientSecret && env.google.redirectUri);
 }
 
 /**

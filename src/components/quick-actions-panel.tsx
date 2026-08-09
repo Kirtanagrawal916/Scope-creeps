@@ -23,6 +23,32 @@ export function QuickActionsPanel({
   onOpenExport,
   onOpenShortcuts,
 }: QuickActionsPanelProps) {
+  const handleSearch = () => {
+    if (onOpenSearch) {
+      onOpenSearch();
+    } else {
+      window.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "k", metaKey: true, bubbles: true }),
+      );
+    }
+  };
+
+  const handleExport = () => {
+    if (onOpenExport) {
+      onOpenExport();
+    } else {
+      window.dispatchEvent(new CustomEvent("open-export-dialog"));
+    }
+  };
+
+  const handleShortcuts = () => {
+    if (onOpenShortcuts) {
+      onOpenShortcuts();
+    } else {
+      window.dispatchEvent(new KeyboardEvent("keydown", { key: "?", bubbles: true }));
+    }
+  };
+
   const actions = [
     {
       id: "new-project",
@@ -46,7 +72,7 @@ export function QuickActionsPanel({
       subLabel: "PDF, Excel & CSV",
       icon: Download,
       color: "text-emerald-500 bg-emerald-500/10 border-emerald-500/20",
-      onClick: onOpenExport,
+      onClick: handleExport,
     },
     {
       id: "global-search",
@@ -54,7 +80,7 @@ export function QuickActionsPanel({
       subLabel: "Cmd + K shortcut",
       icon: Search,
       color: "text-blue-500 bg-blue-500/10 border-blue-500/20",
-      onClick: onOpenSearch,
+      onClick: handleSearch,
     },
     {
       id: "analytics",
@@ -70,33 +96,36 @@ export function QuickActionsPanel({
       subLabel: "Press ? anytime",
       icon: Keyboard,
       color: "text-rose-500 bg-rose-500/10 border-rose-500/20",
-      onClick: onOpenShortcuts,
+      onClick: handleShortcuts,
     },
   ];
 
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
       {actions.map((act) => {
         const Icon = act.icon;
         const CardContent = (
           <motion.div
             whileHover={{ y: -2 }}
             whileTap={{ scale: 0.98 }}
-            className="group relative flex flex-col justify-between rounded-xl border border-border/60 bg-card/60 p-3.5 shadow-xs backdrop-blur-md hover:border-primary/40 hover:bg-accent/40 transition-all h-full"
+            className="group relative flex items-center justify-between rounded-xl border border-border/60 bg-card/60 p-3 shadow-2xs backdrop-blur-md hover:border-primary/40 hover:bg-accent/40 transition-all h-full min-h-[72px]"
           >
-            <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-3 min-w-0 pr-1">
               <div
-                className={`flex h-8 w-8 items-center justify-center rounded-lg border shadow-2xs ${act.color}`}
+                className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border shadow-2xs ${act.color}`}
               >
-                <Icon className="h-4 w-4" />
+                <Icon className="h-4.5 w-4.5" />
               </div>
-              <ArrowRight className="h-3.5 w-3.5 text-muted-foreground/60 opacity-0 group-hover:opacity-100 group-hover:text-primary transition-all -translate-x-1 group-hover:translate-x-0" />
+              <div className="min-w-0">
+                <p className="text-xs font-semibold text-foreground leading-tight truncate">
+                  {act.label}
+                </p>
+                <p className="text-[10px] text-muted-foreground truncate leading-snug mt-0.5">
+                  {act.subLabel}
+                </p>
+              </div>
             </div>
-
-            <div>
-              <p className="text-xs font-semibold text-foreground truncate">{act.label}</p>
-              <p className="text-[10px] text-muted-foreground truncate">{act.subLabel}</p>
-            </div>
+            <ArrowRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground/50 opacity-0 group-hover:opacity-100 group-hover:text-primary transition-all -translate-x-1 group-hover:translate-x-0" />
           </motion.div>
         );
 

@@ -7,10 +7,7 @@ import {
   fetchEmails as fetchEmailsFromService,
   sendEmail as sendEmailFromService,
 } from "../services/gmailService.js";
-import {
-  incrementEmailsProcessed,
-  incrementEmailsSent,
-} from "../services/analyticsService.js";
+import { incrementEmailsProcessed, incrementEmailsSent } from "../services/analyticsService.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 
 /**

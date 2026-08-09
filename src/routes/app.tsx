@@ -37,7 +37,6 @@ const checkAuth = createServerFn({ method: "GET" }).handler(async () => {
       timezone: user.timezone || "UTC",
       language: user.language || "en",
       dateFormat: user.dateFormat || "MMM d, yyyy",
-
     },
   };
 });

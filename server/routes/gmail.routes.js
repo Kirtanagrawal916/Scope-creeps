@@ -1,10 +1,5 @@
 import { Router } from "express";
-import {
-  startOAuth,
-  oauthCallback,
-  getEmails,
-  sendEmail,
-} from "../controllers/gmailController.js";
+import { startOAuth, oauthCallback, getEmails, sendEmail } from "../controllers/gmailController.js";
 
 const router = Router();
 
