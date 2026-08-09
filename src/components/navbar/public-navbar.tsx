@@ -32,15 +32,13 @@ export function PublicNavbar() {
     <header
       className={`sticky top-0 z-50 transition-all duration-300 ${
         isScrolled
-          ? "border-b border-border/60 bg-background/80 backdrop-blur-md shadow-sm"
-          : "border-b border-sidebar-border bg-sidebar text-sidebar-foreground"
+          ? "border-b border-border/80 bg-background/90 backdrop-blur-md shadow-sm"
+          : "border-b border-border/40 bg-background/80 backdrop-blur-md"
       }`}
     >
       <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-4 sm:px-8">
         <Link to="/" className="flex items-center gap-2">
-          <Logo
-            className={isScrolled ? "[&_span]:text-foreground" : "[&_span]:text-sidebar-foreground"}
-          />
+          <Logo className="[&_span]:text-foreground" />
         </Link>
 
         {/* Desktop Navigation */}
@@ -49,11 +47,7 @@ export function PublicNavbar() {
             <a
               key={link.name}
               href={link.href}
-              className={`transition-colors hover:text-primary ${
-                isScrolled
-                  ? "text-muted-foreground hover:text-foreground"
-                  : "text-sidebar-foreground/70 hover:text-sidebar-foreground"
-              }`}
+              className="text-muted-foreground transition-colors hover:text-foreground"
             >
               {link.name}
             </a>
