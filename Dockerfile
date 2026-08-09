@@ -7,9 +7,6 @@
 FROM node:20-alpine AS builder
 WORKDIR /app
 
-# Install build tools if necessary
-RUN apk add --no-libc6-compat python3 make g++
-
 # Copy package manifests
 COPY package.json package-lock.json ./
 RUN npm install
@@ -42,9 +39,5 @@ COPY --from=builder /app/public ./public
 USER scopeguard
 
 EXPOSE 8080
-
-# Health check instruction inside container
-HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:8080/health || exit 1
 
 CMD ["node", ".output/server/index.mjs"]
