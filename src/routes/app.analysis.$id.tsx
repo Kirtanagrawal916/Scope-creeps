@@ -20,6 +20,8 @@ import {
   Printer,
   RefreshCw,
   Cpu,
+  Edit3,
+  Send,
 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { ExportButton } from "@/components/export/export-button";
@@ -554,31 +556,93 @@ function AnalysisPage() {
 
         {/* Suggested reply */}
         {analysis.suggestedReply && (
-          <div className="panel p-6 lg:col-span-2">
-            <div className="flex items-center justify-between border-b border-border/40 pb-2 mb-4">
-              <div className="text-[12px] font-medium uppercase tracking-wider text-muted-foreground">
-                Suggested client email response
-              </div>
-              <Button variant="ghost" size="sm" onClick={handleCopy}>
-                {copied ? (
-                  <>
-                    <CheckCheck className="mr-1.5 h-3.5 w-3.5 text-[color:var(--success)]" />
-                    Copied
-                  </>
-                ) : (
-                  <>
-                    <Copy className="mr-1.5 h-3.5 w-3.5" />
-                    Copy
-                  </>
-                )}
-              </Button>
-            </div>
-            <div className="rounded-xl border border-border bg-background/40 px-5 py-4 font-serif text-[13px] leading-relaxed text-foreground whitespace-pre-wrap">
-              {analysis.suggestedReply}
-            </div>
-          </div>
+          <EditableReplySection
+            initialReply={analysis.suggestedReply}
+            recipientEmail={email?.from || "client@studio.com"}
+            subject={email?.subject || "Scope Change Order Approval"}
+          />
         )}
       </div>
     </AppShell>
+  );
+}
+
+function EditableReplySection({
+  initialReply,
+  recipientEmail,
+  subject,
+}: {
+  initialReply: string;
+  recipientEmail: string;
+  subject: string;
+}) {
+  const [replyText, setReplyText] = useState(initialReply);
+  const [isEditing, setIsEditing] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(replyText);
+    setCopied(true);
+    toast.success("AI reply copied to clipboard!");
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleOpenGmail = () => {
+    const mailtoUrl = `mailto:${encodeURIComponent(recipientEmail)}?subject=${encodeURIComponent(`Re: ${subject}`)}&body=${encodeURIComponent(replyText)}`;
+    const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(recipientEmail)}&su=${encodeURIComponent(`Re: ${subject}`)}&body=${encodeURIComponent(replyText)}`;
+
+    window.open(gmailUrl, "_blank") || (window.location.href = mailtoUrl);
+    toast.success("Opened Gmail composer with draft response!");
+  };
+
+  return (
+    <div className="panel p-6 lg:col-span-2 space-y-4">
+      <div className="flex flex-wrap items-center justify-between border-b border-border/40 pb-3 gap-2">
+        <div className="text-[12px] font-semibold uppercase tracking-wider text-primary flex items-center gap-2">
+          <Sparkles className="h-4 w-4" /> Suggested Client Email Response
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setIsEditing(!isEditing)}
+            className="text-xs gap-1.5"
+          >
+            <Edit3 className="h-3.5 w-3.5" />
+            {isEditing ? "Done Editing" : "Edit Draft"}
+          </Button>
+          <Button variant="outline" size="sm" onClick={handleCopy} className="text-xs gap-1.5">
+            {copied ? (
+              <>
+                <CheckCheck className="h-3.5 w-3.5 text-success" />
+                Copied
+              </>
+            ) : (
+              <>
+                <Copy className="h-3.5 w-3.5" />
+                Copy
+              </>
+            )}
+          </Button>
+          <Button size="sm" onClick={handleOpenGmail} className="text-xs gap-1.5 font-semibold">
+            <Send className="h-3.5 w-3.5" />
+            Send via Gmail / Mail Client
+          </Button>
+        </div>
+      </div>
+
+      {isEditing ? (
+        <Textarea
+          value={replyText}
+          onChange={(e) => setReplyText(e.target.value)}
+          rows={7}
+          className="font-serif text-[13px] leading-relaxed bg-background/60"
+        />
+      ) : (
+        <div className="rounded-xl border border-border/60 bg-background/40 p-5 font-serif text-[13px] leading-relaxed text-foreground whitespace-pre-wrap">
+          {replyText}
+        </div>
+      )}
+    </div>
   );
 }

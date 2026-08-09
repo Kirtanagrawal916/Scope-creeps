@@ -1,18 +1,9 @@
 import { createFileRoute, Link, notFound, useRouteContext } from "@tanstack/react-router";
-import {
-  Search,
-  ArrowUpRight,
-  FolderOpen,
-  Archive,
-  CheckCircle2,
-  LayoutGrid,
-  List,
-  GripVertical,
-} from "lucide-react";
+import { Search, Filter, ArrowUpRight, FolderOpen, Archive, CheckCircle2, LayoutGrid, Kanban } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { ExportButton } from "@/components/export/export-button";
 import { StatusPill, RiskChip } from "@/components/status-pill";
-import { listProjects, updateProject, type SerializedProject } from "@/lib/projects.server";
+import { listProjects } from "@/lib/projects.server";
 import { formatCurrency } from "@/lib/formatters";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -23,23 +14,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { calculateProjectHealth } from "@/lib/health-calculator";
 import { SmartEmptyState } from "@/components/smart-empty-state";
-import {
-  DndContext,
-  DragOverlay,
-  PointerSensor,
-  KeyboardSensor,
-  useSensor,
-  useSensors,
-  useDraggable,
-  useDroppable,
-  type DragEndEvent,
-  type DragStartEvent,
-} from "@dnd-kit/core";
-import { toast } from "sonner";
-import type { ProjectStatus } from "@/models/Project";
 
 export const Route = createFileRoute("/app/projects/")({
   loader: async () => {
@@ -57,13 +34,6 @@ export const Route = createFileRoute("/app/projects/")({
   head: () => ({ meta: [{ title: "Projects — ScopeGuard" }] }),
 });
 
-const KANBAN_COLUMNS: Array<{ id: ProjectStatus; label: string; color: string }> = [
-  { id: "on_track", label: "On Track", color: "bg-emerald-500" },
-  { id: "at_risk", label: "At Risk", color: "bg-amber-500" },
-  { id: "scope_creep", label: "Scope Creep", color: "bg-rose-500" },
-  { id: "completed", label: "Completed", color: "bg-indigo-500" },
-];
-
 function ProjectsPage() {
   const { user } = useRouteContext({ from: "/app" }) as {
     user: {
@@ -73,18 +43,8 @@ function ProjectsPage() {
   };
   const currencySymbol = user?.currencySymbol || "₹";
   const locale = user?.locale || "en-IN";
-  const { activeProjects: initialActive, archivedProjects: initialArchived } =
-    Route.useLoaderData();
+  const { activeProjects, archivedProjects } = Route.useLoaderData();
   const [currentTab, setCurrentTab] = useState<"active" | "archived">("active");
-  const [viewMode, setViewMode] = useState<"kanban" | "table">("kanban");
-
-  const [activeProjects, setActiveProjects] = useState<SerializedProject[]>(initialActive);
-  const [archivedProjects, setArchivedProjects] = useState<SerializedProject[]>(initialArchived);
-
-  useEffect(() => {
-    setActiveProjects(initialActive);
-    setArchivedProjects(initialArchived);
-  }, [initialActive, initialArchived]);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -92,20 +52,9 @@ function ProjectsPage() {
   const [sortBy, setSortBy] = useState<"name" | "budget" | "hours" | "progress">("name");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
   const [currentPage, setCurrentPage] = useState(1);
-  const [activeDragId, setActiveDragId] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<"grid" | "kanban">("grid");
 
   const projects = currentTab === "active" ? activeProjects : archivedProjects;
-  const setProjects = currentTab === "active" ? setActiveProjects : setArchivedProjects;
-
-  // Sensors for dnd-kit with 8px pointer activation constraint to allow natural clicks on project cards
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 8,
-      },
-    }),
-    useSensor(KeyboardSensor),
-  );
 
   // Filter logic
   const filteredProjects = projects.filter((p) => {
@@ -140,7 +89,7 @@ function ProjectsPage() {
     return sortOrder === "asc" ? aNum - bNum : bNum - aNum;
   });
 
-  // Pagination logic for Table View
+  // Pagination logic
   const itemsPerPage = 8;
   const totalPages = Math.ceil(sortedProjects.length / itemsPerPage);
   const paginatedProjects = sortedProjects.slice(
@@ -148,60 +97,13 @@ function ProjectsPage() {
     currentPage * itemsPerPage,
   );
 
-  // Drag and drop handlers
-  const handleDragStart = (event: DragStartEvent) => {
-    setActiveDragId(String(event.active.id));
-  };
-
-  const handleDragEnd = async (event: DragEndEvent) => {
-    const { active, over } = event;
-    setActiveDragId(null);
-
-    if (!over) return;
-
-    const projectId = String(active.id);
-    const destinationStatus = String(over.id) as ProjectStatus;
-
-    const targetProject = projects.find((p) => p.id === projectId);
-    if (!targetProject || targetProject.status === destinationStatus) return;
-
-    const previousStatus = targetProject.status;
-
-    // 1. Optimistic Update
-    setProjects((prev) =>
-      prev.map((p) => (p.id === projectId ? { ...p, status: destinationStatus } : p)),
-    );
-
-    const formattedStatus = destinationStatus.replace("_", " ");
-    toast.success(`Project "${targetProject.name}" moved to ${formattedStatus}`);
-
-    // 2. Persist to server
-    try {
-      await updateProject({
-        data: {
-          id: projectId,
-          status: destinationStatus,
-        },
-      });
-    } catch {
-      // 3. Rollback on failure
-      setProjects((prev) =>
-        prev.map((p) => (p.id === projectId ? { ...p, status: previousStatus } : p)),
-      );
-      toast.error(`Failed to update project status. Reverted changes.`);
-    }
-  };
-
-  const activeDragProject = activeDragId ? projects.find((p) => p.id === activeDragId) : null;
-
   return (
     <AppShell
       title="Projects"
       subtitle="Every engagement, one source of truth."
-      action={<ExportButton defaultScope="projects_bulk" label="Export Projects Report" />}
     >
-      {/* Active vs Archived Tabs & View Switcher */}
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-4 border-b border-border">
+      {/* Active vs Archived Tabs & View Mode Toggle */}
+      <div className="mb-6 flex flex-wrap items-center justify-between border-b border-border gap-2">
         <div className="flex">
           <button
             onClick={() => {
@@ -233,25 +135,22 @@ function ProjectsPage() {
           </button>
         </div>
 
-        {/* View Switcher: Kanban vs Table */}
         <div className="flex items-center gap-1 pb-2">
           <Button
-            variant={viewMode === "kanban" ? "secondary" : "ghost"}
+            variant={viewMode === "grid" ? "default" : "outline"}
             size="sm"
+            onClick={() => setViewMode("grid")}
             className="h-8 text-xs gap-1.5"
-            onClick={() => setViewMode("kanban")}
           >
-            <LayoutGrid className="h-3.5 w-3.5" />
-            Kanban Board
+            <LayoutGrid className="h-3.5 w-3.5" /> Grid View
           </Button>
           <Button
-            variant={viewMode === "table" ? "secondary" : "ghost"}
+            variant={viewMode === "kanban" ? "default" : "outline"}
             size="sm"
+            onClick={() => setViewMode("kanban")}
             className="h-8 text-xs gap-1.5"
-            onClick={() => setViewMode("table")}
           >
-            <List className="h-3.5 w-3.5" />
-            Table View
+            <Kanban className="h-3.5 w-3.5" /> Kanban Board
           </Button>
         </div>
       </div>
@@ -339,7 +238,96 @@ function ProjectsPage() {
         </Button>
       </div>
 
-      {sortedProjects.length === 0 ? (
+      {viewMode === "kanban" ? (
+        <div className="grid gap-4 md:grid-cols-3">
+          {/* Column 1: On Track */}
+          <div className="panel p-4 space-y-3 bg-card/30">
+            <div className="flex items-center justify-between border-b border-border/40 pb-2">
+              <span className="text-xs font-semibold uppercase tracking-wider text-emerald-500 flex items-center gap-1.5">
+                <span className="h-2 w-2 rounded-full bg-emerald-500" /> On Track (
+                {sortedProjects.filter((p) => p.status === "on_track").length})
+              </span>
+            </div>
+            {sortedProjects
+              .filter((p) => p.status === "on_track")
+              .map((p) => (
+                <Link
+                  key={p.id}
+                  to="/app/projects/$id"
+                  params={{ id: p.id }}
+                  className="block p-3.5 rounded-xl border border-border/50 bg-background/60 hover:border-primary/50 transition-all space-y-2"
+                >
+                  <div className="font-semibold text-xs text-foreground flex items-center justify-between">
+                    <span>{p.name}</span>
+                    <span className="text-[10px] text-muted-foreground font-mono">{p.client}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+                    <span>Budget: {formatCurrency(p.budget, currencySymbol, locale)}</span>
+                    <RiskChip level={p.risk} />
+                  </div>
+                </Link>
+              ))}
+          </div>
+
+          {/* Column 2: In Progress / At Risk */}
+          <div className="panel p-4 space-y-3 bg-card/30">
+            <div className="flex items-center justify-between border-b border-border/40 pb-2">
+              <span className="text-xs font-semibold uppercase tracking-wider text-amber-500 flex items-center gap-1.5">
+                <span className="h-2 w-2 rounded-full bg-amber-500" /> At Risk / In Progress (
+                {sortedProjects.filter((p) => p.status === "at_risk" || p.status === "scope_creep").length})
+              </span>
+            </div>
+            {sortedProjects
+              .filter((p) => p.status === "at_risk" || p.status === "scope_creep")
+              .map((p) => (
+                <Link
+                  key={p.id}
+                  to="/app/projects/$id"
+                  params={{ id: p.id }}
+                  className="block p-3.5 rounded-xl border border-border/50 bg-background/60 hover:border-primary/50 transition-all space-y-2"
+                >
+                  <div className="font-semibold text-xs text-foreground flex items-center justify-between">
+                    <span>{p.name}</span>
+                    <span className="text-[10px] text-muted-foreground font-mono">{p.client}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+                    <span>Budget: {formatCurrency(p.budget, currencySymbol, locale)}</span>
+                    <RiskChip level={p.risk} />
+                  </div>
+                </Link>
+              ))}
+          </div>
+
+          {/* Column 3: Completed */}
+          <div className="panel p-4 space-y-3 bg-card/30">
+            <div className="flex items-center justify-between border-b border-border/40 pb-2">
+              <span className="text-xs font-semibold uppercase tracking-wider text-blue-500 flex items-center gap-1.5">
+                <span className="h-2 w-2 rounded-full bg-blue-500" /> Completed (
+                {sortedProjects.filter((p) => p.status === "completed").length})
+              </span>
+            </div>
+            {sortedProjects
+              .filter((p) => p.status === "completed")
+              .map((p) => (
+                <Link
+                  key={p.id}
+                  to="/app/projects/$id"
+                  params={{ id: p.id }}
+                  className="block p-3.5 rounded-xl border border-border/50 bg-background/60 hover:border-primary/50 transition-all space-y-2"
+                >
+                  <div className="font-semibold text-xs text-foreground flex items-center justify-between">
+                    <span>{p.name}</span>
+                    <span className="text-[10px] text-muted-foreground font-mono">{p.client}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+                    <span>Budget: {formatCurrency(p.budget, currencySymbol, locale)}</span>
+                    <RiskChip level={p.risk} />
+                  </div>
+                </Link>
+              ))}
+          </div>
+        </div>
+      ) : paginatedProjects.length === 0 ? (
         <SmartEmptyState
           icon={FolderOpen}
           title={
@@ -364,46 +352,7 @@ function ProjectsPage() {
           }
           actionTo="/app/projects/new"
         />
-      ) : viewMode === "kanban" ? (
-        /* Kanban Board View with @dnd-kit */
-        <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {KANBAN_COLUMNS.map((col) => {
-              const colProjects = sortedProjects.filter((p) => p.status === col.id);
-              return (
-                <KanbanColumn
-                  key={col.id}
-                  id={col.id}
-                  title={col.label}
-                  color={col.color}
-                  count={colProjects.length}
-                >
-                  {colProjects.map((p) => (
-                    <DraggableProjectCard
-                      key={p.id}
-                      project={p}
-                      currencySymbol={currencySymbol}
-                      locale={locale}
-                    />
-                  ))}
-                </KanbanColumn>
-              );
-            })}
-          </div>
-
-          {/* Drag Overlay during active drag */}
-          <DragOverlay>
-            {activeDragProject ? (
-              <ProjectCardPreview
-                project={activeDragProject}
-                currencySymbol={currencySymbol}
-                locale={locale}
-              />
-            ) : null}
-          </DragOverlay>
-        </DndContext>
       ) : (
-        /* Table View */
         <div className="space-y-4">
           <div className="panel overflow-hidden">
             <div className="hidden grid-cols-[1.6fr_1fr_1fr_1fr_1fr_auto] items-center gap-4 border-b border-border bg-background/40 px-5 py-2.5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground md:grid">
@@ -480,7 +429,7 @@ function ProjectsPage() {
             </div>
           </div>
 
-          {/* Pagination Controls for Table View */}
+          {/* Pagination Controls */}
           {totalPages > 1 && (
             <div className="flex items-center justify-between px-2 text-[13px]">
               <span className="text-muted-foreground">
@@ -509,200 +458,5 @@ function ProjectsPage() {
         </div>
       )}
     </AppShell>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Subcomponents for Kanban Board
-// ---------------------------------------------------------------------------
-
-function KanbanColumn({
-  id,
-  title,
-  color,
-  count,
-  children,
-}: {
-  id: ProjectStatus;
-  title: string;
-  color: string;
-  count: number;
-  children: React.ReactNode;
-}) {
-  const { isOver, setNodeRef } = useDroppable({
-    id,
-  });
-
-  return (
-    <div
-      ref={setNodeRef}
-      className={`flex flex-col rounded-2xl border p-4 backdrop-blur-xl transition-all min-h-[420px] ${
-        isOver
-          ? "border-primary/60 bg-primary/5 ring-2 ring-primary/20 shadow-md"
-          : "border-border/80 bg-card/60"
-      }`}
-    >
-      <div className="flex items-center justify-between pb-3 mb-3 border-b border-border/40">
-        <div className="flex items-center gap-2">
-          <span className={`h-2.5 w-2.5 rounded-full ${color}`} />
-          <span className="text-xs font-semibold uppercase tracking-wider text-foreground">
-            {title}
-          </span>
-        </div>
-        <span className="font-mono text-[11px] px-2 py-0.5 rounded-full bg-muted text-muted-foreground font-medium">
-          {count}
-        </span>
-      </div>
-      <div className="flex flex-col gap-3 flex-1">{children}</div>
-    </div>
-  );
-}
-
-function DraggableProjectCard({
-  project,
-  currencySymbol,
-  locale,
-}: {
-  project: SerializedProject;
-  currencySymbol: string;
-  locale: string;
-}) {
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
-    id: project.id,
-  });
-
-  const style = transform
-    ? {
-        transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
-      }
-    : undefined;
-
-  const health = calculateProjectHealth({
-    budget: project.budget,
-    hoursAllocated: project.hoursAllocated,
-    hoursUsed: project.hoursUsed,
-    progress: project.progress,
-    status: project.status,
-    risk: project.risk,
-    scopeItemsCount: project.scopeItems?.length || 0,
-    outOfScopeCount: project.outOfScope?.length || 0,
-  });
-
-  return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      {...attributes}
-      {...listeners}
-      className={`group relative flex flex-col justify-between rounded-xl border border-border/60 bg-card/80 p-3.5 shadow-2xs backdrop-blur-md transition-all hover:border-primary/40 hover:shadow-sm cursor-grab active:cursor-grabbing ${
-        isDragging ? "opacity-30 border-dashed border-primary" : ""
-      }`}
-    >
-      <div>
-        <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center gap-2 min-w-0 pr-2">
-            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-accent text-[10px] font-medium">
-              {project.clientInitials}
-            </div>
-            <div className="min-w-0">
-              <Link
-                to="/app/projects/$id"
-                params={{ id: project.id }}
-                onClick={(e) => e.stopPropagation()}
-                className="text-xs font-semibold text-foreground hover:text-primary transition-colors block truncate"
-              >
-                {project.name}
-              </Link>
-              <p className="text-[10px] text-muted-foreground truncate">{project.client}</p>
-            </div>
-          </div>
-          <GripVertical className="h-3.5 w-3.5 shrink-0 text-muted-foreground/40 group-hover:text-muted-foreground transition-colors" />
-        </div>
-
-        <div className="flex items-center justify-between text-[11px] pt-2 mt-2 border-t border-border/40">
-          <span className="font-semibold text-foreground">
-            {formatCurrency(project.budget, currencySymbol, locale)}
-          </span>
-          <div className="flex items-center gap-1">
-            <span
-              className={`text-[9px] font-semibold px-1.5 py-0.5 rounded-full border ${
-                health.statusColor === "emerald"
-                  ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20"
-                  : health.statusColor === "blue"
-                    ? "bg-blue-500/10 text-blue-500 border-blue-500/20"
-                    : health.statusColor === "amber"
-                      ? "bg-amber-500/10 text-amber-500 border-amber-500/20"
-                      : "bg-rose-500/10 text-rose-500 border-rose-500/20"
-              }`}
-            >
-              Health {health.healthPercent}%
-            </span>
-            <RiskChip level={project.risk} />
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function ProjectCardPreview({
-  project,
-  currencySymbol,
-  locale,
-}: {
-  project: SerializedProject;
-  currencySymbol: string;
-  locale: string;
-}) {
-  const health = calculateProjectHealth({
-    budget: project.budget,
-    hoursAllocated: project.hoursAllocated,
-    hoursUsed: project.hoursUsed,
-    progress: project.progress,
-    status: project.status,
-    risk: project.risk,
-    scopeItemsCount: project.scopeItems?.length || 0,
-    outOfScopeCount: project.outOfScope?.length || 0,
-  });
-
-  return (
-    <div className="rounded-xl border border-primary/50 bg-card p-3.5 shadow-2xl backdrop-blur-md rotate-2 scale-[1.03] cursor-grabbing w-[280px]">
-      <div className="flex items-center justify-between mb-2">
-        <div className="flex items-center gap-2 min-w-0 pr-2">
-          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-accent text-[10px] font-medium">
-            {project.clientInitials}
-          </div>
-          <div className="min-w-0">
-            <span className="text-xs font-semibold text-foreground block truncate">
-              {project.name}
-            </span>
-            <p className="text-[10px] text-muted-foreground truncate">{project.client}</p>
-          </div>
-        </div>
-        <GripVertical className="h-3.5 w-3.5 text-primary" />
-      </div>
-
-      <div className="flex items-center justify-between text-[11px] pt-2 mt-2 border-t border-border/40">
-        <span className="font-semibold text-foreground">
-          {formatCurrency(project.budget, currencySymbol, locale)}
-        </span>
-        <div className="flex items-center gap-1">
-          <span
-            className={`text-[9px] font-semibold px-1.5 py-0.5 rounded-full border ${
-              health.statusColor === "emerald"
-                ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20"
-                : health.statusColor === "blue"
-                  ? "bg-blue-500/10 text-blue-500 border-blue-500/20"
-                  : health.statusColor === "amber"
-                    ? "bg-amber-500/10 text-amber-500 border-amber-500/20"
-                    : "bg-rose-500/10 text-rose-500 border-rose-500/20"
-            }`}
-          >
-            Health {health.healthPercent}%
-          </span>
-          <RiskChip level={project.risk} />
-        </div>
-      </div>
-    </div>
   );
 }
